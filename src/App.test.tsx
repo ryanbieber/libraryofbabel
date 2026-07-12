@@ -13,21 +13,24 @@ describe('App interactions', () => {
   it('moves through the Arena viewport and opens a visible volume as an old-book reader', () => {
     const { container } = render(<App />)
 
-    expect(container.querySelector('.scene-desert')).toBeInTheDocument()
-    expect(screen.getByText('“Are you sure you want to give yourself over to the library?”')).toBeInTheDocument()
     fireEvent.click(screen.getByLabelText('Open explanation'))
     expect(container.querySelector('.help-panel')).toBeInTheDocument()
     fireEvent.click(container.querySelector('.help-panel .close-reader')!)
 
-    fireEvent.click(screen.getByText('no'))
     expect(container.querySelector('.scene-library')).toBeInTheDocument()
     expect(screen.getByTestId('arena-viewport')).toBeInTheDocument()
     expect(screen.getByText('FLOOR 0')).toBeInTheDocument()
 
-    fireEvent.click(screen.getAllByText('stairs up')[1])
+    fireEvent.click(screen.getByText('stairs up'))
     expect(screen.getByText('FLOOR 1')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByLabelText('Forward'))
+    fireEvent.click(container.querySelector('.move-pad [aria-label="Forward"]')!)
+    expect(screen.getByText('ROOM 1,0')).toBeInTheDocument()
+
+    fireEvent.click(container.querySelector('.viewport-zone-back')!)
+    expect(screen.getByText('ROOM 0,0')).toBeInTheDocument()
+
+    fireEvent.click(container.querySelector('.viewport-zone-forward')!)
     expect(screen.getByText('ROOM 1,0')).toBeInTheDocument()
 
     fireEvent.keyDown(window, { key: 'ArrowLeft' })

@@ -27,7 +27,6 @@ const facingDirections = [
 ] as const
 
 function App() {
-  const [inLibrary, setInLibrary] = useState(() => startsInsideLibrary())
   const [floor, setFloor] = useState(0)
   const [currentRoom, setCurrentRoom] = useState({ q: 0, r: 0 })
   const [facing, setFacing] = useState(defaultAddress.wall)
@@ -36,11 +35,7 @@ function App() {
   const [helpOpen, setHelpOpen] = useState(false)
   const [movementCue, setMovementCue] = useState<'idle' | 'step' | 'turn-left' | 'turn-right'>('idle')
   const [page, setPage] = useState(1)
-  const [message, setMessage] = useState(() =>
-    startsInsideLibrary()
-      ? 'The door seals behind you. The shelves breathe dust.'
-      : 'The vagabond waits beside the tower door.',
-  )
+  const [message, setMessage] = useState('The door seals behind you. The shelves breathe dust.')
   const generatedPage = useMemo(() => generatePage({ ...selectedBook, page }), [selectedBook, page])
   const nextGeneratedPage = useMemo(
     () => generatePage({ ...selectedBook, page: clampPage(page + 1) }),
@@ -50,7 +45,7 @@ function App() {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (!inLibrary || readerOpen || helpOpen) return
+      if (readerOpen || helpOpen) return
 
       if (event.key === 'ArrowUp' || event.key.toLowerCase() === 'w') {
         event.preventDefault()
@@ -73,15 +68,6 @@ function App() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   })
-
-  function enterLibrary(answer: 'yes' | 'no') {
-    setInLibrary(true)
-    setMessage(
-      answer === 'yes'
-        ? 'The door seals behind you. The shelves breathe dust.'
-        : 'The vagabond laughs. The sand gives way beneath your boots. You are inside anyway.',
-    )
-  }
 
   function moveRoom(deltaQ: number, deltaR: number) {
     const nextRoom = { q: currentRoom.q + deltaQ, r: currentRoom.r + deltaR }
@@ -132,25 +118,20 @@ function App() {
   return (
     <main className="arena-shell">
       <section className="game-frame" aria-label="Library game viewport">
-        <div
-          className={
-            inLibrary ? `scene scene-library movement-${movementCue}` : 'scene scene-desert'
-          }
-        >
-          {inLibrary ? (
-            <ArenaViewport
-              floor={floor}
-              facing={facing}
-              currentRoom={currentRoom}
-              selectedBook={selectedBook}
-              movementCue={movementCue}
-              facingLabel={facingDirections[facing].label}
-              onOpenBook={openBook}
-              onChangeFloor={changeFloor}
-            />
-          ) : (
-            <DesertScene onAnswer={enterLibrary} />
-          )}
+        <div className={`scene scene-library movement-${movementCue}`}>
+          <ArenaViewport
+            floor={floor}
+            facing={facing}
+            currentRoom={currentRoom}
+            selectedBook={selectedBook}
+            movementCue={movementCue}
+            facingLabel={facingDirections[facing].label}
+            onOpenBook={openBook}
+            onMoveForward={() => moveByFacing(1)}
+            onMoveBack={() => moveByFacing(-1)}
+            onTurnLeft={() => turn(-1)}
+            onTurnRight={() => turn(1)}
+          />
         </div>
 
         <div className="message-bar" role="status">
@@ -159,32 +140,32 @@ function App() {
 
         <div className="command-bar" aria-label="Movement and actions">
           <div className="status-box">
-            <strong>{inLibrary ? `FLOOR ${floor}` : 'DESERT'}</strong>
-            <span>{inLibrary ? `ROOM ${currentRoom.q},${currentRoom.r}` : 'TOWER GATE'}</span>
-            <span>{inLibrary ? facingDirections[facing].label : 'OUTSIDE'}</span>
+            <strong>{`FLOOR ${floor}`}</strong>
+            <span>{`ROOM ${currentRoom.q},${currentRoom.r}`}</span>
+            <span>{facingDirections[facing].label}</span>
           </div>
           <div className="move-pad">
-            <button type="button" disabled={!inLibrary} aria-label="Turn left" onClick={() => turn(-1)}>
+            <button type="button" aria-label="Turn left" onClick={() => turn(-1)}>
               <ArrowLeft size={22} aria-hidden="true" />
             </button>
-            <button type="button" disabled={!inLibrary} aria-label="Forward" onClick={() => moveByFacing(1)}>
+            <button type="button" aria-label="Forward" onClick={() => moveByFacing(1)}>
               <ArrowUp size={22} aria-hidden="true" />
             </button>
-            <button type="button" disabled={!inLibrary} aria-label="Turn right" onClick={() => turn(1)}>
+            <button type="button" aria-label="Turn right" onClick={() => turn(1)}>
               <ArrowRight size={22} aria-hidden="true" />
             </button>
-            <button type="button" disabled={!inLibrary} aria-label="Back" onClick={() => moveByFacing(-1)}>
+            <button type="button" aria-label="Back" onClick={() => moveByFacing(-1)}>
               <ArrowDown size={22} aria-hidden="true" />
             </button>
           </div>
           <div className="action-buttons">
-            <button type="button" disabled={!inLibrary} onClick={() => changeFloor(1)}>
+            <button type="button" onClick={() => changeFloor(1)}>
               stairs up
             </button>
-            <button type="button" disabled={!inLibrary} onClick={() => changeFloor(-1)}>
+            <button type="button" onClick={() => changeFloor(-1)}>
               stairs down
             </button>
-            <button type="button" disabled={!inLibrary} aria-label="Random volume" onClick={jump}>
+            <button type="button" aria-label="Random volume" onClick={jump}>
               <Dices size={21} aria-hidden="true" />
             </button>
             <button type="button" aria-label="Open explanation" onClick={() => setHelpOpen(true)}>
@@ -210,38 +191,6 @@ function App() {
         <HelpPanel totalExponent={totalExponent} onClose={() => setHelpOpen(false)} />
       ) : null}
     </main>
-  )
-}
-
-function DesertScene({ onAnswer }: { onAnswer: (answer: 'yes' | 'no') => void }) {
-  return (
-    <>
-      <div className="pixel-sky" />
-      <div className="pixel-sun" />
-      <div className="pixel-dunes back" />
-      <div className="pixel-dunes front" />
-      <div className="tower">
-        <div className="tower-cap" />
-        <div className="tower-body" />
-        <div className="tower-door" />
-      </div>
-      <div className="vagabond" aria-hidden="true">
-        <div className="vagabond-hood" />
-        <div className="vagabond-body" />
-        <div className="vagabond-staff" />
-      </div>
-      <div className="dialog-box">
-        <p>“Are you sure you want to give yourself over to the library?”</p>
-        <div>
-          <button type="button" onClick={() => onAnswer('yes')}>
-            yes
-          </button>
-          <button type="button" onClick={() => onAnswer('no')}>
-            no
-          </button>
-        </div>
-      </div>
-    </>
   )
 }
 
@@ -338,10 +287,6 @@ function HelpPanel({
 
 function positiveModulo(value: number, modulo: number): number {
   return ((value % modulo) + modulo) % modulo
-}
-
-function startsInsideLibrary(): boolean {
-  return window.location.hash === '#library'
 }
 
 export default App

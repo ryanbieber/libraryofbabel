@@ -14,7 +14,10 @@ type ArenaViewportProps = {
   movementCue: MovementCue
   facingLabel: string
   onOpenBook: (address: BookAddress) => void
-  onChangeFloor: (delta: number) => void
+  onMoveForward: () => void
+  onMoveBack: () => void
+  onTurnLeft: () => void
+  onTurnRight: () => void
 }
 
 const bookColumns = 18
@@ -28,7 +31,10 @@ export function ArenaViewport({
   movementCue,
   facingLabel,
   onOpenBook,
-  onChangeFloor,
+  onMoveForward,
+  onMoveBack,
+  onTurnLeft,
+  onTurnRight,
 }: ArenaViewportProps) {
   const canUseWebGL = useWebGLAvailable()
   const visibleBooks = useMemo(
@@ -55,13 +61,18 @@ export function ArenaViewport({
             currentRoom={currentRoom}
             selectedBook={selectedBook}
             onOpenBook={onOpenBook}
-            onChangeFloor={onChangeFloor}
           />
         </Canvas>
       ) : (
         <div className="arena-canvas-unavailable" aria-hidden="true" />
       )}
 
+      <div className="viewport-move-zones" aria-label="Viewport movement controls">
+        <button type="button" className="viewport-zone viewport-zone-left" aria-label="Turn left" onClick={onTurnLeft} />
+        <button type="button" className="viewport-zone viewport-zone-forward" aria-label="Forward" onClick={onMoveForward} />
+        <button type="button" className="viewport-zone viewport-zone-right" aria-label="Turn right" onClick={onTurnRight} />
+        <button type="button" className="viewport-zone viewport-zone-back" aria-label="Back" onClick={onMoveBack} />
+      </div>
       <div className="arena-crosshair" aria-hidden="true" />
       <div className="arena-plaque" aria-hidden="true">
         <strong>Floor {floor}</strong>
@@ -84,20 +95,6 @@ export function ArenaViewport({
           )),
         )}
       </div>
-      <button
-        type="button"
-        className="scene-action scene-action-up"
-        onClick={() => onChangeFloor(1)}
-      >
-        stairs up
-      </button>
-      <button
-        type="button"
-        className="scene-action scene-action-down"
-        onClick={() => onChangeFloor(-1)}
-      >
-        stairs down
-      </button>
     </div>
   )
 }
@@ -108,14 +105,12 @@ function ArenaScene({
   currentRoom,
   selectedBook,
   onOpenBook,
-  onChangeFloor,
 }: {
   floor: number
   facing: number
   currentRoom: { q: number; r: number }
   selectedBook: BookAddress
   onOpenBook: (address: BookAddress) => void
-  onChangeFloor: (delta: number) => void
 }) {
   const textures = useArenaTextures()
   const cameraRig = useRef<THREE.Group>(null)
@@ -168,7 +163,7 @@ function ArenaScene({
         selectedBook={selectedBook}
         onOpenBook={onOpenBook}
       />
-      <Stairs onChangeFloor={onChangeFloor} />
+      <Stairs />
       <AddressPlaque floor={floor} facing={facing} />
     </group>
   )
@@ -269,22 +264,14 @@ function Torch({ position }: { position: [number, number, number] }) {
   )
 }
 
-function Stairs({ onChangeFloor }: { onChangeFloor: (delta: number) => void }) {
+function Stairs() {
   return (
     <>
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0.12]}
-        position={[-2.9, 0.08, -3.7]}
-        onClick={() => onChangeFloor(-1)}
-      >
+      <mesh rotation={[-Math.PI / 2, 0, 0.12]} position={[-2.9, 0.08, -3.7]}>
         <boxGeometry args={[1.6, 1.1, 0.16]} />
         <meshStandardMaterial color="#777b82" roughness={1} />
       </mesh>
-      <mesh
-        rotation={[-Math.PI / 2, 0, -0.12]}
-        position={[2.9, 0.08, -3.7]}
-        onClick={() => onChangeFloor(1)}
-      >
+      <mesh rotation={[-Math.PI / 2, 0, -0.12]} position={[2.9, 0.08, -3.7]}>
         <boxGeometry args={[1.6, 1.1, 0.16]} />
         <meshStandardMaterial color="#8e9299" roughness={1} />
       </mesh>
