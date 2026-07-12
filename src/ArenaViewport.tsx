@@ -1,6 +1,7 @@
 import { Canvas, useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { cardinalDirections, type DirectionIndex } from './lib/level'
 import type { BookAddress } from './lib/library'
 import { addressLabel, nearbyBookAddress } from './lib/library'
 
@@ -10,6 +11,8 @@ type ArenaViewportProps = {
   floor: number
   facing: number
   currentRoom: { q: number; r: number }
+  roomName: string
+  doors: DirectionIndex[]
   selectedBook: BookAddress
   movementCue: MovementCue
   facingLabel: string
@@ -27,6 +30,8 @@ export function ArenaViewport({
   floor,
   facing,
   currentRoom,
+  roomName,
+  doors,
   selectedBook,
   movementCue,
   facingLabel,
@@ -37,6 +42,7 @@ export function ArenaViewport({
   onTurnRight,
 }: ArenaViewportProps) {
   const canUseWebGL = useWebGLAvailable()
+  const hasFacingDoor = doors.includes(facing as DirectionIndex)
   const visibleBooks = useMemo(
     () =>
       Array.from({ length: bookRows }, (_, shelf) =>
@@ -59,6 +65,7 @@ export function ArenaViewport({
             floor={floor}
             facing={facing}
             currentRoom={currentRoom}
+            hasFacingDoor={hasFacingDoor}
             selectedBook={selectedBook}
             onOpenBook={onOpenBook}
           />
@@ -77,6 +84,24 @@ export function ArenaViewport({
       <div className="arena-plaque" aria-hidden="true">
         <strong>Floor {floor}</strong>
         <span>{facingLabel}</span>
+      </div>
+      <div className="room-label">
+        <strong>{roomName}</strong>
+        <span>{hasFacingDoor ? `${facingLabel} door` : `${facingLabel} wall`}</span>
+      </div>
+      <div className="door-strip" aria-label="Room doors">
+        {cardinalDirections.map((direction, index) => (
+          <span
+            key={direction.label}
+            className={[
+              'door-chip',
+              doors.includes(index as DirectionIndex) ? 'available' : 'sealed',
+              index === facing ? 'facing' : '',
+            ].join(' ')}
+          >
+            {direction.shortLabel}
+          </span>
+        ))}
       </div>
       <div className="book-hotspot-grid" aria-label="Visible shelf volumes">
         {visibleBooks.flatMap((row) =>
@@ -103,12 +128,14 @@ function ArenaScene({
   floor,
   facing,
   currentRoom,
+  hasFacingDoor,
   selectedBook,
   onOpenBook,
 }: {
   floor: number
   facing: number
   currentRoom: { q: number; r: number }
+  hasFacingDoor: boolean
   selectedBook: BookAddress
   onOpenBook: (address: BookAddress) => void
 }) {
@@ -160,6 +187,7 @@ function ArenaScene({
       <ShelfWall
         currentRoom={currentRoom}
         facing={facing}
+        hasFacingDoor={hasFacingDoor}
         selectedBook={selectedBook}
         onOpenBook={onOpenBook}
       />
@@ -172,11 +200,13 @@ function ArenaScene({
 function ShelfWall({
   currentRoom,
   facing,
+  hasFacingDoor,
   selectedBook,
   onOpenBook,
 }: {
   currentRoom: { q: number; r: number }
   facing: number
+  hasFacingDoor: boolean
   selectedBook: BookAddress
   onOpenBook: (address: BookAddress) => void
 }) {
@@ -188,6 +218,26 @@ function ShelfWall({
         <boxGeometry args={[5.9, 1.86, 0.18]} />
         <meshStandardMaterial color={shelfWood} roughness={1} />
       </mesh>
+      {hasFacingDoor ? (
+        <group position={[0, -0.43, 0.19]}>
+          <mesh>
+            <boxGeometry args={[0.88, 0.92, 0.1]} />
+            <meshStandardMaterial color="#090709" roughness={1} />
+          </mesh>
+          <mesh position={[0, 0.49, 0.02]}>
+            <boxGeometry args={[1.08, 0.12, 0.14]} />
+            <meshStandardMaterial color="#806c55" roughness={0.9} />
+          </mesh>
+          <mesh position={[-0.54, 0, 0.02]}>
+            <boxGeometry args={[0.1, 1.02, 0.14]} />
+            <meshStandardMaterial color="#806c55" roughness={0.9} />
+          </mesh>
+          <mesh position={[0.54, 0, 0.02]}>
+            <boxGeometry args={[0.1, 1.02, 0.14]} />
+            <meshStandardMaterial color="#806c55" roughness={0.9} />
+          </mesh>
+        </group>
+      ) : null}
       {Array.from({ length: bookRows }, (_, shelf) => (
         <group key={shelf} position={[0, 0.7 - shelf * 0.34, 0.1]}>
           <mesh position={[0, -0.16, 0]}>

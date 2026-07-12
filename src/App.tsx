@@ -1,6 +1,17 @@
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Dices, HelpCircle, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { ArenaViewport } from './ArenaViewport'
+import {
+  cardinalDirections,
+  canMove,
+  levelRooms,
+  nearestRoom,
+  nextRoom,
+  roomDoors,
+  roomHasFeature,
+  startingRoom,
+  type DirectionIndex,
+} from './lib/level'
 import type { BookAddress } from './lib/library'
 import {
   LINES_PER_PAGE,
@@ -17,19 +28,10 @@ import {
 } from './lib/library'
 import './App.css'
 
-const facingDirections = [
-  { label: 'north', q: 0, r: -1 },
-  { label: 'north east', q: 1, r: -1 },
-  { label: 'south east', q: 1, r: 0 },
-  { label: 'south', q: 0, r: 1 },
-  { label: 'south west', q: -1, r: 1 },
-  { label: 'north west', q: -1, r: 0 },
-] as const
-
 function App() {
   const [floor, setFloor] = useState(0)
-  const [currentRoom, setCurrentRoom] = useState({ q: 0, r: 0 })
-  const [facing, setFacing] = useState(defaultAddress.wall)
+  const [currentRoom, setCurrentRoom] = useState(startingRoom)
+  const [facing, setFacing] = useState<DirectionIndex>(defaultAddress.wall as DirectionIndex)
   const [selectedBook, setSelectedBook] = useState<BookAddress>(defaultAddress)
   const [readerOpen, setReaderOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
@@ -42,6 +44,10 @@ function App() {
     [selectedBook, page],
   )
   const totalExponent = Math.round(possibleBooksExponent()).toLocaleString()
+  const room = nearestRoom(currentRoom)
+  const doors = useMemo(() => roomDoors(currentRoom), [currentRoom])
+  const canUseStairsUp = roomHasFeature(currentRoom, 'stairs-up')
+  const canUseStairsDown = roomHasFeature(currentRoom, 'stairs-down')
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -69,36 +75,46 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   })
 
-  function moveRoom(deltaQ: number, deltaR: number) {
-    const nextRoom = { q: currentRoom.q + deltaQ, r: currentRoom.r + deltaR }
+  function moveByFacing(multiplier: 1 | -1) {
+    if (!canMove(currentRoom, facing, multiplier)) {
+      const direction = multiplier === 1 ? cardinalDirections[facing].label : oppositeDirectionLabel(facing)
+      setMessage(`There is no ${direction} door from this room.`)
+      return
+    }
+
+    const destination = nextRoom(currentRoom, facing, multiplier)
     setMovementCue('step')
-    setCurrentRoom(nextRoom)
-    setSelectedBook((current) => ({ ...current, roomQ: nextRoom.q, roomR: nextRoom.r, wall: facing }))
+    setCurrentRoom(destination)
+    setSelectedBook((current) => ({ ...current, roomQ: destination.q, roomR: destination.r, wall: facing }))
     setReaderOpen(false)
-    setMessage('You step into the next chamber. The room seems unchanged, except for its address.')
+    setMessage(`You pass through the ${multiplier === 1 ? cardinalDirections[facing].label : oppositeDirectionLabel(facing)} door into ${nearestRoom(destination).name}.`)
     window.setTimeout(() => setMovementCue('idle'), 220)
   }
 
-  function moveByFacing(multiplier: 1 | -1) {
-    const direction = facingDirections[facing]
-    moveRoom(direction.q * multiplier, direction.r * multiplier)
-  }
-
   function turn(delta: 1 | -1) {
-    const nextFacing = positiveModulo(facing + delta, facingDirections.length)
+    const nextFacing = positiveModulo(facing + delta, cardinalDirections.length) as DirectionIndex
     setMovementCue(delta < 0 ? 'turn-left' : 'turn-right')
     setFacing(nextFacing)
     setSelectedBook((current) =>
       nearbyBookAddress(currentRoom.q, currentRoom.r, nextFacing, current.shelf, current.book),
     )
-    setMessage(`You turn to face ${facingDirections[nextFacing].label}.`)
+    setMessage(`You turn to face the ${cardinalDirections[nextFacing].label} wall.`)
     window.setTimeout(() => setMovementCue('idle'), 180)
   }
 
   function changeFloor(delta: number) {
+    if (delta > 0 && !canUseStairsUp) {
+      setMessage('There are no stairs up in this room.')
+      return
+    }
+    if (delta < 0 && !canUseStairsDown) {
+      setMessage('There are no stairs down in this room.')
+      return
+    }
+
     setFloor((current) => current + delta)
     setReaderOpen(false)
-    setMessage(delta > 0 ? 'You climb. The next floor is the same.' : 'You descend. The next floor is the same.')
+    setMessage(delta > 0 ? 'You climb to the next floor. The floor plan repeats.' : 'You descend. The same floor plan waits below.')
   }
 
   function openBook(address: BookAddress) {
@@ -110,9 +126,11 @@ function App() {
 
   function jump() {
     const address = deterministicJump(`${floor}:${currentRoom.q}:${currentRoom.r}:${page}:${Date.now()}`)
-    setCurrentRoom({ q: address.roomQ, r: address.roomR })
-    setFacing(address.wall)
-    openBook(address)
+    const destination = levelRooms[Math.abs(address.roomQ + address.roomR + Date.now()) % levelRooms.length]
+    const nextFacing = address.wall as DirectionIndex
+    setCurrentRoom({ q: destination.q, r: destination.r })
+    setFacing(nextFacing)
+    openBook({ ...address, roomQ: destination.q, roomR: destination.r, wall: nextFacing })
   }
 
   return (
@@ -123,9 +141,11 @@ function App() {
             floor={floor}
             facing={facing}
             currentRoom={currentRoom}
+            roomName={room.name}
+            doors={doors}
             selectedBook={selectedBook}
             movementCue={movementCue}
-            facingLabel={facingDirections[facing].label}
+            facingLabel={cardinalDirections[facing].label}
             onOpenBook={openBook}
             onMoveForward={() => moveByFacing(1)}
             onMoveBack={() => moveByFacing(-1)}
@@ -142,7 +162,7 @@ function App() {
           <div className="status-box">
             <strong>{`FLOOR ${floor}`}</strong>
             <span>{`ROOM ${currentRoom.q},${currentRoom.r}`}</span>
-            <span>{facingDirections[facing].label}</span>
+            <span>{cardinalDirections[facing].label}</span>
           </div>
           <div className="move-pad">
             <button type="button" aria-label="Turn left" onClick={() => turn(-1)}>
@@ -159,10 +179,10 @@ function App() {
             </button>
           </div>
           <div className="action-buttons">
-            <button type="button" onClick={() => changeFloor(1)}>
+            <button type="button" disabled={!canUseStairsUp} onClick={() => changeFloor(1)}>
               stairs up
             </button>
-            <button type="button" onClick={() => changeFloor(-1)}>
+            <button type="button" disabled={!canUseStairsDown} onClick={() => changeFloor(-1)}>
               stairs down
             </button>
             <button type="button" aria-label="Random volume" onClick={jump}>
@@ -287,6 +307,10 @@ function HelpPanel({
 
 function positiveModulo(value: number, modulo: number): number {
   return ((value % modulo) + modulo) % modulo
+}
+
+function oppositeDirectionLabel(facing: DirectionIndex): string {
+  return cardinalDirections[positiveModulo(facing + 2, cardinalDirections.length) as DirectionIndex].label
 }
 
 export default App

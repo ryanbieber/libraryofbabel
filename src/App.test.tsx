@@ -20,12 +20,18 @@ describe('App interactions', () => {
     expect(container.querySelector('.scene-library')).toBeInTheDocument()
     expect(screen.getByTestId('arena-viewport')).toBeInTheDocument()
     expect(screen.getByText('FLOOR 0')).toBeInTheDocument()
+    expect(screen.getByText('central catalog')).toBeInTheDocument()
+    expect(screen.getByText('north door')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('stairs up'))
-    expect(screen.getByText('FLOOR 1')).toBeInTheDocument()
+    expect(screen.getByText('stairs up')).toBeDisabled()
+    expect(screen.getByText('FLOOR 0')).toBeInTheDocument()
+
+    fireEvent.click(container.querySelector('.move-pad [aria-label="Turn right"]')!)
+    expect(screen.getAllByText('east')).toHaveLength(2)
 
     fireEvent.click(container.querySelector('.move-pad [aria-label="Forward"]')!)
     expect(screen.getByText('ROOM 1,0')).toBeInTheDocument()
+    expect(screen.getByText('east hall')).toBeInTheDocument()
 
     fireEvent.click(container.querySelector('.viewport-zone-back')!)
     expect(screen.getByText('ROOM 0,0')).toBeInTheDocument()
@@ -33,11 +39,18 @@ describe('App interactions', () => {
     fireEvent.click(container.querySelector('.viewport-zone-forward')!)
     expect(screen.getByText('ROOM 1,0')).toBeInTheDocument()
 
+    fireEvent.click(container.querySelector('.viewport-zone-forward')!)
+    expect(screen.getByText('ROOM 2,0')).toBeInTheDocument()
+    expect(screen.getByText('east archive')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('stairs up'))
+    expect(screen.getByText('FLOOR 1')).toBeInTheDocument()
+
     fireEvent.keyDown(window, { key: 'ArrowLeft' })
-    expect(screen.getAllByText('north east')).toHaveLength(2)
+    expect(screen.getAllByText('north')).toHaveLength(2)
 
     const volume = container.querySelector(
-      '[aria-label="Open hex 1,0 / wall 2 / shelf 3 / volume 4"]',
+      '[aria-label="Open room 2,0 / north wall / shelf 3 / volume 4"]',
     )
     expect(volume).toBeInTheDocument()
     fireEvent.click(volume!)

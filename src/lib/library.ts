@@ -6,6 +6,9 @@ export const LINES_PER_PAGE = 40
 export const SYMBOLS_PER_LINE = 80
 export const SYMBOLS_PER_PAGE = LINES_PER_PAGE * SYMBOLS_PER_LINE
 export const SYMBOLS_PER_BOOK = PAGES_PER_BOOK * SYMBOLS_PER_PAGE
+export const WALL_COUNT = 4
+
+const wallLabels = ['north', 'east', 'south', 'west'] as const
 
 export type BookAddress = {
   roomQ: number
@@ -22,7 +25,7 @@ export type PageAddress = BookAddress & {
 export const defaultAddress: BookAddress = {
   roomQ: 0,
   roomR: 0,
-  wall: 2,
+  wall: 0,
   shelf: 1,
   book: 7,
 }
@@ -32,7 +35,7 @@ export function addressKey(address: BookAddress): string {
 }
 
 export function addressLabel(address: BookAddress): string {
-  return `hex ${address.roomQ},${address.roomR} / wall ${address.wall + 1} / shelf ${address.shelf + 1} / volume ${address.book + 1}`
+  return `room ${address.roomQ},${address.roomR} / ${wallLabels[positiveModulo(address.wall, WALL_COUNT)]} wall / shelf ${address.shelf + 1} / volume ${address.book + 1}`
 }
 
 export function clampPage(page: number): number {
@@ -76,7 +79,7 @@ export function nearbyBookAddress(
   return {
     roomQ,
     roomR,
-    wall: positiveModulo(wall, 6),
+    wall: positiveModulo(wall, WALL_COUNT),
     shelf: positiveModulo(shelf, 5),
     book: positiveModulo(book, 18),
   }
@@ -85,7 +88,7 @@ export function nearbyBookAddress(
 export function deterministicJump(seed: string): BookAddress {
   const q = signedHash(`${seed}:q`, 4800)
   const r = signedHash(`${seed}:r`, 4800)
-  return nearbyBookAddress(q, r, hashToIndex(`${seed}:wall`) % 6, hashToIndex(`${seed}:shelf`) % 5, hashToIndex(`${seed}:book`) % 18)
+  return nearbyBookAddress(q, r, hashToIndex(`${seed}:wall`) % WALL_COUNT, hashToIndex(`${seed}:shelf`) % 5, hashToIndex(`${seed}:book`) % 18)
 }
 
 export function sequenceOdds(value: string): {
