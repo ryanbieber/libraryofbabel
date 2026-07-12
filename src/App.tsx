@@ -28,6 +28,9 @@ import {
 } from './lib/library'
 import './App.css'
 
+type MovementCue = 'idle' | 'step' | 'approach' | 'retreat' | 'turn-left' | 'turn-right'
+type ViewDistance = 'center' | 'shelf'
+
 function App() {
   const [floor, setFloor] = useState(0)
   const [currentRoom, setCurrentRoom] = useState(startingRoom)
@@ -35,7 +38,8 @@ function App() {
   const [selectedBook, setSelectedBook] = useState<BookAddress>(defaultAddress)
   const [readerOpen, setReaderOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
-  const [movementCue, setMovementCue] = useState<'idle' | 'step' | 'turn-left' | 'turn-right'>('idle')
+  const [movementCue, setMovementCue] = useState<MovementCue>('idle')
+  const [viewDistance, setViewDistance] = useState<ViewDistance>('center')
   const [page, setPage] = useState(1)
   const [message, setMessage] = useState('The door seals behind you. The shelves breathe dust.')
   const generatedPage = useMemo(() => generatePage({ ...selectedBook, page }), [selectedBook, page])
@@ -55,11 +59,11 @@ function App() {
 
       if (event.key === 'ArrowUp' || event.key.toLowerCase() === 'w') {
         event.preventDefault()
-        moveByFacing(1)
+        moveForward()
       }
       if (event.key === 'ArrowDown' || event.key.toLowerCase() === 's') {
         event.preventDefault()
-        moveByFacing(-1)
+        moveBack()
       }
       if (event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a') {
         event.preventDefault()
@@ -75,7 +79,35 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   })
 
-  function moveByFacing(multiplier: 1 | -1) {
+  function moveForward() {
+    if (viewDistance === 'center') {
+      approachShelf()
+      return
+    }
+
+    moveThroughDoor(1)
+  }
+
+  function moveBack() {
+    if (viewDistance === 'shelf') {
+      setViewDistance('center')
+      setMovementCue('retreat')
+      setMessage(`You step back from the ${cardinalDirections[facing].label} wall.`)
+      window.setTimeout(() => setMovementCue('idle'), 260)
+      return
+    }
+
+    moveThroughDoor(-1)
+  }
+
+  function approachShelf() {
+    setViewDistance('shelf')
+    setMovementCue('approach')
+    setMessage(`You move closer to the ${cardinalDirections[facing].label} wall. The volumes are within reach.`)
+    window.setTimeout(() => setMovementCue('idle'), 280)
+  }
+
+  function moveThroughDoor(multiplier: 1 | -1) {
     if (!canMove(currentRoom, facing, multiplier)) {
       const direction = multiplier === 1 ? cardinalDirections[facing].label : oppositeDirectionLabel(facing)
       setMessage(`There is no ${direction} door from this room.`)
@@ -85,6 +117,7 @@ function App() {
     const destination = nextRoom(currentRoom, facing, multiplier)
     setMovementCue('step')
     setCurrentRoom(destination)
+    setViewDistance('center')
     setSelectedBook((current) => ({ ...current, roomQ: destination.q, roomR: destination.r, wall: facing }))
     setReaderOpen(false)
     setMessage(`You pass through the ${multiplier === 1 ? cardinalDirections[facing].label : oppositeDirectionLabel(facing)} door into ${nearestRoom(destination).name}.`)
@@ -94,6 +127,7 @@ function App() {
   function turn(delta: 1 | -1) {
     const nextFacing = positiveModulo(facing + delta, cardinalDirections.length) as DirectionIndex
     setMovementCue(delta < 0 ? 'turn-left' : 'turn-right')
+    setViewDistance('center')
     setFacing(nextFacing)
     setSelectedBook((current) =>
       nearbyBookAddress(currentRoom.q, currentRoom.r, nextFacing, current.shelf, current.book),
@@ -114,10 +148,16 @@ function App() {
 
     setFloor((current) => current + delta)
     setReaderOpen(false)
+    setViewDistance('center')
     setMessage(delta > 0 ? 'You climb to the next floor. The floor plan repeats.' : 'You descend. The same floor plan waits below.')
   }
 
   function openBook(address: BookAddress) {
+    if (viewDistance !== 'shelf') {
+      approachShelf()
+      return
+    }
+
     setSelectedBook(address)
     setPage(1)
     setReaderOpen(true)
@@ -130,7 +170,11 @@ function App() {
     const nextFacing = address.wall as DirectionIndex
     setCurrentRoom({ q: destination.q, r: destination.r })
     setFacing(nextFacing)
-    openBook({ ...address, roomQ: destination.q, roomR: destination.r, wall: nextFacing })
+    setViewDistance('shelf')
+    setSelectedBook({ ...address, roomQ: destination.q, roomR: destination.r, wall: nextFacing })
+    setPage(1)
+    setReaderOpen(true)
+    setMessage('You find a random volume laid open on the reading table.')
   }
 
   return (
@@ -145,10 +189,11 @@ function App() {
             doors={doors}
             selectedBook={selectedBook}
             movementCue={movementCue}
+            viewDistance={viewDistance}
             facingLabel={cardinalDirections[facing].label}
             onOpenBook={openBook}
-            onMoveForward={() => moveByFacing(1)}
-            onMoveBack={() => moveByFacing(-1)}
+            onMoveForward={moveForward}
+            onMoveBack={moveBack}
             onTurnLeft={() => turn(-1)}
             onTurnRight={() => turn(1)}
           />
@@ -168,13 +213,13 @@ function App() {
             <button type="button" aria-label="Turn left" onClick={() => turn(-1)}>
               <ArrowLeft size={22} aria-hidden="true" />
             </button>
-            <button type="button" aria-label="Forward" onClick={() => moveByFacing(1)}>
+            <button type="button" aria-label="Forward" onClick={moveForward}>
               <ArrowUp size={22} aria-hidden="true" />
             </button>
             <button type="button" aria-label="Turn right" onClick={() => turn(1)}>
               <ArrowRight size={22} aria-hidden="true" />
             </button>
-            <button type="button" aria-label="Back" onClick={() => moveByFacing(-1)}>
+            <button type="button" aria-label="Back" onClick={moveBack}>
               <ArrowDown size={22} aria-hidden="true" />
             </button>
           </div>

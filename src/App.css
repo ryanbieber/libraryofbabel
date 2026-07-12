@@ -115,15 +115,23 @@
 }
 
 .arena-viewport.movement-step {
-  animation: arena-step 220ms steps(4, end);
+  animation: arena-step 320ms cubic-bezier(0.2, 0.72, 0.18, 1);
+}
+
+.arena-viewport.movement-approach {
+  animation: arena-approach 320ms cubic-bezier(0.2, 0.72, 0.18, 1);
+}
+
+.arena-viewport.movement-retreat {
+  animation: arena-retreat 280ms cubic-bezier(0.2, 0.72, 0.18, 1);
 }
 
 .arena-viewport.movement-turn-left {
-  animation: arena-turn-left 180ms steps(3, end);
+  animation: arena-turn-left 260ms cubic-bezier(0.2, 0.72, 0.18, 1);
 }
 
 .arena-viewport.movement-turn-right {
-  animation: arena-turn-right 180ms steps(3, end);
+  animation: arena-turn-right 260ms cubic-bezier(0.2, 0.72, 0.18, 1);
 }
 
 .arena-crosshair {
@@ -509,6 +517,16 @@
 }
 
 @media (max-width: 860px) {
+  .arena-shell {
+    align-items: start;
+    padding: 0;
+  }
+
+  .game-frame {
+    width: min(100vw, 430px);
+    height: min(100vh, 860px);
+  }
+
   .scene {
     bottom: 174px;
   }
@@ -550,13 +568,37 @@
 
 @keyframes arena-step {
   0% {
-    transform: scale(1) translateY(0);
-    filter: brightness(0.9);
+    transform: scale(0.985) translateY(4px);
+    filter: brightness(0.92);
   }
 
   50% {
-    transform: scale(1.055) translateY(10px);
+    transform: scale(1.035) translateY(6px);
     filter: brightness(1.08);
+  }
+
+  100% {
+    transform: scale(1) translateY(0);
+    filter: brightness(1);
+  }
+}
+
+@keyframes arena-approach {
+  0% {
+    transform: scale(0.92) translateY(8px);
+    filter: brightness(0.88);
+  }
+
+  100% {
+    transform: scale(1) translateY(0);
+    filter: brightness(1);
+  }
+}
+
+@keyframes arena-retreat {
+  0% {
+    transform: scale(1.08) translateY(-8px);
+    filter: brightness(1.06);
   }
 
   100% {
@@ -567,15 +609,25 @@
 
 @keyframes arena-turn-left {
   0% {
-    transform: translateX(44px) skewX(5deg);
-    filter: brightness(0.86);
+    transform: translateX(72px) perspective(700px) rotateY(7deg);
+    filter: brightness(0.82);
+  }
+
+  100% {
+    transform: translateX(0) perspective(700px) rotateY(0);
+    filter: brightness(1);
   }
 }
 
 @keyframes arena-turn-right {
   0% {
-    transform: translateX(-44px) skewX(-5deg);
-    filter: brightness(0.86);
+    transform: translateX(-72px) perspective(700px) rotateY(-7deg);
+    filter: brightness(0.82);
+  }
+
+  100% {
+    transform: translateX(0) perspective(700px) rotateY(0);
+    filter: brightness(1);
   }
 }
 

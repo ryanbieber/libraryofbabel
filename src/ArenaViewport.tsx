@@ -5,7 +5,8 @@ import { cardinalDirections, type DirectionIndex } from './lib/level'
 import type { BookAddress } from './lib/library'
 import { addressLabel, nearbyBookAddress } from './lib/library'
 
-type MovementCue = 'idle' | 'step' | 'turn-left' | 'turn-right'
+type MovementCue = 'idle' | 'step' | 'approach' | 'retreat' | 'turn-left' | 'turn-right'
+type ViewDistance = 'center' | 'shelf'
 
 type ArenaViewportProps = {
   floor: number
@@ -15,6 +16,7 @@ type ArenaViewportProps = {
   doors: DirectionIndex[]
   selectedBook: BookAddress
   movementCue: MovementCue
+  viewDistance: ViewDistance
   facingLabel: string
   onOpenBook: (address: BookAddress) => void
   onMoveForward: () => void
@@ -34,6 +36,7 @@ export function ArenaViewport({
   doors,
   selectedBook,
   movementCue,
+  viewDistance,
   facingLabel,
   onOpenBook,
   onMoveForward,
@@ -67,6 +70,7 @@ export function ArenaViewport({
             currentRoom={currentRoom}
             hasFacingDoor={hasFacingDoor}
             selectedBook={selectedBook}
+            viewDistance={viewDistance}
             onOpenBook={onOpenBook}
           />
         </Canvas>
@@ -130,6 +134,7 @@ function ArenaScene({
   currentRoom,
   hasFacingDoor,
   selectedBook,
+  viewDistance,
   onOpenBook,
 }: {
   floor: number
@@ -137,6 +142,7 @@ function ArenaScene({
   currentRoom: { q: number; r: number }
   hasFacingDoor: boolean
   selectedBook: BookAddress
+  viewDistance: ViewDistance
   onOpenBook: (address: BookAddress) => void
 }) {
   const textures = useArenaTextures()
@@ -145,6 +151,8 @@ function ArenaScene({
   useFrame(({ clock }) => {
     if (!cameraRig.current) return
     const t = clock.elapsedTime
+    const targetZ = viewDistance === 'shelf' ? 2.15 : 0
+    cameraRig.current.position.z = THREE.MathUtils.lerp(cameraRig.current.position.z, targetZ, 0.12)
     cameraRig.current.position.y = Math.sin(t * 2.4) * 0.018
   })
 
@@ -182,6 +190,7 @@ function ArenaScene({
         <meshStandardMaterial color="#8e0e12" roughness={0.95} />
       </mesh>
 
+      <ReadingTable />
       <Torch position={[-3.5, 1.26, -5.7]} />
       <Torch position={[3.5, 1.26, -5.7]} />
       <ShelfWall
@@ -193,6 +202,41 @@ function ArenaScene({
       />
       <Stairs />
       <AddressPlaque floor={floor} facing={facing} />
+    </group>
+  )
+}
+
+function ReadingTable() {
+  return (
+    <group position={[0, 0.54, -2.25]}>
+      <mesh position={[0, 0.24, 0]}>
+        <boxGeometry args={[1.9, 0.18, 0.88]} />
+        <meshStandardMaterial color="#4a2814" roughness={0.9} />
+      </mesh>
+      <mesh position={[-0.78, -0.22, -0.3]}>
+        <boxGeometry args={[0.16, 0.72, 0.16]} />
+        <meshStandardMaterial color="#2a150a" roughness={1} />
+      </mesh>
+      <mesh position={[0.78, -0.22, -0.3]}>
+        <boxGeometry args={[0.16, 0.72, 0.16]} />
+        <meshStandardMaterial color="#2a150a" roughness={1} />
+      </mesh>
+      <mesh position={[-0.78, -0.22, 0.3]}>
+        <boxGeometry args={[0.16, 0.72, 0.16]} />
+        <meshStandardMaterial color="#2a150a" roughness={1} />
+      </mesh>
+      <mesh position={[0.78, -0.22, 0.3]}>
+        <boxGeometry args={[0.16, 0.72, 0.16]} />
+        <meshStandardMaterial color="#2a150a" roughness={1} />
+      </mesh>
+      <mesh rotation={[-0.18, 0.08, 0]} position={[-0.34, 0.38, 0]}>
+        <boxGeometry args={[0.46, 0.04, 0.34]} />
+        <meshStandardMaterial color="#d8bd7d" roughness={0.85} />
+      </mesh>
+      <mesh rotation={[-0.18, -0.08, 0]} position={[0.14, 0.385, 0]}>
+        <boxGeometry args={[0.46, 0.04, 0.34]} />
+        <meshStandardMaterial color="#ceb170" roughness={0.85} />
+      </mesh>
     </group>
   )
 }

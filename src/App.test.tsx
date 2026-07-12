@@ -31,11 +31,21 @@ describe('App interactions', () => {
     expect(container.querySelector('[aria-label="Open room 0,0 / east wall / shelf 2 / volume 8"]')).toBeInTheDocument()
 
     fireEvent.click(container.querySelector('.move-pad [aria-label="Forward"]')!)
+    expect(screen.getByText('ROOM 0,0')).toBeInTheDocument()
+    expect(screen.getByText('You move closer to the east wall. The volumes are within reach.')).toBeInTheDocument()
+
+    fireEvent.click(container.querySelector('.move-pad [aria-label="Forward"]')!)
     expect(screen.getByText('ROOM 1,0')).toBeInTheDocument()
     expect(screen.getByText('east hall')).toBeInTheDocument()
 
     fireEvent.click(container.querySelector('.viewport-zone-back')!)
     expect(screen.getByText('ROOM 0,0')).toBeInTheDocument()
+
+    fireEvent.click(container.querySelector('.viewport-zone-forward')!)
+    expect(screen.getByText('ROOM 0,0')).toBeInTheDocument()
+
+    fireEvent.click(container.querySelector('.viewport-zone-forward')!)
+    expect(screen.getByText('ROOM 1,0')).toBeInTheDocument()
 
     fireEvent.click(container.querySelector('.viewport-zone-forward')!)
     expect(screen.getByText('ROOM 1,0')).toBeInTheDocument()
@@ -54,6 +64,10 @@ describe('App interactions', () => {
       '[aria-label="Open room 2,0 / north wall / shelf 3 / volume 4"]',
     )
     expect(volume).toBeInTheDocument()
+    fireEvent.click(volume!)
+    expect(container.querySelector('.book-reader')).not.toBeInTheDocument()
+    expect(screen.getByText('You move closer to the north wall. The volumes are within reach.')).toBeInTheDocument()
+
     fireEvent.click(volume!)
 
     expect(container.querySelector('.book-reader')).toBeInTheDocument()
