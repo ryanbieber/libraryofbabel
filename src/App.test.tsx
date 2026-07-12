@@ -10,31 +10,31 @@ describe('App interactions', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
   })
 
-  it('moves between rooms and opens a selected volume as an old-book reader', () => {
+  it('moves through the Arena viewport and opens a visible volume as an old-book reader', () => {
     const { container } = render(<App />)
 
     expect(container.querySelector('.scene-desert')).toBeInTheDocument()
     expect(screen.getByText('“Are you sure you want to give yourself over to the library?”')).toBeInTheDocument()
-    fireEvent.click(screen.getByText('?'))
+    fireEvent.click(screen.getByLabelText('Open explanation'))
     expect(container.querySelector('.help-panel')).toBeInTheDocument()
     fireEvent.click(container.querySelector('.help-panel .close-reader')!)
 
     fireEvent.click(screen.getByText('no'))
     expect(container.querySelector('.scene-library')).toBeInTheDocument()
+    expect(screen.getByTestId('arena-viewport')).toBeInTheDocument()
     expect(screen.getByText('FLOOR 0')).toBeInTheDocument()
 
-    fireEvent.click(container.querySelector('.action-buttons button')!)
+    fireEvent.click(screen.getAllByText('stairs up')[1])
     expect(screen.getByText('FLOOR 1')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('forward'))
+    fireEvent.click(screen.getByLabelText('Forward'))
     expect(screen.getByText('ROOM 1,0')).toBeInTheDocument()
 
     fireEvent.keyDown(window, { key: 'ArrowLeft' })
-    expect(screen.getByText('north east')).toBeInTheDocument()
+    expect(screen.getAllByText('north east')).toHaveLength(2)
 
-    fireEvent.click(screen.getByText('wall 5'))
     const volume = container.querySelector(
-      '[aria-label="Open hex 1,0 / wall 5 / shelf 3 / volume 4"]',
+      '[aria-label="Open hex 1,0 / wall 2 / shelf 3 / volume 4"]',
     )
     expect(volume).toBeInTheDocument()
     fireEvent.click(volume!)

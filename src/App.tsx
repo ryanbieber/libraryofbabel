@@ -1,5 +1,6 @@
-import { X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Dices, HelpCircle, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { ArenaViewport } from './ArenaViewport'
 import type { BookAddress } from './lib/library'
 import {
   LINES_PER_PAGE,
@@ -130,15 +131,6 @@ function App() {
 
   return (
     <main className="arena-shell">
-      <button
-        type="button"
-        className="help-button"
-        aria-label="Open explanation"
-        onClick={() => setHelpOpen(true)}
-      >
-        ?
-      </button>
-
       <section className="game-frame" aria-label="Library game viewport">
         <div
           className={
@@ -146,19 +138,15 @@ function App() {
           }
         >
           {inLibrary ? (
-            <LibraryScene
+            <ArenaViewport
               floor={floor}
               facing={facing}
-              selectedBook={selectedBook}
               currentRoom={currentRoom}
+              selectedBook={selectedBook}
+              movementCue={movementCue}
+              facingLabel={facingDirections[facing].label}
               onOpenBook={openBook}
               onChangeFloor={changeFloor}
-              onSelectWall={(wall) => {
-                setFacing(wall)
-                setSelectedBook((current) =>
-                  nearbyBookAddress(currentRoom.q, currentRoom.r, wall, current.shelf, current.book),
-                )
-              }}
             />
           ) : (
             <DesertScene onAnswer={enterLibrary} />
@@ -176,17 +164,17 @@ function App() {
             <span>{inLibrary ? facingDirections[facing].label : 'OUTSIDE'}</span>
           </div>
           <div className="move-pad">
-            <button type="button" disabled={!inLibrary} onClick={() => turn(-1)}>
-              turn left
+            <button type="button" disabled={!inLibrary} aria-label="Turn left" onClick={() => turn(-1)}>
+              <ArrowLeft size={22} aria-hidden="true" />
             </button>
-            <button type="button" disabled={!inLibrary} onClick={() => moveByFacing(1)}>
-              forward
+            <button type="button" disabled={!inLibrary} aria-label="Forward" onClick={() => moveByFacing(1)}>
+              <ArrowUp size={22} aria-hidden="true" />
             </button>
-            <button type="button" disabled={!inLibrary} onClick={() => turn(1)}>
-              turn right
+            <button type="button" disabled={!inLibrary} aria-label="Turn right" onClick={() => turn(1)}>
+              <ArrowRight size={22} aria-hidden="true" />
             </button>
-            <button type="button" disabled={!inLibrary} onClick={() => moveByFacing(-1)}>
-              back
+            <button type="button" disabled={!inLibrary} aria-label="Back" onClick={() => moveByFacing(-1)}>
+              <ArrowDown size={22} aria-hidden="true" />
             </button>
           </div>
           <div className="action-buttons">
@@ -196,8 +184,11 @@ function App() {
             <button type="button" disabled={!inLibrary} onClick={() => changeFloor(-1)}>
               stairs down
             </button>
-            <button type="button" disabled={!inLibrary} onClick={jump}>
-              random volume
+            <button type="button" disabled={!inLibrary} aria-label="Random volume" onClick={jump}>
+              <Dices size={21} aria-hidden="true" />
+            </button>
+            <button type="button" aria-label="Open explanation" onClick={() => setHelpOpen(true)}>
+              <HelpCircle size={21} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -251,101 +242,6 @@ function DesertScene({ onAnswer }: { onAnswer: (answer: 'yes' | 'no') => void })
         </div>
       </div>
     </>
-  )
-}
-
-function LibraryScene({
-  floor,
-  facing,
-  currentRoom,
-  selectedBook,
-  onOpenBook,
-  onChangeFloor,
-  onSelectWall,
-}: {
-  floor: number
-  facing: number
-  currentRoom: { q: number; r: number }
-  selectedBook: BookAddress
-  onOpenBook: (address: BookAddress) => void
-  onChangeFloor: (delta: number) => void
-  onSelectWall: (wall: number) => void
-}) {
-  return (
-    <>
-      <div className="stone-ceiling" />
-      <div className="red-runner" />
-      <div className="stone-wall left" />
-      <div className="stone-wall center">
-        <div className="floor-plaque">floor {floor}</div>
-        <div className="facing-plaque">facing {facingDirections[facing].label}</div>
-        <Bookshelf
-          currentRoom={currentRoom}
-          selectedBook={selectedBook}
-          onOpenBook={onOpenBook}
-        />
-      </div>
-      <div className="stone-wall right" />
-      <div className="torch-stand left" aria-hidden="true">
-        <div className="torch-flame" />
-      </div>
-      <div className="torch-stand right" aria-hidden="true">
-        <div className="torch-flame" />
-      </div>
-      <div className="side-shelf left" aria-hidden="true" />
-      <div className="side-shelf right" aria-hidden="true" />
-      <button type="button" className="stair-hotspot up" onClick={() => onChangeFloor(1)}>
-        stairs up
-      </button>
-      <button type="button" className="stair-hotspot down" onClick={() => onChangeFloor(-1)}>
-        stairs down
-      </button>
-      <div className="pixel-floor" />
-      <div className="wall-selector" aria-label="Choose wall">
-        {Array.from({ length: 6 }, (_, wall) => (
-          <button
-            type="button"
-            className={wall === selectedBook.wall ? 'selected' : ''}
-            key={wall}
-            onClick={() => onSelectWall(wall)}
-          >
-            wall {wall + 1}
-          </button>
-        ))}
-      </div>
-    </>
-  )
-}
-
-function Bookshelf({
-  currentRoom,
-  selectedBook,
-  onOpenBook,
-}: {
-  currentRoom: { q: number; r: number }
-  selectedBook: BookAddress
-  onOpenBook: (address: BookAddress) => void
-}) {
-  return (
-    <div className="pixel-shelf" aria-label="Bookshelf volumes">
-      {Array.from({ length: 5 }, (_, shelf) => (
-        <div className="pixel-shelf-row" key={shelf}>
-          {Array.from({ length: 18 }, (_, book) => {
-            const address = nearbyBookAddress(currentRoom.q, currentRoom.r, selectedBook.wall, shelf, book)
-            const isSelected = addressLabel(address) === addressLabel(selectedBook)
-            return (
-              <button
-                type="button"
-                className={isSelected ? 'pixel-book selected' : 'pixel-book'}
-                key={`${shelf}:${book}`}
-                aria-label={`Open ${addressLabel(address)}`}
-                onClick={() => onOpenBook(address)}
-              />
-            )
-          })}
-        </div>
-      ))}
-    </div>
   )
 }
 
