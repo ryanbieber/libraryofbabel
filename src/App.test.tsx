@@ -29,6 +29,9 @@ describe('App interactions', () => {
     fireEvent.click(screen.getByText('forward'))
     expect(screen.getByText('ROOM 1,0')).toBeInTheDocument()
 
+    fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    expect(screen.getByText('north east')).toBeInTheDocument()
+
     fireEvent.click(screen.getByText('wall 5'))
     const volume = container.querySelector(
       '[aria-label="Open hex 1,0 / wall 5 / shelf 3 / volume 4"]',

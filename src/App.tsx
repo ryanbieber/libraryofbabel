@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { BookAddress } from './lib/library'
 import {
   LINES_PER_PAGE,
@@ -26,21 +26,52 @@ const facingDirections = [
 ] as const
 
 function App() {
-  const [inLibrary, setInLibrary] = useState(false)
+  const [inLibrary, setInLibrary] = useState(() => startsInsideLibrary())
   const [floor, setFloor] = useState(0)
   const [currentRoom, setCurrentRoom] = useState({ q: 0, r: 0 })
   const [facing, setFacing] = useState(defaultAddress.wall)
   const [selectedBook, setSelectedBook] = useState<BookAddress>(defaultAddress)
   const [readerOpen, setReaderOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [movementCue, setMovementCue] = useState<'idle' | 'step' | 'turn-left' | 'turn-right'>('idle')
   const [page, setPage] = useState(1)
-  const [message, setMessage] = useState('The vagabond waits beside the tower door.')
+  const [message, setMessage] = useState(() =>
+    startsInsideLibrary()
+      ? 'The door seals behind you. The shelves breathe dust.'
+      : 'The vagabond waits beside the tower door.',
+  )
   const generatedPage = useMemo(() => generatePage({ ...selectedBook, page }), [selectedBook, page])
   const nextGeneratedPage = useMemo(
     () => generatePage({ ...selectedBook, page: clampPage(page + 1) }),
     [selectedBook, page],
   )
   const totalExponent = Math.round(possibleBooksExponent()).toLocaleString()
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (!inLibrary || readerOpen || helpOpen) return
+
+      if (event.key === 'ArrowUp' || event.key.toLowerCase() === 'w') {
+        event.preventDefault()
+        moveByFacing(1)
+      }
+      if (event.key === 'ArrowDown' || event.key.toLowerCase() === 's') {
+        event.preventDefault()
+        moveByFacing(-1)
+      }
+      if (event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a') {
+        event.preventDefault()
+        turn(-1)
+      }
+      if (event.key === 'ArrowRight' || event.key.toLowerCase() === 'd') {
+        event.preventDefault()
+        turn(1)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  })
 
   function enterLibrary(answer: 'yes' | 'no') {
     setInLibrary(true)
@@ -53,10 +84,12 @@ function App() {
 
   function moveRoom(deltaQ: number, deltaR: number) {
     const nextRoom = { q: currentRoom.q + deltaQ, r: currentRoom.r + deltaR }
+    setMovementCue('step')
     setCurrentRoom(nextRoom)
     setSelectedBook((current) => ({ ...current, roomQ: nextRoom.q, roomR: nextRoom.r, wall: facing }))
     setReaderOpen(false)
     setMessage('You step into the next chamber. The room seems unchanged, except for its address.')
+    window.setTimeout(() => setMovementCue('idle'), 220)
   }
 
   function moveByFacing(multiplier: 1 | -1) {
@@ -66,11 +99,13 @@ function App() {
 
   function turn(delta: 1 | -1) {
     const nextFacing = positiveModulo(facing + delta, facingDirections.length)
+    setMovementCue(delta < 0 ? 'turn-left' : 'turn-right')
     setFacing(nextFacing)
     setSelectedBook((current) =>
       nearbyBookAddress(currentRoom.q, currentRoom.r, nextFacing, current.shelf, current.book),
     )
     setMessage(`You turn to face ${facingDirections[nextFacing].label}.`)
+    window.setTimeout(() => setMovementCue('idle'), 180)
   }
 
   function changeFloor(delta: number) {
@@ -105,7 +140,11 @@ function App() {
       </button>
 
       <section className="game-frame" aria-label="Library game viewport">
-        <div className={inLibrary ? 'scene scene-library' : 'scene scene-desert'}>
+        <div
+          className={
+            inLibrary ? `scene scene-library movement-${movementCue}` : 'scene scene-desert'
+          }
+        >
           {inLibrary ? (
             <LibraryScene
               floor={floor}
@@ -235,6 +274,7 @@ function LibraryScene({
   return (
     <>
       <div className="stone-ceiling" />
+      <div className="red-runner" />
       <div className="stone-wall left" />
       <div className="stone-wall center">
         <div className="floor-plaque">floor {floor}</div>
@@ -246,6 +286,14 @@ function LibraryScene({
         />
       </div>
       <div className="stone-wall right" />
+      <div className="torch-stand left" aria-hidden="true">
+        <div className="torch-flame" />
+      </div>
+      <div className="torch-stand right" aria-hidden="true">
+        <div className="torch-flame" />
+      </div>
+      <div className="side-shelf left" aria-hidden="true" />
+      <div className="side-shelf right" aria-hidden="true" />
       <button type="button" className="stair-hotspot up" onClick={() => onChangeFloor(1)}>
         stairs up
       </button>
@@ -394,6 +442,10 @@ function HelpPanel({
 
 function positiveModulo(value: number, modulo: number): number {
   return ((value % modulo) + modulo) % modulo
+}
+
+function startsInsideLibrary(): boolean {
+  return window.location.hash === '#library'
 }
 
 export default App
