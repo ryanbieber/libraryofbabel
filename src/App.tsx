@@ -16,17 +16,20 @@ import {
 } from './lib/library'
 import './App.css'
 
-const roomDirections = [
-  { label: 'N', q: 0, r: -1 },
-  { label: 'E', q: 1, r: 0 },
-  { label: 'S', q: 0, r: 1 },
-  { label: 'W', q: -1, r: 0 },
+const facingDirections = [
+  { label: 'north', q: 0, r: -1 },
+  { label: 'north east', q: 1, r: -1 },
+  { label: 'south east', q: 1, r: 0 },
+  { label: 'south', q: 0, r: 1 },
+  { label: 'south west', q: -1, r: 1 },
+  { label: 'north west', q: -1, r: 0 },
 ] as const
 
 function App() {
   const [inLibrary, setInLibrary] = useState(false)
   const [floor, setFloor] = useState(0)
   const [currentRoom, setCurrentRoom] = useState({ q: 0, r: 0 })
+  const [facing, setFacing] = useState(defaultAddress.wall)
   const [selectedBook, setSelectedBook] = useState<BookAddress>(defaultAddress)
   const [readerOpen, setReaderOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
@@ -51,9 +54,23 @@ function App() {
   function moveRoom(deltaQ: number, deltaR: number) {
     const nextRoom = { q: currentRoom.q + deltaQ, r: currentRoom.r + deltaR }
     setCurrentRoom(nextRoom)
-    setSelectedBook((current) => ({ ...current, roomQ: nextRoom.q, roomR: nextRoom.r }))
+    setSelectedBook((current) => ({ ...current, roomQ: nextRoom.q, roomR: nextRoom.r, wall: facing }))
     setReaderOpen(false)
-    setMessage('The same hexagonal room waits again, changed only by its address.')
+    setMessage('You step into the next chamber. The room seems unchanged, except for its address.')
+  }
+
+  function moveByFacing(multiplier: 1 | -1) {
+    const direction = facingDirections[facing]
+    moveRoom(direction.q * multiplier, direction.r * multiplier)
+  }
+
+  function turn(delta: 1 | -1) {
+    const nextFacing = positiveModulo(facing + delta, facingDirections.length)
+    setFacing(nextFacing)
+    setSelectedBook((current) =>
+      nearbyBookAddress(currentRoom.q, currentRoom.r, nextFacing, current.shelf, current.book),
+    )
+    setMessage(`You turn to face ${facingDirections[nextFacing].label}.`)
   }
 
   function changeFloor(delta: number) {
@@ -72,6 +89,7 @@ function App() {
   function jump() {
     const address = deterministicJump(`${floor}:${currentRoom.q}:${currentRoom.r}:${page}:${Date.now()}`)
     setCurrentRoom({ q: address.roomQ, r: address.roomR })
+    setFacing(address.wall)
     openBook(address)
   }
 
@@ -91,15 +109,17 @@ function App() {
           {inLibrary ? (
             <LibraryScene
               floor={floor}
+              facing={facing}
               selectedBook={selectedBook}
               currentRoom={currentRoom}
               onOpenBook={openBook}
               onChangeFloor={changeFloor}
-              onSelectWall={(wall) =>
+              onSelectWall={(wall) => {
+                setFacing(wall)
                 setSelectedBook((current) =>
                   nearbyBookAddress(currentRoom.q, currentRoom.r, wall, current.shelf, current.book),
                 )
-              }
+              }}
             />
           ) : (
             <DesertScene onAnswer={enterLibrary} />
@@ -114,18 +134,21 @@ function App() {
           <div className="status-box">
             <strong>{inLibrary ? `FLOOR ${floor}` : 'DESERT'}</strong>
             <span>{inLibrary ? `ROOM ${currentRoom.q},${currentRoom.r}` : 'TOWER GATE'}</span>
+            <span>{inLibrary ? facingDirections[facing].label : 'OUTSIDE'}</span>
           </div>
           <div className="move-pad">
-            {roomDirections.map((direction) => (
-              <button
-                type="button"
-                key={direction.label}
-                disabled={!inLibrary}
-                onClick={() => moveRoom(direction.q, direction.r)}
-              >
-                {direction.label}
-              </button>
-            ))}
+            <button type="button" disabled={!inLibrary} onClick={() => turn(-1)}>
+              turn left
+            </button>
+            <button type="button" disabled={!inLibrary} onClick={() => moveByFacing(1)}>
+              forward
+            </button>
+            <button type="button" disabled={!inLibrary} onClick={() => turn(1)}>
+              turn right
+            </button>
+            <button type="button" disabled={!inLibrary} onClick={() => moveByFacing(-1)}>
+              back
+            </button>
           </div>
           <div className="action-buttons">
             <button type="button" disabled={!inLibrary} onClick={() => changeFloor(1)}>
@@ -194,6 +217,7 @@ function DesertScene({ onAnswer }: { onAnswer: (answer: 'yes' | 'no') => void })
 
 function LibraryScene({
   floor,
+  facing,
   currentRoom,
   selectedBook,
   onOpenBook,
@@ -201,6 +225,7 @@ function LibraryScene({
   onSelectWall,
 }: {
   floor: number
+  facing: number
   currentRoom: { q: number; r: number }
   selectedBook: BookAddress
   onOpenBook: (address: BookAddress) => void
@@ -213,6 +238,7 @@ function LibraryScene({
       <div className="stone-wall left" />
       <div className="stone-wall center">
         <div className="floor-plaque">floor {floor}</div>
+        <div className="facing-plaque">facing {facingDirections[facing].label}</div>
         <Bookshelf
           currentRoom={currentRoom}
           selectedBook={selectedBook}
@@ -364,6 +390,10 @@ function HelpPanel({
       </div>
     </section>
   )
+}
+
+function positiveModulo(value: number, modulo: number): number {
+  return ((value % modulo) + modulo) % modulo
 }
 
 export default App

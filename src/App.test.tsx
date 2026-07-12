@@ -26,7 +26,7 @@ describe('App interactions', () => {
     fireEvent.click(container.querySelector('.action-buttons button')!)
     expect(screen.getByText('FLOOR 1')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('E'))
+    fireEvent.click(screen.getByText('forward'))
     expect(screen.getByText('ROOM 1,0')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('wall 5'))
@@ -38,7 +38,7 @@ describe('App interactions', () => {
 
     expect(container.querySelector('.book-reader')).toBeInTheDocument()
     expect(container.querySelector('.close-reader')).toBeInTheDocument()
-    expect(screen.getByText('forward')).toBeInTheDocument()
+    expect(container.querySelector('.reader-actions')?.textContent).toContain('forward')
     expect(screen.getByDisplayValue('1')).toBeInTheDocument()
   })
 })
