@@ -13,20 +13,25 @@ describe('App interactions', () => {
   it('moves between rooms and opens a selected volume as an old-book reader', () => {
     const { container } = render(<App />)
 
-    expect(container.querySelector('.splash-screen')).toBeInTheDocument()
+    expect(container.querySelector('.scene-desert')).toBeInTheDocument()
+    expect(screen.getByText('“Are you sure you want to give yourself over to the library?”')).toBeInTheDocument()
     fireEvent.click(screen.getByText('?'))
     expect(container.querySelector('.help-panel')).toBeInTheDocument()
     fireEvent.click(container.querySelector('.help-panel .close-reader')!)
 
-    fireEvent.click(screen.getByText('enter the library'))
-    expect(screen.getByText('0,0')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('no'))
+    expect(container.querySelector('.scene-library')).toBeInTheDocument()
+    expect(screen.getByText('FLOOR 0')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('north east'))
-    expect(screen.getByText('1,-1')).toBeInTheDocument()
+    fireEvent.click(container.querySelector('.action-buttons button')!)
+    expect(screen.getByText('FLOOR 1')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('E'))
+    expect(screen.getByText('ROOM 1,0')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('wall 5'))
     const volume = container.querySelector(
-      '[aria-label="Open hex 1,-1 / wall 5 / shelf 3 / volume 4"]',
+      '[aria-label="Open hex 1,0 / wall 5 / shelf 3 / volume 4"]',
     )
     expect(volume).toBeInTheDocument()
     fireEvent.click(volume!)

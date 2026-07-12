@@ -1,279 +1,435 @@
-.app-shell {
+.arena-shell {
   position: relative;
-  width: 100vw;
-  height: 100vh;
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
   overflow: hidden;
-  background: #11100d;
-  color: #f7edd3;
-}
-
-.viewport {
-  position: fixed;
-  inset: 0;
-}
-
-.viewport::after {
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-  pointer-events: none;
-  content: '';
   background:
-    linear-gradient(90deg, rgb(8 7 5 / 88%) 0 18%, transparent 33% 67%, rgb(8 7 5 / 88%) 82%),
-    repeating-linear-gradient(
-      90deg,
-      rgb(96 73 43 / 46%) 0 10px,
-      rgb(38 24 13 / 42%) 10px 14px,
-      rgb(67 87 68 / 34%) 14px 24px,
-      rgb(36 17 22 / 38%) 24px 29px
-    ),
-    linear-gradient(180deg, transparent 0 62%, rgb(28 20 11 / 74%) 62% 100%);
-  mask-image: radial-gradient(ellipse at center, transparent 0 22%, black 55%);
-  opacity: 0.52;
+    radial-gradient(circle at 50% 25%, #312944, transparent 36%),
+    #111013;
+  color: #f4e6b7;
+  image-rendering: pixelated;
 }
 
-.viewport::before {
-  position: absolute;
-  z-index: 1;
-  left: 34%;
-  right: 34%;
-  bottom: 0;
-  height: 46%;
-  pointer-events: none;
-  content: '';
-  background:
-    repeating-linear-gradient(90deg, rgb(255 227 154 / 12%) 0 1px, transparent 1px 42px),
-    linear-gradient(180deg, transparent, rgb(214 168 63 / 16%));
-  clip-path: polygon(42% 0, 58% 0, 100% 100%, 0 100%);
-  opacity: 0.74;
-}
-
-.control-panel,
-.shelf-panel {
+.game-frame {
   position: relative;
-  z-index: 2;
-  border: 1px solid rgb(246 226 167 / 22%);
-  background: rgb(19 17 14 / 58%);
-  box-shadow: 0 18px 70px rgb(0 0 0 / 36%);
-  backdrop-filter: blur(18px);
+  width: min(1180px, calc(100vw - 24px));
+  height: min(760px, calc(100vh - 24px));
+  border: 4px solid #c69632;
+  background: #09090b;
+  box-shadow:
+    0 0 0 4px #24170c,
+    0 30px 90px rgb(0 0 0 / 60%);
 }
 
-.kicker,
-.panel-label,
-.shelf-row span,
-.book-page span {
-  color: #c7b98f;
-  font-size: 0.74rem;
-  font-weight: 700;
-  letter-spacing: 0;
+.scene {
+  position: absolute;
+  inset: 0 0 132px;
+  overflow: hidden;
+  background: #111013;
+}
+
+.scene::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  background:
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 18%) 0 2px, transparent 2px 4px),
+    radial-gradient(circle at 50% 50%, transparent 0 46%, rgb(0 0 0 / 50%) 100%);
+}
+
+.pixel-sky {
+  position: absolute;
+  inset: 0 0 38%;
+  background:
+    linear-gradient(#392f59 0 12%, #8b4f4a 50%, #d18845 100%);
+}
+
+.pixel-sun {
+  position: absolute;
+  top: 74px;
+  right: 180px;
+  width: 70px;
+  height: 70px;
+  background: #f2c86b;
+  box-shadow: 0 0 0 8px rgb(242 200 107 / 18%);
+}
+
+.pixel-dunes {
+  position: absolute;
+  right: -8%;
+  left: -8%;
+  height: 34%;
+  clip-path: polygon(0 52%, 12% 32%, 24% 46%, 38% 22%, 52% 46%, 66% 28%, 82% 48%, 100% 30%, 100% 100%, 0 100%);
+}
+
+.pixel-dunes.back {
+  bottom: 22%;
+  background: #b96936;
+}
+
+.pixel-dunes.front {
+  bottom: 0;
+  background:
+    repeating-linear-gradient(90deg, rgb(95 50 24 / 22%) 0 18px, transparent 18px 34px),
+    #d59048;
+}
+
+.tower {
+  position: absolute;
+  left: 46%;
+  bottom: 22%;
+  width: 170px;
+  height: 330px;
+  transform: translateX(-50%);
+}
+
+.tower-cap {
+  height: 48px;
+  background: #2f3038;
+  clip-path: polygon(0 100%, 16% 0, 84% 0, 100% 100%);
+}
+
+.tower-body {
+  height: 282px;
+  border: 4px solid #15171d;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 28px, rgb(255 255 255 / 18%) 28px 32px),
+    repeating-linear-gradient(90deg, #4e5058 0 34px, #373941 34px 68px);
+}
+
+.tower-door {
+  position: absolute;
+  bottom: 0;
+  left: 58px;
+  width: 54px;
+  height: 88px;
+  background: #1b1008;
+  border: 4px solid #111;
+  border-bottom: 0;
+}
+
+.vagabond {
+  position: absolute;
+  left: calc(50% - 230px);
+  bottom: 25%;
+  width: 70px;
+  height: 142px;
+}
+
+.vagabond-hood {
+  width: 42px;
+  height: 42px;
+  margin-left: 14px;
+  background: #3e2416;
+  clip-path: polygon(50% 0, 100% 58%, 76% 100%, 24% 100%, 0 58%);
+}
+
+.vagabond-body {
+  width: 58px;
+  height: 86px;
+  margin-left: 6px;
+  background:
+    linear-gradient(90deg, transparent 0 20%, #5b351e 20% 80%, transparent 80%),
+    #2e1a10;
+  clip-path: polygon(20% 0, 80% 0, 100% 100%, 0 100%);
+}
+
+.vagabond-staff {
+  position: absolute;
+  top: 22px;
+  right: 0;
+  width: 8px;
+  height: 120px;
+  background: #2b1708;
+}
+
+.dialog-box {
+  position: absolute;
+  right: 34px;
+  bottom: 26px;
+  width: min(520px, calc(100% - 68px));
+  padding: 16px;
+  border: 3px solid #c69632;
+  background: #171117;
+  box-shadow: inset 0 0 0 3px #39210f;
+}
+
+.dialog-box p {
+  margin: 0 0 14px;
+  color: #f2dfaa;
+  font-size: 1.06rem;
+  line-height: 1.5;
+}
+
+.dialog-box div {
+  display: flex;
+  gap: 12px;
+}
+
+.dialog-box button,
+.command-bar button,
+.wall-selector button,
+.reader-actions button,
+.splash-card button {
+  border: 3px solid #8c5b1a;
+  background: #211820;
+  color: #f6d67a;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
   text-transform: uppercase;
 }
 
-.control-panel {
-  position: fixed;
-  left: 50%;
-  bottom: 16px;
-  width: min(940px, calc(100vw - 32px));
-  padding: 10px;
-  transform: translateX(-50%);
-  border-radius: 4px;
+.dialog-box button {
+  min-width: 86px;
+  min-height: 36px;
 }
 
-.location-row,
-.panel-label,
-.search-field,
-.primary-action,
-.reader-actions,
-.room-controls button {
-  display: flex;
-  align-items: center;
+.scene-library {
+  background: #17181d;
 }
 
-.location-row {
+.stone-ceiling,
+.pixel-floor {
   position: absolute;
-  left: 12px;
-  top: -42px;
-  padding: 7px 10px;
-  border: 1px solid rgb(246 226 167 / 22%);
-  background: rgb(19 17 14 / 42%);
-  gap: 8px;
-  min-height: 30px;
-  color: #f3dfaa;
-  font-size: 0.9rem;
+  right: -8%;
+  left: -8%;
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 12%) 0 28px, transparent 28px 56px),
+    repeating-linear-gradient(0deg, #363941 0 26px, #202229 26px 52px);
 }
 
-.room-controls {
+.stone-ceiling {
+  top: 0;
+  height: 20%;
+  clip-path: polygon(0 0, 100% 0, 78% 100%, 22% 100%);
+}
+
+.pixel-floor {
+  bottom: 0;
+  height: 36%;
+  clip-path: polygon(22% 0, 78% 0, 100% 100%, 0 100%);
+  background:
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 24%) 0 6px, transparent 6px 72px),
+    repeating-linear-gradient(0deg, #2b2c31 0 28px, #17181d 28px 56px);
+}
+
+.stone-wall {
+  position: absolute;
+  top: 14%;
+  bottom: 26%;
+  border: 3px solid #121318;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 28px, rgb(255 255 255 / 14%) 28px 32px),
+    repeating-linear-gradient(90deg, #555861 0 36px, #30323a 36px 72px);
+  box-shadow: inset 0 0 80px rgb(0 0 0 / 54%);
+}
+
+.stone-wall.left {
+  left: -2%;
+  width: 30%;
+  transform: skewY(8deg);
+}
+
+.stone-wall.right {
+  right: -2%;
+  width: 30%;
+  transform: skewY(-8deg);
+}
+
+.stone-wall.center {
+  left: 27%;
+  width: 46%;
+}
+
+.floor-plaque {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  padding: 5px 14px;
+  border: 2px solid #c69632;
+  background: #111013;
+  color: #f6d67a;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+}
+
+.pixel-shelf {
+  position: absolute;
+  right: 10%;
+  bottom: 10%;
+  left: 10%;
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 7px;
-  margin-top: 8px;
+  gap: 8px;
+  padding: 14px;
+  border: 4px solid #20120a;
+  background: #2a170d;
+  box-shadow:
+    inset 0 0 0 4px #6a3d1c,
+    0 16px 30px rgb(0 0 0 / 50%);
 }
 
-.room-controls button,
-.wall-controls button,
-.reader-actions button,
-.close-reader {
-  border: 1px solid rgb(255 227 154 / 28%);
-  background: rgb(255 255 255 / 6%);
-  color: #f7edd3;
+.pixel-shelf-row {
+  display: grid;
+  grid-template-columns: repeat(18, 1fr);
+  gap: 3px;
+  padding-bottom: 8px;
+  border-bottom: 5px solid #5a3218;
+}
+
+.pixel-book {
+  height: 42px;
+  border: 0;
+  background:
+    linear-gradient(90deg, rgb(255 255 255 / 16%), transparent 30%),
+    #865226;
+  cursor: pointer;
+}
+
+.pixel-book:nth-child(3n) {
+  background:
+    linear-gradient(90deg, rgb(255 255 255 / 14%), transparent 30%),
+    #4d6947;
+}
+
+.pixel-book:nth-child(4n) {
+  background:
+    linear-gradient(90deg, rgb(255 255 255 / 12%), transparent 30%),
+    #74384b;
+}
+
+.pixel-book.selected {
+  background: #f1c95b;
+  box-shadow: 0 0 0 3px #fff0a8;
+}
+
+.stair-hotspot {
+  position: absolute;
+  z-index: 2;
+  width: 150px;
+  height: 74px;
+  border: 3px solid #111;
+  background:
+    repeating-linear-gradient(0deg, #7a7e87 0 10px, #4b4f58 10px 20px);
+  color: #130f0a;
   cursor: pointer;
   font: inherit;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
-.room-controls button {
-  justify-content: center;
-  gap: 6px;
-  min-height: 36px;
+.stair-hotspot.up {
+  right: 10%;
+  bottom: 25%;
+  transform: skewY(-8deg);
+}
+
+.stair-hotspot.down {
+  left: 10%;
+  bottom: 24%;
+  transform: skewY(8deg);
+}
+
+.wall-selector {
+  position: absolute;
+  right: 30px;
+  bottom: 16px;
+  left: 30px;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+.wall-selector button {
+  min-height: 32px;
   font-size: 0.78rem;
 }
 
-.room-controls button:hover,
-.wall-controls button:hover,
-.reader-actions button:hover,
-.close-reader:hover {
-  border-color: rgb(255 227 154 / 72%);
-  background: rgb(214 168 63 / 22%);
+.wall-selector button.selected {
+  background: #c69632;
+  color: #16100d;
 }
 
-.stats-grid {
-  display: none;
-}
-
-.primary-action {
-  border: 1px solid rgb(255 227 154 / 36%);
-  background: #d6a83f;
-  color: #17120a;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 800;
-}
-
-.primary-action {
+.message-bar {
   position: absolute;
   right: 0;
-  top: 10px;
-  justify-content: center;
-  gap: 8px;
-  width: 86px;
-  min-height: 36px;
+  bottom: 92px;
+  left: 0;
+  z-index: 4;
+  min-height: 40px;
+  padding: 10px 14px;
+  border-top: 3px solid #c69632;
+  border-bottom: 3px solid #c69632;
+  background: #101016;
+  color: #f2dfaa;
+  font-size: 0.95rem;
 }
 
-.primary-action:hover {
-  background: #f0c861;
-}
-
-.shelf-panel {
-  position: fixed;
-  top: 16px;
-  right: 66px;
-  width: min(440px, calc(100vw - 370px));
-  min-width: 360px;
-  padding: 12px;
-  border-radius: 4px;
-}
-
-.panel-heading {
+.command-bar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 4;
   display: grid;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-
-.panel-heading strong {
-  color: #ffe39a;
-  font-size: 0.96rem;
-  font-weight: 700;
-}
-
-.panel-label {
-  gap: 7px;
-}
-
-.shelf-grid {
-  display: grid;
-  gap: 9px;
-}
-
-.shelf-row {
-  display: grid;
-  grid-template-columns: 54px 1fr;
-  gap: 8px;
-  align-items: center;
-}
-
-.shelf-row > div {
-  display: grid;
-  grid-template-columns: repeat(18, 1fr);
-  gap: 2px;
-  padding: 7px;
-  border: 1px solid rgb(246 226 167 / 14%);
-  background: linear-gradient(#2b2114, #17120b);
-}
-
-.volume-button {
-  height: 34px;
-  border: 0;
-  border-left: 1px solid rgb(255 255 255 / 16%);
-  background: linear-gradient(90deg, #412716, #7b5934 52%, #26160d);
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 32%);
-  cursor: pointer;
-}
-
-.volume-button:nth-child(3n) {
-  background: linear-gradient(90deg, #2d3929, #60714b 52%, #1a2118);
-}
-
-.volume-button:nth-child(4n) {
-  background: linear-gradient(90deg, #3c1e25, #7c4550 52%, #241116);
-}
-
-.volume-button.selected {
-  background: linear-gradient(90deg, #6d4b12, #f3d06d 52%, #533608);
-  box-shadow: 0 0 16px rgb(243 208 109 / 60%);
-}
-
-.wall-controls {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 5px;
-  margin-top: 12px;
-}
-
-.wall-controls button {
-  min-height: 32px;
-  color: #d9c99a;
-  font-size: 0.74rem;
-}
-
-.wall-controls button.selected {
-  background: #d6a83f;
-  color: #17120a;
-  font-weight: 800;
-}
-
-.book-reader {
-  position: fixed;
-  z-index: 5;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 28px;
+  grid-template-columns: 160px 1fr 420px;
+  gap: 10px;
+  height: 92px;
+  padding: 10px;
+  border-top: 4px solid #24170c;
   background:
-    radial-gradient(circle at 50% 45%, rgb(214 168 63 / 18%), transparent 38%),
-    rgb(5 4 3 / 72%);
-  animation: reader-fade 180ms ease-out;
+    linear-gradient(#1b1d27, #111018);
+}
+
+.status-box {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 8px;
+  border: 3px solid #c69632;
+  background: #08080b;
+  color: #f6d67a;
+}
+
+.status-box span {
+  color: #d8c795;
+  font-size: 0.82rem;
+}
+
+.move-pad {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.action-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.command-bar button:disabled {
+  color: #6e6550;
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .help-button {
   position: fixed;
-  z-index: 3;
+  z-index: 7;
   top: 16px;
   right: 16px;
   width: 38px;
   height: 38px;
-  border: 1px solid rgb(255 227 154 / 18%);
+  border: 2px solid rgb(255 227 154 / 16%);
   border-radius: 999px;
-  background: rgb(20 17 13 / 20%);
-  color: rgb(255 239 197 / 48%);
+  background: rgb(20 17 13 / 18%);
+  color: rgb(255 239 197 / 45%);
   cursor: pointer;
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 1.5rem;
@@ -285,37 +441,29 @@
   color: #ffe39a;
 }
 
-.splash-screen,
+.book-reader,
 .help-panel {
   position: fixed;
-  z-index: 6;
+  z-index: 8;
   inset: 0;
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgb(5 4 3 / 72%);
+  background: rgb(5 4 3 / 76%);
 }
 
-.splash-card,
 .help-panel > div {
   position: relative;
   width: min(660px, calc(100vw - 48px));
-  border: 2px solid #2a180c;
-  border-radius: 6px;
-  background:
-    radial-gradient(circle at 18% 10%, rgb(255 255 255 / 28%), transparent 20%),
-    #d8bd7d;
+  padding: 30px;
+  border: 3px solid #2a180c;
+  background: #d8bd7d;
   box-shadow:
     0 28px 90px rgb(0 0 0 / 62%),
     inset 0 0 50px rgb(82 46 16 / 32%);
   color: #241406;
 }
 
-.splash-card {
-  padding: 34px;
-}
-
-.splash-card h1,
 .help-panel h2 {
   margin: 8px 0 16px;
   font-family: Georgia, 'Times New Roman', serif;
@@ -323,7 +471,6 @@
   line-height: 0.98;
 }
 
-.splash-card p,
 .help-panel p {
   margin: 0 0 16px;
   color: #2f1d0b;
@@ -331,29 +478,10 @@
   line-height: 1.58;
 }
 
-.splash-card .kicker {
-  color: #6d4b12;
-}
-
-.splash-card button {
-  min-height: 44px;
-  padding: 0 18px;
-  border: 1px solid #533608;
-  background: #2d1709;
-  color: #f9efd0;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 800;
-}
-
-.help-panel > div {
-  padding: 30px;
-}
-
 .book-shell {
   position: relative;
   width: min(1180px, calc(100vw - 56px));
-  animation: book-open 420ms cubic-bezier(0.2, 0.74, 0.18, 1);
+  animation: book-open 420ms steps(6, end);
   transform-origin: center bottom;
 }
 
@@ -362,10 +490,10 @@
   top: -12px;
   right: -12px;
   z-index: 2;
-  place-items: center;
   display: grid;
   width: 40px;
   height: 40px;
+  place-items: center;
   padding: 0;
   border-radius: 999px;
   background: #17120a;
@@ -373,8 +501,7 @@
 
 .book-cover {
   padding: 22px;
-  border: 2px solid #2a180c;
-  border-radius: 8px;
+  border: 4px solid #2a180c;
   background:
     linear-gradient(90deg, rgb(25 10 4 / 80%), transparent 7%, transparent 93%, rgb(25 10 4 / 84%)),
     linear-gradient(135deg, #4a2412, #1d0d06 48%, #5a2f16);
@@ -387,24 +514,21 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   min-height: min(72vh, 740px);
-  border-radius: 4px;
   overflow: hidden;
   box-shadow: inset 0 0 55px rgb(63 32 8 / 54%);
 }
 
 .book-page {
-  position: relative;
   min-width: 0;
   padding: 24px 22px 20px;
   background:
-    linear-gradient(90deg, rgb(86 52 19 / 14%), transparent 14%, transparent 86%, rgb(86 52 19 / 18%)),
-    radial-gradient(circle at 20% 12%, rgb(255 255 255 / 30%), transparent 18%),
+    repeating-linear-gradient(0deg, rgb(86 52 19 / 10%) 0 2px, transparent 2px 10px),
     #d8bd7d;
   color: #241406;
 }
 
 .book-page.left {
-  border-right: 2px solid rgb(82 46 16 / 46%);
+  border-right: 3px solid rgb(82 46 16 / 46%);
   box-shadow: inset -28px 0 32px rgb(64 33 9 / 22%);
 }
 
@@ -412,11 +536,14 @@
   box-shadow: inset 28px 0 32px rgb(64 33 9 / 20%);
 }
 
+.book-page span {
+  color: #72521f;
+}
+
 .book-page h2 {
   margin: 5px 0 14px;
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 1.45rem;
-  font-weight: 700;
 }
 
 .book-page pre {
@@ -428,21 +555,18 @@
   font-size: clamp(0.37rem, 0.58vw, 0.62rem);
   line-height: 1.28;
   white-space: pre;
-  text-shadow: 0 1px rgb(255 238 188 / 34%);
 }
 
 .reader-actions {
+  display: flex;
   justify-content: center;
   gap: 14px;
   margin-top: 14px;
 }
 
 .reader-actions button {
-  gap: 7px;
   min-width: 112px;
   min-height: 40px;
-  justify-content: center;
-  background: rgb(23 18 10 / 82%);
 }
 
 .reader-actions label {
@@ -456,145 +580,60 @@
 .reader-actions input {
   width: 72px;
   height: 40px;
-  border: 1px solid rgb(246 226 167 / 32%);
+  border: 3px solid rgb(246 226 167 / 32%);
   background: rgb(8 8 7 / 80%);
   color: #fff7dc;
   text-align: center;
   font: inherit;
 }
 
-.book-tag {
-  padding: 3px 6px;
-  border: 1px solid rgb(255 235 180 / 40%);
-  background: rgb(17 16 13 / 88%);
-  color: #ffe39a;
-  font-size: 0.7rem;
-  font-weight: 800;
-  pointer-events: none;
-}
-
-.flat-library {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  grid-template-columns: repeat(7, minmax(120px, 1fr));
-  gap: 18px;
-  align-content: center;
-  padding: 7vw 3vw;
-  background:
-    radial-gradient(circle at 45% 35%, rgb(214 168 63 / 24%), transparent 34%),
-    linear-gradient(135deg, #15130f, #080807);
-}
-
-.flat-room {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 5px;
-  padding: 10px;
-  border: 1px solid rgb(246 226 167 / 15%);
-  background: rgb(255 255 255 / 4%);
-  transform: skewY(-7deg);
-}
-
-.flat-wall {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 2px;
-}
-
-.flat-book {
-  width: 100%;
-  height: 24px;
-  border: 0;
-  background: #60492b;
-  cursor: pointer;
-}
-
-.flat-book:nth-child(3n) {
-  background: #6a3841;
-}
-
-.flat-book:nth-child(4n) {
-  background: #435744;
-}
-
-.flat-book.selected {
-  background: #f3d06d;
-  box-shadow: 0 0 18px rgb(243 208 109 / 70%);
-}
-
-@media (max-width: 1120px) {
-  .shelf-panel {
-    width: min(420px, calc(100vw - 340px));
-    min-width: 340px;
-  }
-
-  .control-panel {
-    bottom: 16px;
-  }
-
-  .book-spread {
-    min-height: 62vh;
-  }
-
-  .book-page pre {
-    height: 47vh;
-  }
-}
-
-@media (max-width: 820px) {
-  .app-shell {
+@media (max-width: 860px) {
+  .game-frame {
+    width: 100vw;
     height: 100vh;
-    overflow: hidden;
+    border-width: 0;
   }
 
-  .viewport {
-    position: fixed;
-    height: 100vh;
+  .scene {
+    bottom: 178px;
   }
 
-  .control-panel,
-  .shelf-panel {
-    position: fixed;
-    width: calc(100vw - 24px);
-    min-width: 0;
-    margin: 0;
+  .command-bar {
+    grid-template-columns: 1fr;
+    height: 178px;
   }
 
-  .control-panel {
-    left: 12px;
-    right: 12px;
-    bottom: 12px;
-    transform: none;
+  .move-pad,
+  .action-buttons {
+    grid-template-columns: repeat(4, 1fr);
   }
 
-  .shelf-panel {
-    top: 164px;
-    right: 12px;
-    max-height: 36vh;
-    overflow: auto;
-  }
-
-  .primary-action {
-    display: none;
-  }
-
-  .room-controls {
+  .action-buttons {
     grid-template-columns: repeat(3, 1fr);
   }
 
-  .book-reader {
-    align-items: start;
-    padding: 12px;
-    overflow: auto;
+  .message-bar {
+    bottom: 178px;
   }
 
-  .book-shell {
-    width: calc(100vw - 24px);
+  .dialog-box {
+    right: 14px;
+    left: 14px;
+    width: auto;
   }
 
-  .book-cover {
-    padding: 12px;
+  .stone-wall.center {
+    left: 16%;
+    width: 68%;
+  }
+
+  .stone-wall.left,
+  .stone-wall.right {
+    width: 20%;
+  }
+
+  .wall-selector {
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .book-spread {
@@ -604,40 +643,11 @@
   .book-page.right {
     display: none;
   }
-
-  .book-page pre {
-    height: 62vh;
-    font-size: clamp(0.35rem, 1.3vw, 0.54rem);
-  }
-
-  .flat-library {
-    grid-template-columns: repeat(3, minmax(90px, 1fr));
-    padding-top: 16vh;
-  }
-
-  .shelf-row {
-    grid-template-columns: 1fr;
-  }
-
-  .wall-controls {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .help-button {
-    top: 12px;
-    right: 12px;
-  }
-}
-
-@keyframes reader-fade {
-  from {
-    opacity: 0;
-  }
 }
 
 @keyframes book-open {
   from {
     opacity: 0;
-    transform: perspective(900px) rotateX(18deg) scale(0.72);
+    transform: scaleX(0.24) scaleY(0.82);
   }
 }
