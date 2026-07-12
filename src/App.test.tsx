@@ -28,6 +28,7 @@ describe('App interactions', () => {
 
     fireEvent.click(container.querySelector('.move-pad [aria-label="Turn right"]')!)
     expect(screen.getAllByText('east')).toHaveLength(2)
+    expect(container.querySelector('[aria-label="Open room 0,0 / east wall / shelf 2 / volume 8"]')).toBeInTheDocument()
 
     fireEvent.click(container.querySelector('.move-pad [aria-label="Forward"]')!)
     expect(screen.getByText('ROOM 1,0')).toBeInTheDocument()
