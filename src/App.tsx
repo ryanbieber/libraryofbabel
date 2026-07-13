@@ -15,6 +15,7 @@ import {
   defaultAddress,
   generatePage,
   nearbyBookAddress,
+  PAGES_PER_BOOK,
 } from './lib/library'
 import {
   INTERACTION_RADIUS,
@@ -64,7 +65,7 @@ function App() {
   const [dialogueNpc, setDialogueNpc] = useState<LibraryNpc | null>(null)
   const [splashOpen, setSplashOpen] = useState(true)
   const [movementCue, setMovementCue] = useState<MovementCue>('idle')
-  const [page, setPage] = useState(1)
+  const [spread, setSpread] = useState(1)
   const [message, setMessage] = useState('The door seals behind you. The shelves breathe dust.')
   const playerPoseRef = useRef<PlayerPose>({ ...STARTING_PLAYER_POSE })
   const modalOpenRef = useRef(false)
@@ -74,11 +75,10 @@ function App() {
   const touchForwardRampRef = useRef(0)
   const cueTimeout = useRef<number | null>(null)
 
-  const generatedPage = useMemo(() => generatePage({ ...selectedBook, page }), [selectedBook, page])
-  const nextGeneratedPage = useMemo(
-    () => generatePage({ ...selectedBook, page: clampPage(page + 1) }),
-    [selectedBook, page],
-  )
+  const leftPageNumber = spreadToLeftPage(spread)
+  const rightPageNumber = spreadToRightPage(spread)
+  const generatedPage = useMemo(() => generatePage({ ...selectedBook, page: leftPageNumber }), [selectedBook, leftPageNumber])
+  const nextGeneratedPage = useMemo(() => generatePage({ ...selectedBook, page: rightPageNumber }), [selectedBook, rightPageNumber])
   const currentRoom = roomPositionFromPose(playerPose)
   const room = nearestRoom(currentRoom)
   const doors = roomDoors(currentRoom)
@@ -357,7 +357,7 @@ function App() {
       return
     }
 
-    setPage(1)
+    setSpread(1)
     setReaderOpen(true)
     setMessage('The volume opens like dry leather.')
   }
@@ -413,11 +413,13 @@ function App() {
         <BookReader
           selectedBook={selectedBook}
           floor={floor}
-          page={page}
+          spread={spread}
+          leftPageNumber={leftPageNumber}
+          rightPageNumber={rightPageNumber}
           leftPage={generatedPage}
           rightPage={nextGeneratedPage}
           onClose={() => setReaderOpen(false)}
-          onPageChange={setPage}
+          onSpreadChange={setSpread}
         />
       ) : null}
 
@@ -446,19 +448,23 @@ function SplashScreen({ onStart }: { onStart: () => void }) {
 function BookReader({
   selectedBook,
   floor,
-  page,
+  spread,
+  leftPageNumber,
+  rightPageNumber,
   leftPage,
   rightPage,
   onClose,
-  onPageChange,
+  onSpreadChange,
 }: {
   selectedBook: BookAddress
   floor: number
-  page: number
+  spread: number
+  leftPageNumber: number
+  rightPageNumber: number
   leftPage: string[]
   rightPage: string[]
   onClose: () => void
-  onPageChange: (page: number | ((current: number) => number)) => void
+  onSpreadChange: (spread: number | ((current: number) => number)) => void
 }) {
   return (
     <section className="book-reader" aria-label="Open book reader">
@@ -470,30 +476,30 @@ function BookReader({
           <div className="book-spread">
             <article className="book-page left">
               <span>floor {floor} / {addressLabel(selectedBook)}</span>
-              <h2>page {page}</h2>
+              <h2>page {leftPageNumber}</h2>
               <HighlightedPage lines={leftPage} />
             </article>
             <article className="book-page right">
               <span>floor {floor} / {addressLabel(selectedBook)}</span>
-              <h2>page {clampPage(page + 1)}</h2>
+              <h2>page {rightPageNumber}</h2>
               <HighlightedPage lines={rightPage} />
             </article>
           </div>
         </div>
         <div className="reader-actions">
-          <button type="button" onClick={() => onPageChange((current) => clampPage(current - 2))}>
+          <button type="button" onClick={() => onSpreadChange((current) => clampSpread(current - 1))}>
             back
           </button>
           <label>
-            page
+            spread
             <input
-              value={page}
-              aria-label="Page number"
+              value={spread}
+              aria-label="Spread number"
               inputMode="numeric"
-              onChange={(event) => onPageChange(clampPage(Number(event.target.value)))}
+              onChange={(event) => onSpreadChange(clampSpread(Number(event.target.value)))}
             />
           </label>
-          <button type="button" onClick={() => onPageChange((current) => clampPage(current + 2))}>
+          <button type="button" onClick={() => onSpreadChange((current) => clampSpread(current + 1))}>
             forward
           </button>
         </div>
@@ -567,6 +573,19 @@ function clampAxis(value: number): number {
 function moveToward(current: number, target: number, maxDelta: number): number {
   if (Math.abs(target - current) <= maxDelta) return target
   return current + Math.sign(target - current) * maxDelta
+}
+
+function clampSpread(spread: number): number {
+  if (!Number.isFinite(spread)) return 1
+  return Math.min(Math.ceil(PAGES_PER_BOOK / 2), Math.max(1, Math.round(spread)))
+}
+
+function spreadToLeftPage(spread: number): number {
+  return clampPage((clampSpread(spread) - 1) * 2 + 1)
+}
+
+function spreadToRightPage(spread: number): number {
+  return clampPage(spreadToLeftPage(spread) + 1)
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {

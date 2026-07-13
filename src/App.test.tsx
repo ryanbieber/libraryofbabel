@@ -46,8 +46,16 @@ describe('App interactions', () => {
     fireEvent.click(volume)
 
     expect(container.querySelector('.book-reader')).toBeInTheDocument()
+    expect(screen.getByText('page 1')).toBeInTheDocument()
+    expect(screen.getByText('page 2')).toBeInTheDocument()
     expect(container.querySelector('.reader-actions')?.textContent).toContain('forward')
     expect(screen.getByDisplayValue('1')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'forward' }))
+
+    expect(screen.getByText('page 3')).toBeInTheDocument()
+    expect(screen.getByText('page 4')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('2')).toBeInTheDocument()
   })
 
   it('shows a reachable monk Talk action and opens then closes the dialogue panel', () => {

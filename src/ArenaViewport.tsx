@@ -60,10 +60,11 @@ const bookSpacing = shelfWidth / BOOKS_PER_SHELF
 const shelfBackWidth = shelfWidth + 0.18
 const shelfBoardWidth = shelfWidth + 0.2
 const doorwayGapWidth = 1.44
-const TOUCH_LOOK_SENSITIVITY = 0.0024
+const TOUCH_LOOK_SENSITIVITY = 0.0031
 const MOUSE_LOOK_SENSITIVITY = 0.004
 const TOUCH_TURN_DEADZONE_PX = 0.8
 const TOUCH_TURN_RECOVERY_MS = 220
+const TOUCH_TURN_SLOWDOWN_MAX_DELTA = 34
 
 export function ArenaViewport({
   floor,
@@ -121,7 +122,8 @@ export function ArenaViewport({
       if (turnRecoveryTimeoutRef.current !== null) {
         window.clearTimeout(turnRecoveryTimeoutRef.current)
       }
-      onTouchMoveChange({ forward: 1, strafe: 0, turnSlowdown: 1 })
+      const turnSlowdown = Math.min(1, Math.abs(deltaX) / TOUCH_TURN_SLOWDOWN_MAX_DELTA)
+      onTouchMoveChange({ forward: 1, strafe: 0, turnSlowdown })
       turnRecoveryTimeoutRef.current = window.setTimeout(() => {
         if (dragRef.current?.pointerId === event.pointerId) {
           onTouchMoveChange({ forward: 1, strafe: 0, turnSlowdown: 0 })
