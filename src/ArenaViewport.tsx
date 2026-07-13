@@ -20,6 +20,15 @@ import {
   yawToDirection,
   type PlayerPose,
 } from './lib/roomGeometry'
+import {
+  COMPACT_DOORWAY_HEIGHT,
+  PLAYER_EYE_HEIGHT,
+  ROOM_HEIGHT,
+  SEATED_MONK_BASE_Y,
+  SEATED_MONK_SCALE,
+  STANDARD_DOORWAY_HEIGHT,
+  doorwayLocalY,
+} from './lib/sceneScale'
 
 type MovementCue = 'idle' | 'step' | 'turn-left' | 'turn-right'
 
@@ -157,7 +166,7 @@ export function ArenaViewport({
     >
       {canUseWebGL ? (
         <Canvas
-          camera={{ fov: 58, position: [0, 1.52, 0], rotation: [0, 0, 0] }}
+          camera={{ fov: 58, position: [0, PLAYER_EYE_HEIGHT, 0], rotation: [0, 0, 0] }}
           dpr={1}
           gl={{ antialias: false, alpha: false, powerPreference: 'high-performance', preserveDrawingBuffer: true }}
         >
@@ -279,7 +288,7 @@ function ArenaScene({
         <planeGeometry args={[roomSize, roomSize]} />
         <meshStandardMaterial map={textures.floor} roughness={1} />
       </mesh>
-      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 3.08, 0]}>
+      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, ROOM_HEIGHT, 0]}>
         <planeGeometry args={[roomSize, roomSize]} />
         <meshStandardMaterial map={textures.ceiling} roughness={1} side={THREE.DoubleSide} />
       </mesh>
@@ -319,14 +328,14 @@ function ArenaScene({
 }
 
 function SeatedMonk({ npc, onTalk }: { npc: LibraryNpc; onTalk: () => void }) {
-  const groupRef = useRef<THREE.Group>(null)
+  const animatedGroupRef = useRef<THREE.Group>(null)
   const hoodRef = useRef<THREE.Mesh>(null)
   const bookGlow = npc.quest === 'crimson-book' ? '#7b1116' : '#302000'
 
   useFrame(({ clock }) => {
     const breath = Math.sin(clock.elapsedTime * 1.8) * 0.018
-    if (groupRef.current) {
-      groupRef.current.position.y = breath
+    if (animatedGroupRef.current) {
+      animatedGroupRef.current.position.y = breath
     }
     if (hoodRef.current) {
       hoodRef.current.rotation.x = -0.26 + Math.sin(clock.elapsedTime * 1.2) * 0.035
@@ -335,47 +344,48 @@ function SeatedMonk({ npc, onTalk }: { npc: LibraryNpc; onTalk: () => void }) {
 
   return (
     <group
-      ref={groupRef}
-      position={[npc.position.x, 0.72, npc.position.z - 0.35]}
+      position={[npc.position.x, SEATED_MONK_BASE_Y, npc.position.z - 0.35]}
       rotation={[0, Math.PI * 0.88, 0]}
-      scale={1.18}
+      scale={SEATED_MONK_SCALE}
       onClick={(event) => {
         event.stopPropagation()
         onTalk()
       }}
     >
-      <mesh position={[0, 0.33, -0.03]}>
-        <boxGeometry args={[0.6, 0.66, 0.36]} />
-        <meshStandardMaterial color="#251820" roughness={0.98} />
-      </mesh>
-      <mesh position={[0, 0.06, -0.02]} rotation={[0.08, 0, 0]}>
-        <coneGeometry args={[0.42, 0.82, 6]} />
-        <meshStandardMaterial color="#1d141a" roughness={1} />
-      </mesh>
-      <mesh ref={hoodRef} position={[0, 0.78, -0.1]} rotation={[-0.26, 0, 0]}>
-        <coneGeometry args={[0.28, 0.42, 7]} />
-        <meshStandardMaterial color="#0b090c" roughness={1} />
-      </mesh>
-      <mesh position={[0, 0.67, -0.02]} rotation={[-0.18, 0, 0]}>
-        <sphereGeometry args={[0.16, 10, 8]} />
-        <meshStandardMaterial color="#806446" roughness={0.92} />
-      </mesh>
-      <mesh position={[-0.23, 0.43, 0.18]} rotation={[0.9, 0.32, 0.16]}>
-        <capsuleGeometry args={[0.045, 0.32, 4, 6]} />
-        <meshStandardMaterial color="#6f543b" roughness={0.9} />
-      </mesh>
-      <mesh position={[0.23, 0.43, 0.18]} rotation={[0.9, -0.32, -0.16]}>
-        <capsuleGeometry args={[0.045, 0.32, 4, 6]} />
-        <meshStandardMaterial color="#6f543b" roughness={0.9} />
-      </mesh>
-      <mesh position={[0, 0.315, 0.34]} rotation={[-0.18, 0, 0]}>
-        <boxGeometry args={[0.52, 0.026, 0.3]} />
-        <meshStandardMaterial color="#d8bd7d" roughness={0.86} emissive={bookGlow} emissiveIntensity={0.22} />
-      </mesh>
-      <mesh position={[0, 0.58, 0]}>
-        <boxGeometry args={[0.76, 1.1, 0.62]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-      </mesh>
+      <group ref={animatedGroupRef}>
+        <mesh position={[0, 0.33, -0.03]}>
+          <boxGeometry args={[0.6, 0.66, 0.36]} />
+          <meshStandardMaterial color="#251820" roughness={0.98} />
+        </mesh>
+        <mesh position={[0, 0.06, -0.02]} rotation={[0.08, 0, 0]}>
+          <coneGeometry args={[0.42, 0.82, 6]} />
+          <meshStandardMaterial color="#1d141a" roughness={1} />
+        </mesh>
+        <mesh ref={hoodRef} position={[0, 0.78, -0.1]} rotation={[-0.26, 0, 0]}>
+          <coneGeometry args={[0.28, 0.42, 7]} />
+          <meshStandardMaterial color="#0b090c" roughness={1} />
+        </mesh>
+        <mesh position={[0, 0.67, -0.02]} rotation={[-0.18, 0, 0]}>
+          <sphereGeometry args={[0.16, 10, 8]} />
+          <meshStandardMaterial color="#806446" roughness={0.92} />
+        </mesh>
+        <mesh position={[-0.23, 0.43, 0.18]} rotation={[0.9, 0.32, 0.16]}>
+          <capsuleGeometry args={[0.045, 0.32, 4, 6]} />
+          <meshStandardMaterial color="#6f543b" roughness={0.9} />
+        </mesh>
+        <mesh position={[0.23, 0.43, 0.18]} rotation={[0.9, -0.32, -0.16]}>
+          <capsuleGeometry args={[0.045, 0.32, 4, 6]} />
+          <meshStandardMaterial color="#6f543b" roughness={0.9} />
+        </mesh>
+        <mesh position={[0, 0.315, 0.34]} rotation={[-0.18, 0, 0]}>
+          <boxGeometry args={[0.52, 0.026, 0.3]} />
+          <meshStandardMaterial color="#d8bd7d" roughness={0.86} emissive={bookGlow} emissiveIntensity={0.22} />
+        </mesh>
+        <mesh position={[0, 0.58, 0]}>
+          <boxGeometry args={[0.76, 1.1, 0.62]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+      </group>
     </group>
   )
 }
@@ -384,7 +394,7 @@ function PlayerCamera({ playerPose, movementCue }: { playerPose: PlayerPose; mov
   useFrame(({ camera, clock }) => {
     const idleBob = Math.sin(clock.elapsedTime * 2.4) * 0.007
     const stepBob = movementCue === 'step' ? Math.sin(clock.elapsedTime * 20) * 0.018 : 0
-    camera.position.set(playerPose.x, 1.52 + idleBob + stepBob, playerPose.z)
+    camera.position.set(playerPose.x, PLAYER_EYE_HEIGHT + idleBob + stepBob, playerPose.z)
     camera.rotation.set(0, cameraYawFromPlayerYaw(playerPose.yaw), 0)
   })
 
@@ -407,19 +417,30 @@ function RoomWall({
   return (
     <group position={transform.position} rotation={transform.rotation}>
       <mesh>
-        <planeGeometry args={[roomSize, 3.08]} />
+        <planeGeometry args={[roomSize, ROOM_HEIGHT]} />
         <meshStandardMaterial map={texture} roughness={0.92} side={THREE.DoubleSide} />
       </mesh>
-      {hasDoor ? <Doorway onOpen={() => onOpenDoor(wall)} /> : null}
+      {hasDoor ? <Doorway parentCenterY={transform.position[1]} onOpen={() => onOpenDoor(wall)} /> : null}
     </group>
   )
 }
 
-function Doorway({ compact = false, onOpen }: { compact?: boolean; onOpen: () => void }) {
+function Doorway({
+  compact = false,
+  parentCenterY,
+  onOpen,
+}: {
+  compact?: boolean
+  parentCenterY: number
+  onOpen: () => void
+}) {
   const width = compact ? 1.04 : 1.2
-  const height = compact ? 0.98 : 1.12
-  const y = compact ? -0.43 : -0.52
+  const height = compact ? COMPACT_DOORWAY_HEIGHT : STANDARD_DOORWAY_HEIGHT
+  const y = doorwayLocalY(height, parentCenterY)
   const z = compact ? 0.23 : 0.06
+  const frameOverhang = compact ? 0.18 : 0.2
+  const jambWidth = compact ? 0.13 : 0.14
+  const handleY = compact ? 1.02 : 1.05
 
   return (
     <group
@@ -430,34 +451,34 @@ function Doorway({ compact = false, onOpen }: { compact?: boolean; onOpen: () =>
       }}
     >
       <mesh position={[0, 0.02, 0.16]}>
-        <boxGeometry args={[width * 0.86, height * 0.82, 0.06]} />
+        <boxGeometry args={[width * 0.86, height * 0.92, 0.06]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
       <mesh position={[0, 0, -0.04]}>
         <boxGeometry args={[width, height, 0.1]} />
         <meshStandardMaterial color="#080708" roughness={1} />
       </mesh>
-      <mesh position={[0, 0.08, -0.01]}>
-        <boxGeometry args={[width * 0.68, height * 0.62, 0.06]} />
+      <mesh position={[0, 0.16, -0.01]}>
+        <boxGeometry args={[width * 0.68, height * 0.72, 0.06]} />
         <meshStandardMaterial color="#11181c" roughness={1} emissive="#071013" emissiveIntensity={0.35} />
       </mesh>
-      <mesh position={[0, height / 2 + 0.04, 0.06]}>
-        <boxGeometry args={[width + 0.22, 0.16, 0.2]} />
+      <mesh position={[0, height / 2 + frameOverhang / 2, 0.06]}>
+        <boxGeometry args={[width + 0.22, frameOverhang, 0.2]} />
         <meshStandardMaterial color="#826b50" roughness={0.92} />
       </mesh>
-      <mesh position={[-width / 2 - 0.07, 0, 0.06]}>
-        <boxGeometry args={[0.14, height + 0.18, 0.2]} />
+      <mesh position={[-width / 2 - jambWidth / 2, height / 2, 0.06]}>
+        <boxGeometry args={[jambWidth, height + frameOverhang, 0.2]} />
         <meshStandardMaterial color="#806044" roughness={0.95} />
       </mesh>
-      <mesh position={[width / 2 + 0.07, 0, 0.06]}>
-        <boxGeometry args={[0.14, height + 0.18, 0.2]} />
+      <mesh position={[width / 2 + jambWidth / 2, height / 2, 0.06]}>
+        <boxGeometry args={[jambWidth, height + frameOverhang, 0.2]} />
         <meshStandardMaterial color="#806044" roughness={0.95} />
       </mesh>
-      <mesh position={[0, -height / 2 + 0.07, 0.08]}>
-        <boxGeometry args={[width * 0.94, 0.12, 0.26]} />
+      <mesh position={[0, 0.03, 0.08]}>
+        <boxGeometry args={[width * 0.94, 0.06, 0.26]} />
         <meshStandardMaterial color="#8a8470" roughness={0.98} />
       </mesh>
-      <mesh position={[width * 0.33, -0.02, 0.1]}>
+      <mesh position={[width * 0.33, handleY - height / 2, 0.1]}>
         <sphereGeometry args={[0.035, 8, 8]} />
         <meshStandardMaterial color="#cfa94c" metalness={0.25} roughness={0.48} />
       </mesh>
@@ -520,13 +541,13 @@ function ShelfWall({
       </mesh>
       {Array.from({ length: SHELVES_PER_WALL }, (_, shelf) => (
         <group key={shelf} position={[0, 0.7 - shelf * 0.34, 0.1]}>
-          <ShelfBoard hasDoorGap={hasDoor && shelf >= 2} />
+          <ShelfBoard hasDoorGap={hasDoor} />
           {Array.from({ length: BOOKS_PER_SHELF }, (_, book) => {
             const address = nearbyBookAddress(currentRoom.q, currentRoom.r, wall, shelf, book)
             const isSelected = addressLabel(address) === addressLabel(selectedBook)
             const isReachable = distanceToBook(playerPose, address) <= BOOK_INTERACTION_RADIUS
             const x = bookXPosition(book)
-            if (hasDoor && shelf >= 2 && Math.abs(x) < 0.72) return null
+            if (hasDoor && Math.abs(x) < 0.72) return null
 
             return (
               <BookSpine
@@ -542,7 +563,7 @@ function ShelfWall({
           })}
         </group>
       ))}
-      {hasDoor ? <Doorway compact onOpen={() => onOpenDoor(wall)} /> : null}
+      {hasDoor ? <Doorway compact parentCenterY={transform.position[1]} onOpen={() => onOpenDoor(wall)} /> : null}
     </group>
   )
 }
@@ -656,13 +677,13 @@ function wallTransform(wall: DirectionIndex): {
 } {
   switch (wall) {
     case 0:
-      return { position: [0, 1.54, -ROOM_HALF_SIZE], rotation: [0, 0, 0] }
+      return { position: [0, ROOM_HEIGHT / 2, -ROOM_HALF_SIZE], rotation: [0, 0, 0] }
     case 1:
-      return { position: [ROOM_HALF_SIZE, 1.54, 0], rotation: [0, -Math.PI / 2, 0] }
+      return { position: [ROOM_HALF_SIZE, ROOM_HEIGHT / 2, 0], rotation: [0, -Math.PI / 2, 0] }
     case 2:
-      return { position: [0, 1.54, ROOM_HALF_SIZE], rotation: [0, Math.PI, 0] }
+      return { position: [0, ROOM_HEIGHT / 2, ROOM_HALF_SIZE], rotation: [0, Math.PI, 0] }
     case 3:
-      return { position: [-ROOM_HALF_SIZE, 1.54, 0], rotation: [0, Math.PI / 2, 0] }
+      return { position: [-ROOM_HALF_SIZE, ROOM_HEIGHT / 2, 0], rotation: [0, Math.PI / 2, 0] }
   }
 }
 
