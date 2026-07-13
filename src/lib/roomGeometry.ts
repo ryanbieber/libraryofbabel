@@ -25,6 +25,7 @@ export type MoveResult = {
   pose: PlayerPose
   crossed?: DirectionIndex
   blocked?: DirectionIndex
+  door?: DirectionIndex
 }
 
 export const ROOM_HALF_SIZE = 3.6
@@ -122,6 +123,58 @@ export function isBookReachable(pose: PlayerPose, address: BookAddress): boolean
   return distanceToBook(pose, address) <= INTERACTION_RADIUS
 }
 
+export function doorWorldPosition(direction: DirectionIndex): { x: number; z: number } {
+  const edge = ROOM_HALF_SIZE - PLAYER_RADIUS
+
+  switch (direction) {
+    case 0:
+      return { x: 0, z: -edge }
+    case 1:
+      return { x: edge, z: 0 }
+    case 2:
+      return { x: 0, z: edge }
+    case 3:
+      return { x: -edge, z: 0 }
+  }
+}
+
+export function distanceToDoor(pose: PlayerPose, direction: DirectionIndex): number {
+  const position = doorWorldPosition(direction)
+  return Math.hypot(pose.x - position.x, pose.z - position.z)
+}
+
+export function isDoorReachable(pose: PlayerPose, direction: DirectionIndex): boolean {
+  const room = roomPositionFromPose(pose)
+  if (!canMove(room, direction, 1)) {
+    return false
+  }
+
+  const doorAxis = direction === 0 || direction === 2 ? pose.x : pose.z
+  return Math.abs(doorAxis) <= DOOR_HALF_WIDTH + PLAYER_RADIUS && distanceToDoor(pose, direction) <= INTERACTION_RADIUS
+}
+
+export function enterDoor(pose: PlayerPose, direction: DirectionIndex): MoveResult {
+  const room = roomPositionFromPose(pose)
+  if (!canMove(room, direction, 1)) {
+    return { pose, blocked: direction }
+  }
+  if (!isDoorReachable(pose, direction)) {
+    return { pose, blocked: direction, door: direction }
+  }
+
+  const destination = nextRoom(room, direction, 1)
+  return {
+    pose: {
+      ...pose,
+      roomQ: destination.q,
+      roomR: destination.r,
+      x: entryXForDirection(direction, pose.x),
+      z: entryZForDirection(direction, pose.z),
+    },
+    crossed: direction,
+  }
+}
+
 export function poseNearBook(address: BookAddress): PlayerPose {
   const position = bookWorldPosition(address)
   const wall = positiveModulo(address.wall, WALL_COUNT) as DirectionIndex
@@ -176,19 +229,7 @@ function resolveBoundary(
   direction: DirectionIndex,
 ): MoveResult {
   const doorAxis = direction === 0 || direction === 2 ? targetX : targetZ
-  if (Math.abs(doorAxis) <= DOOR_HALF_WIDTH && canMove(room, direction, 1)) {
-    const destination = nextRoom(room, direction, 1)
-    return {
-      pose: {
-        ...pose,
-        roomQ: destination.q,
-        roomR: destination.r,
-        x: entryXForDirection(direction, targetX),
-        z: entryZForDirection(direction, targetZ),
-      },
-      crossed: direction,
-    }
-  }
+  const isOpenableDoor = Math.abs(doorAxis) <= DOOR_HALF_WIDTH && canMove(room, direction, 1)
 
   return {
     pose: {
@@ -197,6 +238,7 @@ function resolveBoundary(
       z: clampBoundaryZ(direction, targetZ),
     },
     blocked: direction,
+    door: isOpenableDoor ? direction : undefined,
   }
 }
 

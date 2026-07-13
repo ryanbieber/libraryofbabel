@@ -8,7 +8,10 @@ import {
   STARTING_PLAYER_POSE,
   bookWorldPosition,
   distanceToBook,
+  distanceToDoor,
+  enterDoor,
   isBookReachable,
+  isDoorReachable,
   movePose,
   poseNearBook,
   rotatePose,
@@ -16,9 +19,23 @@ import {
 } from './roomGeometry'
 
 describe('first-person room geometry', () => {
-  it('moves through an available doorway and enters the neighboring room', () => {
+  it('stops at an available doorway until the door is opened', () => {
     const result = movePose({ ...STARTING_PLAYER_POSE, z: -ROOM_HALF_SIZE + PLAYER_RADIUS + 0.02 }, 1, 0, 0.2)
 
+    expect(result.crossed).toBeUndefined()
+    expect(result.blocked).toBe(0)
+    expect(result.door).toBe(0)
+    expect(result.pose.roomQ).toBe(0)
+    expect(result.pose.roomR).toBe(0)
+    expect(result.pose.z).toBe(-ROOM_HALF_SIZE + PLAYER_RADIUS)
+  })
+
+  it('opens a nearby available door and enters the neighboring room', () => {
+    const pose = { ...STARTING_PLAYER_POSE, z: -ROOM_HALF_SIZE + PLAYER_RADIUS + 0.02 }
+    const result = enterDoor(pose, 0)
+
+    expect(distanceToDoor(pose, 0)).toBeLessThan(INTERACTION_RADIUS)
+    expect(isDoorReachable(pose, 0)).toBe(true)
     expect(result.crossed).toBe(0)
     expect(result.pose.roomQ).toBe(0)
     expect(result.pose.roomR).toBe(-1)
@@ -34,6 +51,7 @@ describe('first-person room geometry', () => {
     )
 
     expect(result.blocked).toBe(0)
+    expect(result.door).toBeUndefined()
     expect(result.pose.roomR).toBe(0)
     expect(result.pose.z).toBe(-ROOM_HALF_SIZE + PLAYER_RADIUS)
   })

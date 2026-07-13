@@ -6,6 +6,7 @@ import {
   nearestRoom,
   roomDoors,
   roomHasFeature,
+  type DirectionIndex,
 } from './lib/level'
 import type { BookAddress } from './lib/library'
 import {
@@ -24,7 +25,9 @@ import {
   booksForRoom,
   directionLabel,
   distanceToBook,
+  enterDoor,
   isBookReachable,
+  isDoorReachable,
   movePose,
   roomPositionFromPose,
   rotatePose,
@@ -221,19 +224,17 @@ function App() {
     setPlayerPose(result.pose)
 
     if (result.crossed !== undefined) {
-      const destination = nearestRoom(roomPositionFromPose(result.pose))
-      setReaderOpen(false)
-      setSelectedBook((current) =>
-        nearbyBookAddress(result.pose.roomQ, result.pose.roomR, yawToDirection(result.pose.yaw), current.shelf, current.book),
-      )
-      setMessage(`You pass through the ${directionLabel(result.crossed)} door into ${destination.name}.`)
-      if (showBlockedMessage) triggerCue('step')
+      completeDoorTransition(result.crossed, result.pose, showBlockedMessage)
       return
     }
 
     if (result.blocked !== undefined) {
       if (showBlockedMessage) {
-        setMessage(`The ${directionLabel(result.blocked)} wall has no open passage here.`)
+        setMessage(
+          result.door !== undefined
+            ? `The ${directionLabel(result.door)} door is shut. Click or tap it to open it.`
+            : `The ${directionLabel(result.blocked)} wall has no open passage here.`,
+        )
         triggerCue('step')
       }
       return
@@ -242,6 +243,37 @@ function App() {
     if (showBlockedMessage) {
       triggerCue('step')
     }
+  }
+
+  function openDoor(direction: DirectionIndex) {
+    const pose = playerPoseRef.current
+    const availableDoors = roomDoors(roomPositionFromPose(pose))
+    touchMovementRef.current = { forward: 0, strafe: 0 }
+
+    if (!availableDoors.includes(direction)) {
+      setMessage(`The ${directionLabel(direction)} wall has no open passage here.`)
+      triggerCue('step')
+      return
+    }
+    if (!isDoorReachable(pose, direction)) {
+      setMessage(`Move closer to the ${directionLabel(direction)} door.`)
+      triggerCue('step')
+      return
+    }
+
+    const result = enterDoor(pose, direction)
+    if (result.crossed !== undefined) {
+      completeDoorTransition(result.crossed, result.pose)
+    }
+  }
+
+  function completeDoorTransition(direction: DirectionIndex, pose: PlayerPose, showCue = true) {
+    const destination = nearestRoom(roomPositionFromPose(pose))
+    setPlayerPose(pose)
+    setReaderOpen(false)
+    setSelectedBook((current) => nearbyBookAddress(pose.roomQ, pose.roomR, yawToDirection(pose.yaw), current.shelf, current.book))
+    setMessage(`You open the ${directionLabel(direction)} door and enter ${destination.name}.`)
+    if (showCue) triggerCue('step')
   }
 
   function rotatePlayer(deltaYaw: number, cue?: MovementCue) {
@@ -314,11 +346,12 @@ function App() {
             facingLabel={facingLabel}
             nearbyBooks={nearbyBooks}
             onOpenBook={openBook}
+            onOpenDoor={openDoor}
             onLook={(deltaYaw) => rotatePlayer(deltaYaw)}
+            onTouchForwardStart={() => movePlayer(1, 0, STEP_DISTANCE * 0.55)}
             onTouchMoveChange={(movement) => {
               touchMovementRef.current = movement
             }}
-            onTouchStep={(movement) => movePlayer(movement.forward, movement.strafe, STEP_DISTANCE * 0.55)}
           />
         </div>
 
@@ -351,8 +384,8 @@ function SplashScreen({ onStart }: { onStart: () => void }) {
         <p className="splash-kicker">Library of Babel</p>
         <h1>Enter the stacks</h1>
         <p>Move with WASD. Use the arrow keys to turn.</p>
-        <p>On a touchscreen, drag to look and hold the top, bottom, or sides of the room to move.</p>
-        <p>Click or tap a nearby volume to open it. Press E in a stair room.</p>
+        <p>On mobile, touch and hold the room to walk forward. Drag while holding to look around.</p>
+        <p>Click or tap a nearby volume or door to open it. Press E in a stair room.</p>
         <button type="button" onClick={onStart}>
           Enter Library
         </button>

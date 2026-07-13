@@ -41,9 +41,10 @@ type ArenaViewportProps = {
   facingLabel: string
   nearbyBooks: NearbyBook[]
   onOpenBook: (address: BookAddress) => void
+  onOpenDoor: (direction: DirectionIndex) => void
   onLook: (deltaYaw: number) => void
+  onTouchForwardStart: () => void
   onTouchMoveChange: (movement: TouchMovement) => void
-  onTouchStep: (movement: TouchMovement) => void
 }
 
 const roomSize = ROOM_HALF_SIZE * 2
@@ -61,9 +62,10 @@ export function ArenaViewport({
   facingLabel,
   nearbyBooks,
   onOpenBook,
+  onOpenDoor,
   onLook,
+  onTouchForwardStart,
   onTouchMoveChange,
-  onTouchStep,
 }: ArenaViewportProps) {
   const canUseWebGL = useWebGLAvailable()
   const dragRef = useRef<{ pointerId: number; lastX: number; isTouch: boolean } | null>(null)
@@ -75,13 +77,9 @@ export function ArenaViewport({
     const isTouch = event.pointerType !== 'mouse'
     dragRef.current = { pointerId: event.pointerId, lastX: event.clientX, isTouch }
     event.currentTarget.setPointerCapture?.(event.pointerId)
-
     if (isTouch) {
-      const movement = movementFromPointer(event.currentTarget, event.clientX, event.clientY)
-      onTouchMoveChange(movement)
-      if (movement.forward !== 0 || movement.strafe !== 0) {
-        onTouchStep(movement)
-      }
+      onTouchMoveChange({ forward: 1, strafe: 0 })
+      onTouchForwardStart()
     }
   }
 
@@ -91,17 +89,16 @@ export function ArenaViewport({
 
     const deltaX = event.clientX - drag.lastX
     dragRef.current = { ...drag, lastX: event.clientX }
-    onLook(deltaX * 0.004)
-
-    if (drag.isTouch) {
-      onTouchMoveChange(movementFromPointer(event.currentTarget, event.clientX, event.clientY))
-    }
+    onLook(deltaX * (drag.isTouch ? 0.006 : 0.004))
   }
 
   function handlePointerEnd(event: ReactPointerEvent<HTMLDivElement>) {
-    if (dragRef.current?.pointerId === event.pointerId) {
+    const drag = dragRef.current
+    if (drag?.pointerId === event.pointerId) {
       dragRef.current = null
-      onTouchMoveChange({ forward: 0, strafe: 0 })
+      if (drag.isTouch) {
+        onTouchMoveChange({ forward: 0, strafe: 0 })
+      }
     }
   }
 
@@ -127,6 +124,7 @@ export function ArenaViewport({
             selectedBook={selectedBook}
             movementCue={movementCue}
             onOpenBook={onOpenBook}
+            onOpenDoor={onOpenDoor}
           />
         </Canvas>
       ) : (
@@ -143,18 +141,27 @@ export function ArenaViewport({
         <span>{`room ${currentRoom.q},${currentRoom.r} / ${facingLabel} view`}</span>
       </div>
       <div className="door-strip" aria-label="Room doors">
-        {cardinalDirections.map((direction, index) => (
-          <span
-            key={direction.label}
-            className={[
-              'door-chip',
-              doors.includes(index as DirectionIndex) ? 'available' : 'sealed',
-              index === facing ? 'facing' : '',
-            ].join(' ')}
-          >
-            {direction.shortLabel}
-          </span>
-        ))}
+        {cardinalDirections.map((direction, index) => {
+          const doorIndex = index as DirectionIndex
+          const isAvailable = doors.includes(doorIndex)
+          const className = ['door-chip', isAvailable ? 'available' : 'sealed', index === facing ? 'facing' : ''].join(' ')
+
+          return isAvailable ? (
+            <button
+              type="button"
+              key={direction.label}
+              className={className}
+              aria-label={`Open ${direction.label} door`}
+              onClick={() => onOpenDoor(doorIndex)}
+            >
+              {direction.shortLabel}
+            </button>
+          ) : (
+            <span key={direction.label} className={className} aria-label={`${direction.label} door sealed`}>
+              {direction.shortLabel}
+            </span>
+          )
+        })}
       </div>
       {nearbyBooks.length > 0 ? (
         <div className="nearby-book-list" aria-label="Nearby shelf volumes">
@@ -175,20 +182,6 @@ export function ArenaViewport({
   )
 }
 
-function movementFromPointer(element: HTMLDivElement, clientX: number, clientY: number): TouchMovement {
-  const rect = element.getBoundingClientRect()
-  const width = rect.width || window.innerWidth || 390
-  const height = rect.height || window.innerHeight || 844
-  const safeClientX = Number.isFinite(clientX) ? clientX : width / 2
-  const safeClientY = Number.isFinite(clientY) ? clientY : 0
-  const x = rect.width ? safeClientX - rect.left : safeClientX
-  const y = rect.height ? safeClientY - rect.top : safeClientY
-  const forward = y < height * 0.42 ? 1 : y > height * 0.68 ? -1 : 0
-  const strafe = x < width * 0.24 ? -1 : x > width * 0.76 ? 1 : 0
-
-  return { forward, strafe }
-}
-
 function isInteractiveTarget(target: EventTarget | null): boolean {
   return target instanceof Element && Boolean(target.closest('button, input, textarea, select, a'))
 }
@@ -205,6 +198,7 @@ function ArenaScene({
   selectedBook,
   movementCue,
   onOpenBook,
+  onOpenDoor,
 }: {
   playerPose: PlayerPose
   currentRoom: RoomPosition
@@ -212,6 +206,7 @@ function ArenaScene({
   selectedBook: BookAddress
   movementCue: MovementCue
   onOpenBook: (address: BookAddress) => void
+  onOpenDoor: (direction: DirectionIndex) => void
 }) {
   const textures = useArenaTextures()
 
@@ -234,7 +229,13 @@ function ArenaScene({
         <meshStandardMaterial map={textures.ceiling} roughness={1} side={THREE.DoubleSide} />
       </mesh>
       {cardinalDirections.map((_, wall) => (
-        <RoomWall key={`wall:${wall}`} wall={wall as DirectionIndex} hasDoor={doors.includes(wall as DirectionIndex)} texture={textures.wall} />
+        <RoomWall
+          key={`wall:${wall}`}
+          wall={wall as DirectionIndex}
+          hasDoor={doors.includes(wall as DirectionIndex)}
+          texture={textures.wall}
+          onOpenDoor={onOpenDoor}
+        />
       ))}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]}>
         <planeGeometry args={[1.8, 2.8]} />
@@ -253,6 +254,7 @@ function ArenaScene({
           selectedBook={selectedBook}
           playerPose={playerPose}
           onOpenBook={onOpenBook}
+          onOpenDoor={onOpenDoor}
         />
       ))}
       <Stairs />
@@ -271,7 +273,17 @@ function PlayerCamera({ playerPose, movementCue }: { playerPose: PlayerPose; mov
   return null
 }
 
-function RoomWall({ wall, hasDoor, texture }: { wall: DirectionIndex; hasDoor: boolean; texture: THREE.DataTexture }) {
+function RoomWall({
+  wall,
+  hasDoor,
+  texture,
+  onOpenDoor,
+}: {
+  wall: DirectionIndex
+  hasDoor: boolean
+  texture: THREE.DataTexture
+  onOpenDoor: (direction: DirectionIndex) => void
+}) {
   const transform = wallTransform(wall)
 
   return (
@@ -280,26 +292,57 @@ function RoomWall({ wall, hasDoor, texture }: { wall: DirectionIndex; hasDoor: b
         <planeGeometry args={[roomSize, 3.08]} />
         <meshStandardMaterial map={texture} roughness={0.92} side={THREE.DoubleSide} />
       </mesh>
-      {hasDoor ? (
-        <group position={[0, -0.52, 0.035]}>
-          <mesh>
-            <boxGeometry args={[1.02, 1.05, 0.08]} />
-            <meshStandardMaterial color="#060507" roughness={1} />
-          </mesh>
-          <mesh position={[0, 0.58, 0.025]}>
-            <boxGeometry args={[1.18, 0.12, 0.12]} />
-            <meshStandardMaterial color="#806c55" roughness={0.9} />
-          </mesh>
-          <mesh position={[-0.59, 0.02, 0.025]}>
-            <boxGeometry args={[0.1, 1.12, 0.12]} />
-            <meshStandardMaterial color="#806c55" roughness={0.9} />
-          </mesh>
-          <mesh position={[0.59, 0.02, 0.025]}>
-            <boxGeometry args={[0.1, 1.12, 0.12]} />
-            <meshStandardMaterial color="#806c55" roughness={0.9} />
-          </mesh>
-        </group>
-      ) : null}
+      {hasDoor ? <Doorway onOpen={() => onOpenDoor(wall)} /> : null}
+    </group>
+  )
+}
+
+function Doorway({ compact = false, onOpen }: { compact?: boolean; onOpen: () => void }) {
+  const width = compact ? 1.04 : 1.2
+  const height = compact ? 0.98 : 1.12
+  const y = compact ? -0.43 : -0.52
+  const z = compact ? 0.23 : 0.06
+
+  return (
+    <group
+      position={[0, y, z]}
+      onClick={(event) => {
+        event.stopPropagation()
+        onOpen()
+      }}
+    >
+      <mesh position={[0, 0.02, 0.16]}>
+        <boxGeometry args={[width * 0.86, height * 0.82, 0.06]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+      <mesh position={[0, 0, -0.04]}>
+        <boxGeometry args={[width, height, 0.1]} />
+        <meshStandardMaterial color="#080708" roughness={1} />
+      </mesh>
+      <mesh position={[0, 0.08, -0.01]}>
+        <boxGeometry args={[width * 0.68, height * 0.62, 0.06]} />
+        <meshStandardMaterial color="#11181c" roughness={1} emissive="#071013" emissiveIntensity={0.35} />
+      </mesh>
+      <mesh position={[0, height / 2 + 0.04, 0.06]}>
+        <boxGeometry args={[width + 0.22, 0.16, 0.2]} />
+        <meshStandardMaterial color="#826b50" roughness={0.92} />
+      </mesh>
+      <mesh position={[-width / 2 - 0.07, 0, 0.06]}>
+        <boxGeometry args={[0.14, height + 0.18, 0.2]} />
+        <meshStandardMaterial color="#806044" roughness={0.95} />
+      </mesh>
+      <mesh position={[width / 2 + 0.07, 0, 0.06]}>
+        <boxGeometry args={[0.14, height + 0.18, 0.2]} />
+        <meshStandardMaterial color="#806044" roughness={0.95} />
+      </mesh>
+      <mesh position={[0, -height / 2 + 0.07, 0.08]}>
+        <boxGeometry args={[width * 0.94, 0.12, 0.26]} />
+        <meshStandardMaterial color="#8a8470" roughness={0.98} />
+      </mesh>
+      <mesh position={[width * 0.33, -0.02, 0.1]}>
+        <sphereGeometry args={[0.035, 8, 8]} />
+        <meshStandardMaterial color="#cfa94c" metalness={0.25} roughness={0.48} />
+      </mesh>
     </group>
   )
 }
@@ -338,6 +381,7 @@ function ShelfWall({
   selectedBook,
   playerPose,
   onOpenBook,
+  onOpenDoor,
 }: {
   currentRoom: RoomPosition
   wall: DirectionIndex
@@ -345,6 +389,7 @@ function ShelfWall({
   selectedBook: BookAddress
   playerPose: PlayerPose
   onOpenBook: (address: BookAddress) => void
+  onOpenDoor: (direction: DirectionIndex) => void
 }) {
   const shelfWood = useMemo(() => new THREE.Color('#351d0f'), [])
   const transform = shelfTransform(wall)
@@ -355,22 +400,16 @@ function ShelfWall({
         <boxGeometry args={[6.04, 1.86, 0.18]} />
         <meshStandardMaterial color={shelfWood} roughness={1} />
       </mesh>
-      {hasDoor ? (
-        <mesh position={[0, -0.43, 0.2]}>
-          <boxGeometry args={[1.0, 0.96, 0.12]} />
-          <meshStandardMaterial color="#060507" roughness={1} />
-        </mesh>
-      ) : null}
       {Array.from({ length: SHELVES_PER_WALL }, (_, shelf) => (
         <group key={shelf} position={[0, 0.7 - shelf * 0.34, 0.1]}>
-          <mesh position={[0, -0.16, 0]}>
-            <boxGeometry args={[6.06, 0.035, 0.24]} />
-            <meshStandardMaterial color="#6d3a18" roughness={1} />
-          </mesh>
+          <ShelfBoard hasDoorGap={hasDoor && shelf >= 2} />
           {Array.from({ length: BOOKS_PER_SHELF }, (_, book) => {
             const address = nearbyBookAddress(currentRoom.q, currentRoom.r, wall, shelf, book)
             const isSelected = addressLabel(address) === addressLabel(selectedBook)
             const isReachable = distanceToBook(playerPose, address) <= INTERACTION_RADIUS
+            const x = bookXPosition(book)
+            if (hasDoor && shelf >= 2 && Math.abs(x) < 0.72) return null
+
             return (
               <BookSpine
                 key={`${shelf}:${book}`}
@@ -385,7 +424,32 @@ function ShelfWall({
           })}
         </group>
       ))}
+      {hasDoor ? <Doorway compact onOpen={() => onOpenDoor(wall)} /> : null}
     </group>
+  )
+}
+
+function ShelfBoard({ hasDoorGap }: { hasDoorGap: boolean }) {
+  if (!hasDoorGap) {
+    return (
+      <mesh position={[0, -0.16, 0]}>
+        <boxGeometry args={[6.06, 0.035, 0.24]} />
+        <meshStandardMaterial color="#6d3a18" roughness={1} />
+      </mesh>
+    )
+  }
+
+  return (
+    <>
+      <mesh position={[-1.92, -0.16, 0]}>
+        <boxGeometry args={[2.22, 0.035, 0.24]} />
+        <meshStandardMaterial color="#6d3a18" roughness={1} />
+      </mesh>
+      <mesh position={[1.92, -0.16, 0]}>
+        <boxGeometry args={[2.22, 0.035, 0.24]} />
+        <meshStandardMaterial color="#6d3a18" roughness={1} />
+      </mesh>
+    </>
   )
 }
 
@@ -425,6 +489,10 @@ function BookSpine({
       />
     </mesh>
   )
+}
+
+function bookXPosition(book: number): number {
+  return -shelfWidth / 2 + bookSpacing * (book + 0.5)
 }
 
 function Torch({ position }: { position: [number, number, number] }) {

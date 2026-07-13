@@ -181,16 +181,29 @@
   display: grid;
   height: 26px;
   place-items: center;
+  padding: 0;
   border: 2px solid #3a3326;
   background: rgb(7 7 12 / 86%);
   color: #6e6550;
+  font: inherit;
   font-size: 0.7rem;
   font-weight: 900;
+  line-height: 1;
+}
+
+button.door-chip {
+  cursor: pointer;
 }
 
 .door-chip.available {
   border-color: #8c5b1a;
   color: #f6d67a;
+}
+
+button.door-chip.available:hover,
+button.door-chip.available:focus-visible {
+  border-color: #fff1ac;
+  outline: 0;
 }
 
 .door-chip.available.facing {
