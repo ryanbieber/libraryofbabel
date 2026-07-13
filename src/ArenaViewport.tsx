@@ -11,6 +11,7 @@ import {
   nearbyBookAddress,
 } from './lib/library'
 import { cameraYawFromPlayerYaw } from './lib/camera'
+import type { LibraryNpc } from './lib/npcs'
 import {
   INTERACTION_RADIUS,
   ROOM_HALF_SIZE,
@@ -41,8 +42,11 @@ type ArenaViewportProps = {
   movementCue: MovementCue
   facingLabel: string
   nearbyBooks: NearbyBook[]
+  npc: LibraryNpc | null
+  canTalkToNpc: boolean
   onOpenBook: (address: BookAddress) => void
   onOpenDoor: (direction: DirectionIndex) => void
+  onTalkToNpc: () => void
   onLook: (deltaYaw: number) => void
   onTouchForwardStart: () => void
   onTouchMoveChange: (movement: TouchMovement) => void
@@ -64,8 +68,11 @@ export function ArenaViewport({
   movementCue,
   facingLabel,
   nearbyBooks,
+  npc,
+  canTalkToNpc,
   onOpenBook,
   onOpenDoor,
+  onTalkToNpc,
   onLook,
   onTouchForwardStart,
   onTouchMoveChange,
@@ -126,8 +133,10 @@ export function ArenaViewport({
             doors={doors}
             selectedBook={selectedBook}
             movementCue={movementCue}
+            npc={npc}
             onOpenBook={onOpenBook}
             onOpenDoor={onOpenDoor}
+            onTalkToNpc={onTalkToNpc}
           />
         </Canvas>
       ) : (
@@ -181,6 +190,11 @@ export function ArenaViewport({
           ))}
         </div>
       ) : null}
+      {npc && canTalkToNpc ? (
+        <button type="button" className="npc-talk-button" aria-label={`Talk to ${npc.name}`} onClick={onTalkToNpc}>
+          Talk
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -200,16 +214,20 @@ function ArenaScene({
   doors,
   selectedBook,
   movementCue,
+  npc,
   onOpenBook,
   onOpenDoor,
+  onTalkToNpc,
 }: {
   playerPose: PlayerPose
   currentRoom: RoomPosition
   doors: DirectionIndex[]
   selectedBook: BookAddress
   movementCue: MovementCue
+  npc: LibraryNpc | null
   onOpenBook: (address: BookAddress) => void
   onOpenDoor: (direction: DirectionIndex) => void
+  onTalkToNpc: () => void
 }) {
   const textures = useArenaTextures()
 
@@ -246,6 +264,7 @@ function ArenaScene({
       </mesh>
 
       <ReadingTable />
+      {npc ? <SeatedMonk npc={npc} onTalk={onTalkToNpc} /> : null}
       <Torch position={[-2.95, 1.26, -2.95]} />
       <Torch position={[2.95, 1.26, 2.95]} />
       {cardinalDirections.map((_, wall) => (
@@ -262,6 +281,68 @@ function ArenaScene({
       ))}
       <Stairs />
     </>
+  )
+}
+
+function SeatedMonk({ npc, onTalk }: { npc: LibraryNpc; onTalk: () => void }) {
+  const groupRef = useRef<THREE.Group>(null)
+  const hoodRef = useRef<THREE.Mesh>(null)
+  const bookGlow = npc.quest === 'crimson-book' ? '#7b1116' : '#302000'
+
+  useFrame(({ clock }) => {
+    const breath = Math.sin(clock.elapsedTime * 1.8) * 0.018
+    if (groupRef.current) {
+      groupRef.current.position.y = breath
+    }
+    if (hoodRef.current) {
+      hoodRef.current.rotation.x = -0.26 + Math.sin(clock.elapsedTime * 1.2) * 0.035
+    }
+  })
+
+  return (
+    <group
+      ref={groupRef}
+      position={[npc.position.x, 0.72, npc.position.z - 0.35]}
+      rotation={[0, Math.PI * 0.88, 0]}
+      scale={1.18}
+      onClick={(event) => {
+        event.stopPropagation()
+        onTalk()
+      }}
+    >
+      <mesh position={[0, 0.33, -0.03]}>
+        <boxGeometry args={[0.6, 0.66, 0.36]} />
+        <meshStandardMaterial color="#251820" roughness={0.98} />
+      </mesh>
+      <mesh position={[0, 0.06, -0.02]} rotation={[0.08, 0, 0]}>
+        <coneGeometry args={[0.42, 0.82, 6]} />
+        <meshStandardMaterial color="#1d141a" roughness={1} />
+      </mesh>
+      <mesh ref={hoodRef} position={[0, 0.78, -0.1]} rotation={[-0.26, 0, 0]}>
+        <coneGeometry args={[0.28, 0.42, 7]} />
+        <meshStandardMaterial color="#0b090c" roughness={1} />
+      </mesh>
+      <mesh position={[0, 0.67, -0.02]} rotation={[-0.18, 0, 0]}>
+        <sphereGeometry args={[0.16, 10, 8]} />
+        <meshStandardMaterial color="#806446" roughness={0.92} />
+      </mesh>
+      <mesh position={[-0.23, 0.43, 0.18]} rotation={[0.9, 0.32, 0.16]}>
+        <capsuleGeometry args={[0.045, 0.32, 4, 6]} />
+        <meshStandardMaterial color="#6f543b" roughness={0.9} />
+      </mesh>
+      <mesh position={[0.23, 0.43, 0.18]} rotation={[0.9, -0.32, -0.16]}>
+        <capsuleGeometry args={[0.045, 0.32, 4, 6]} />
+        <meshStandardMaterial color="#6f543b" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 0.315, 0.34]} rotation={[-0.18, 0, 0]}>
+        <boxGeometry args={[0.52, 0.026, 0.3]} />
+        <meshStandardMaterial color="#d8bd7d" roughness={0.86} emissive={bookGlow} emissiveIntensity={0.22} />
+      </mesh>
+      <mesh position={[0, 0.58, 0]}>
+        <boxGeometry args={[0.76, 1.1, 0.62]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+    </group>
   )
 }
 
@@ -352,7 +433,7 @@ function Doorway({ compact = false, onOpen }: { compact?: boolean; onOpen: () =>
 
 function ReadingTable() {
   return (
-    <group position={[0, 0.54, 0]}>
+    <group position={[0, 0.54, -1.25]}>
       <mesh position={[0, 0.24, 0]}>
         <boxGeometry args={[1.4, 0.18, 0.74]} />
         <meshStandardMaterial color="#4a2814" roughness={0.9} />

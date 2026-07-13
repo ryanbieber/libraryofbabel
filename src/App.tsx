@@ -34,6 +34,7 @@ import {
   yawToDirection,
   type PlayerPose,
 } from './lib/roomGeometry'
+import { isNpcReachable, npcForRoom, type LibraryNpc } from './lib/npcs'
 import { highlightPage, type HighlightSegment } from './lib/words'
 import './App.css'
 
@@ -57,6 +58,7 @@ function App() {
   const [playerPose, setPlayerPoseState] = useState<PlayerPose>({ ...STARTING_PLAYER_POSE })
   const [selectedBook, setSelectedBook] = useState<BookAddress>(defaultAddress)
   const [readerOpen, setReaderOpen] = useState(false)
+  const [dialogueNpc, setDialogueNpc] = useState<LibraryNpc | null>(null)
   const [splashOpen, setSplashOpen] = useState(true)
   const [movementCue, setMovementCue] = useState<MovementCue>('idle')
   const [page, setPage] = useState(1)
@@ -78,6 +80,11 @@ function App() {
   const doors = roomDoors(currentRoom)
   const facing = yawToDirection(playerPose.yaw)
   const facingLabel = cardinalDirections[facing].label
+  const currentNpc = useMemo(
+    () => npcForRoom(floor, { q: currentRoom.q, r: currentRoom.r }),
+    [floor, currentRoom.q, currentRoom.r],
+  )
+  const canTalkToNpc = isNpcReachable(playerPose, currentNpc)
   const canUseStairsUp = roomHasFeature(currentRoom, 'stairs-up')
   const canUseStairsDown = roomHasFeature(currentRoom, 'stairs-down')
   const nearbyBooks: NearbyBook[] = useMemo(
@@ -119,12 +126,16 @@ function App() {
   }
 
   useEffect(() => {
-    modalOpenRef.current = readerOpen || splashOpen
+    modalOpenRef.current = readerOpen || splashOpen || dialogueNpc !== null
     if (modalOpenRef.current) {
       keysPressed.current.clear()
       touchMovementRef.current = { forward: 0, strafe: 0 }
     }
-  }, [readerOpen, splashOpen])
+  }, [readerOpen, splashOpen, dialogueNpc])
+
+  useEffect(() => {
+    setDialogueNpc(null)
+  }, [floor, currentRoom.q, currentRoom.r])
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -276,6 +287,7 @@ function App() {
     const destination = nearestRoom(roomPositionFromPose(pose))
     setPlayerPose(pose)
     setReaderOpen(false)
+    setDialogueNpc(null)
     setSelectedBook((current) => nearbyBookAddress(pose.roomQ, pose.roomR, yawToDirection(pose.yaw), current.shelf, current.book))
     setMessage(`You open the ${directionLabel(direction)} door and enter ${destination.name}.`)
     if (showCue) triggerCue('step')
@@ -306,6 +318,7 @@ function App() {
 
     setFloor((current) => current + delta)
     setReaderOpen(false)
+    setDialogueNpc(null)
     setMessage(delta > 0 ? 'You climb to the next floor. The floor plan repeats.' : 'You descend. The same floor plan waits below.')
   }
 
@@ -324,6 +337,7 @@ function App() {
 
   function openBook(address: BookAddress) {
     setSelectedBook(address)
+    setDialogueNpc(null)
     if (!isBookReachable(playerPoseRef.current, address)) {
       const wall = cardinalDirections[address.wall].label
       setReaderOpen(false)
@@ -334,6 +348,19 @@ function App() {
     setPage(1)
     setReaderOpen(true)
     setMessage('The volume opens like dry leather.')
+  }
+
+  function talkToNpc() {
+    if (!currentNpc) return
+    if (!isNpcReachable(playerPoseRef.current, currentNpc)) {
+      setDialogueNpc(null)
+      setMessage('Move closer to the hooded monk at the reading table.')
+      return
+    }
+
+    setReaderOpen(false)
+    setDialogueNpc(currentNpc)
+    setMessage('The hooded monk raises two ink-stained fingers from the open book.')
   }
 
   return (
@@ -350,8 +377,11 @@ function App() {
             movementCue={movementCue}
             facingLabel={facingLabel}
             nearbyBooks={nearbyBooks}
+            npc={currentNpc}
+            canTalkToNpc={canTalkToNpc && dialogueNpc === null}
             onOpenBook={openBook}
             onOpenDoor={openDoor}
+            onTalkToNpc={talkToNpc}
             onLook={(deltaYaw) => rotatePlayer(deltaYaw)}
             onTouchForwardStart={() => movePlayer(1, 0, STEP_DISTANCE * TOUCH_INITIAL_STEP_SCALE)}
             onTouchMoveChange={(movement) => {
@@ -378,6 +408,8 @@ function App() {
           onPageChange={setPage}
         />
       ) : null}
+
+      {dialogueNpc ? <NpcDialoguePanel npc={dialogueNpc} onClose={() => setDialogueNpc(null)} /> : null}
     </main>
   )
 }
@@ -452,6 +484,25 @@ function BookReader({
           <button type="button" onClick={() => onPageChange((current) => clampPage(current + 2))}>
             forward
           </button>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function NpcDialoguePanel({ npc, onClose }: { npc: LibraryNpc; onClose: () => void }) {
+  return (
+    <section className="npc-dialogue" aria-label="Monk dialogue">
+      <div className="npc-dialogue-panel">
+        <button type="button" className="close-reader" aria-label="Close monk dialogue" onClick={onClose}>
+          <X size={22} aria-hidden="true" />
+        </button>
+        <p className="splash-kicker">{npc.quest === 'messiah' ? 'Man of the Book' : 'Crimson rumor'}</p>
+        <h2>{npc.name}</h2>
+        <div className="npc-dialogue-lines">
+          {npc.dialogue.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
         </div>
       </div>
     </section>

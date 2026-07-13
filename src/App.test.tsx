@@ -50,6 +50,23 @@ describe('App interactions', () => {
     expect(screen.getByDisplayValue('1')).toBeInTheDocument()
   })
 
+  it('shows a reachable monk Talk action and opens then closes the dialogue panel', () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
+
+    const talkButton = screen.getByRole('button', { name: /Talk to Hooded keeper of the red rumor/ })
+    fireEvent.click(talkButton)
+
+    expect(screen.getByLabelText('Monk dialogue')).toBeInTheDocument()
+    expect(screen.getByText(/Crimson rumor/)).toBeInTheDocument()
+    expect(screen.getByText(/crimson book/i)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close monk dialogue' }))
+
+    expect(screen.queryByLabelText('Monk dialogue')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Talk to Hooded keeper of the red rumor/ })).toBeInTheDocument()
+  })
+
   it('requires clicking a nearby door to enter mapped rooms, uses stairs with E, and blocks sealed exits', () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
