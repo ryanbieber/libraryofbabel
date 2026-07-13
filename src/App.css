@@ -19,7 +19,7 @@
 
 .scene {
   position: absolute;
-  inset: 0 0 116px;
+  inset: 0;
   overflow: hidden;
   background: #09090b;
 }
@@ -45,7 +45,13 @@
   inset: 0;
   background:
     linear-gradient(180deg, #777982 0 19%, #555961 19% 23%, #14161c 23% 100%);
+  cursor: grab;
   transform-origin: 50% 62%;
+  touch-action: none;
+}
+
+.arena-viewport:active {
+  cursor: grabbing;
 }
 
 .arena-viewport canvas {
@@ -53,56 +59,6 @@
   width: 100% !important;
   height: 100% !important;
   image-rendering: pixelated;
-}
-
-.viewport-move-zones {
-  position: absolute;
-  inset: 0;
-  z-index: 7;
-  pointer-events: none;
-}
-
-.viewport-zone {
-  position: absolute;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  pointer-events: auto;
-}
-
-.viewport-zone:hover,
-.viewport-zone:focus-visible {
-  outline: 2px solid rgb(255 224 112 / 38%);
-  outline-offset: -8px;
-  background: rgb(255 224 112 / 5%);
-}
-
-.viewport-zone-left {
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 22%;
-}
-
-.viewport-zone-right {
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 22%;
-}
-
-.viewport-zone-forward {
-  top: 0;
-  right: 22%;
-  left: 22%;
-  height: 58%;
-}
-
-.viewport-zone-back {
-  right: 22%;
-  bottom: 0;
-  left: 22%;
-  height: 42%;
 }
 
 .arena-canvas-unavailable {
@@ -277,8 +233,54 @@
   outline: 2px solid rgb(255 241 172 / 72%);
 }
 
-.command-bar button,
-.reader-actions button {
+.nearby-book-list {
+  position: absolute;
+  bottom: 52px;
+  left: 12px;
+  z-index: 8;
+  display: flex;
+  max-width: min(520px, calc(100vw - 24px));
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.nearby-book-list button {
+  display: grid;
+  grid-template-columns: 18px auto;
+  align-items: center;
+  min-width: 62px;
+  min-height: 38px;
+  padding: 4px 8px;
+  border: 2px solid rgb(246 214 122 / 78%);
+  background: rgb(8 8 11 / 88%);
+  color: #f6d67a;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+
+.nearby-book-list button:hover,
+.nearby-book-list button:focus-visible {
+  border-color: #fff1ac;
+  background: rgb(58 46 34 / 92%);
+  outline: 0;
+}
+
+.nearby-book-list span {
+  color: #d8c795;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.nearby-book-list strong {
+  overflow: hidden;
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-actions button,
+.splash-screen button {
   border: 2px solid #8c5b1a;
   background: linear-gradient(#25202a, #111018);
   color: #f6d67a;
@@ -291,7 +293,7 @@
 .message-bar {
   position: absolute;
   right: 0;
-  bottom: 86px;
+  bottom: 0;
   left: 0;
   z-index: 10;
   min-height: 30px;
@@ -301,74 +303,11 @@
   background: rgb(7 7 12 / 96%);
   color: #f2dfaa;
   font-size: 0.9rem;
-}
-
-.command-bar {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 10;
-  display: grid;
-  grid-template-columns: 190px minmax(260px, 1fr) 420px;
-  gap: 8px;
-  height: 86px;
-  padding: 7px;
-  border-top: 3px solid #24170c;
-  background:
-    linear-gradient(180deg, #282b35 0, #151720 48%, #07080c 100%);
-}
-
-.status-box {
-  display: grid;
-  align-content: center;
-  gap: 3px;
-  padding: 8px;
-  border: 2px solid #c69632;
-  background: #08080b;
-  color: #f6d67a;
-}
-
-.status-box span {
-  overflow: hidden;
-  color: #d8c795;
-  font-size: 0.8rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.move-pad {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(48px, 1fr));
-  gap: 8px;
-}
-
-.action-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr 64px 64px;
-  gap: 8px;
-}
-
-.command-bar button {
-  display: grid;
-  min-width: 0;
-  min-height: 48px;
-  place-items: center;
-}
-
-.command-bar button:disabled {
-  color: #6e6550;
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.command-bar button:not(:disabled):hover {
-  background: linear-gradient(#3a2e22, #181015);
-  color: #ffe39a;
+  pointer-events: none;
 }
 
 .book-reader,
-.help-panel {
+.splash-screen {
   position: fixed;
   inset: 0;
   z-index: 20;
@@ -378,10 +317,17 @@
   background: rgb(5 4 3 / 76%);
 }
 
-.help-panel > div {
+.splash-screen {
+  z-index: 30;
+  background:
+    linear-gradient(90deg, rgb(0 0 0 / 72%), rgb(0 0 0 / 38%), rgb(0 0 0 / 72%)),
+    rgb(5 4 3 / 82%);
+}
+
+.splash-panel {
   position: relative;
-  width: min(660px, calc(100vw - 48px));
-  padding: 30px;
+  width: min(620px, calc(100vw - 36px));
+  padding: 28px;
   border: 3px solid #2a180c;
   background: #d8bd7d;
   box-shadow:
@@ -390,18 +336,39 @@
   color: #241406;
 }
 
-.help-panel h2 {
-  margin: 8px 0 16px;
+.splash-kicker {
+  margin: 0 0 8px;
+  color: #7b1116;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.splash-panel h1 {
+  margin: 0 0 18px;
   font-family: Georgia, 'Times New Roman', serif;
   font-size: clamp(2rem, 5vw, 4rem);
   line-height: 0.98;
 }
 
-.help-panel p {
-  margin: 0 0 16px;
+.splash-panel p {
+  margin: 0 0 12px;
   color: #2f1d0b;
   font-size: 1.05rem;
-  line-height: 1.58;
+  line-height: 1.45;
+}
+
+.splash-screen button {
+  min-width: 164px;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 0 18px;
+}
+
+.splash-screen button:hover {
+  background: linear-gradient(#3a2e22, #181015);
+  color: #ffe39a;
 }
 
 .book-shell {
@@ -486,6 +453,13 @@
   white-space: pre;
 }
 
+.book-page mark.english-word {
+  padding: 0 1px;
+  background: #b2212a;
+  color: #fff1ac;
+  box-shadow: 0 0 0 1px rgb(82 22 10 / 22%);
+}
+
 .reader-actions {
   display: flex;
   justify-content: center;
@@ -519,35 +493,20 @@
 @media (max-width: 860px) {
   .arena-shell {
     align-items: start;
+    justify-items: start;
     padding: 0;
   }
 
   .game-frame {
-    width: min(100vw, 430px);
+    width: min(100vw, 390px);
     height: min(100vh, 860px);
   }
 
-  .scene {
-    bottom: 174px;
-  }
-
   .message-bar {
-    bottom: 174px;
-  }
-
-  .command-bar {
-    grid-template-columns: 1fr;
-    height: 174px;
-  }
-
-  .status-box {
-    grid-template-columns: repeat(3, 1fr);
-    align-content: stretch;
-    align-items: center;
-  }
-
-  .action-buttons {
-    grid-template-columns: repeat(4, 1fr);
+    bottom: 0;
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 0.86rem;
   }
 
   .book-hotspot-grid {
@@ -555,6 +514,32 @@
     bottom: 27%;
     left: 17%;
     height: 23%;
+  }
+
+  .nearby-book-list {
+    right: 10px;
+    bottom: 58px;
+    left: 10px;
+    overflow-x: auto;
+  }
+
+  .splash-screen {
+    align-items: center;
+    justify-items: start;
+    padding: 24px;
+  }
+
+  .splash-panel {
+    width: min(342px, calc(100vw - 48px));
+    padding: 24px;
+  }
+
+  .splash-panel h1 {
+    font-size: 2rem;
+  }
+
+  .splash-panel p {
+    font-size: 0.98rem;
   }
 
   .book-spread {

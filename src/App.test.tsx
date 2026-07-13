@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/react'
-import { fireEvent } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
 describe('App interactions', () => {
@@ -10,69 +9,71 @@ describe('App interactions', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
   })
 
-  it('moves through the Arena viewport and opens a visible volume as an old-book reader', () => {
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+  })
+
+  it('starts with a splash screen that explains keyboard and touchscreen movement', () => {
     const { container } = render(<App />)
 
-    fireEvent.click(screen.getByLabelText('Open explanation'))
-    expect(container.querySelector('.help-panel')).toBeInTheDocument()
-    fireEvent.click(container.querySelector('.help-panel .close-reader')!)
+    expect(screen.getByLabelText('Start screen')).toBeInTheDocument()
+    expect(screen.getByText(/Move with WASD/)).toBeInTheDocument()
+    expect(screen.getByText(/On a touchscreen/)).toBeInTheDocument()
+    expect(container.querySelector('.command-bar')).not.toBeInTheDocument()
 
-    expect(container.querySelector('.scene-library')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
+
+    expect(screen.queryByLabelText('Start screen')).not.toBeInTheDocument()
     expect(screen.getByTestId('arena-viewport')).toBeInTheDocument()
-    expect(screen.getByText('FLOOR 0')).toBeInTheDocument()
-    expect(screen.getByText('central catalog')).toBeInTheDocument()
-    expect(screen.getByText('north door')).toBeInTheDocument()
+  })
 
-    expect(screen.getByText('stairs up')).toBeDisabled()
-    expect(screen.getByText('FLOOR 0')).toBeInTheDocument()
+  it('moves by touchscreen press regions and opens a reachable volume in the reader', () => {
+    const { container } = render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
 
-    fireEvent.click(container.querySelector('.move-pad [aria-label="Turn right"]')!)
-    expect(screen.getAllByText('east')).toHaveLength(2)
-    expect(container.querySelector('[aria-label="Open room 0,0 / east wall / shelf 2 / volume 8"]')).toBeInTheDocument()
+    const viewport = screen.getByTestId('arena-viewport')
+    expect(screen.queryByLabelText(/Open room 0,0 \/ north wall/)).not.toBeInTheDocument()
 
-    fireEvent.click(container.querySelector('.move-pad [aria-label="Forward"]')!)
-    expect(screen.getByText('ROOM 0,0')).toBeInTheDocument()
-    expect(screen.getByText('You move closer to the east wall. The volumes are within reach.')).toBeInTheDocument()
+    for (let step = 0; step < 6; step += 1) {
+      fireEvent.pointerDown(viewport, { button: 0, clientX: window.innerWidth / 2, clientY: 20, pointerId: step + 1, pointerType: 'touch' })
+      fireEvent.pointerUp(viewport, { pointerId: step + 1, pointerType: 'touch' })
+    }
 
-    fireEvent.click(container.querySelector('.move-pad [aria-label="Forward"]')!)
-    expect(screen.getByText('ROOM 1,0')).toBeInTheDocument()
-    expect(screen.getByText('east hall')).toBeInTheDocument()
-
-    fireEvent.click(container.querySelector('.viewport-zone-back')!)
-    expect(screen.getByText('ROOM 0,0')).toBeInTheDocument()
-
-    fireEvent.click(container.querySelector('.viewport-zone-forward')!)
-    expect(screen.getByText('ROOM 0,0')).toBeInTheDocument()
-
-    fireEvent.click(container.querySelector('.viewport-zone-forward')!)
-    expect(screen.getByText('ROOM 1,0')).toBeInTheDocument()
-
-    fireEvent.click(container.querySelector('.viewport-zone-forward')!)
-    expect(screen.getByText('ROOM 1,0')).toBeInTheDocument()
-
-    fireEvent.click(container.querySelector('.viewport-zone-forward')!)
-    expect(screen.getByText('ROOM 2,0')).toBeInTheDocument()
-    expect(screen.getByText('east archive')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('stairs up'))
-    expect(screen.getByText('FLOOR 1')).toBeInTheDocument()
-
-    fireEvent.keyDown(window, { key: 'ArrowLeft' })
-    expect(screen.getAllByText('north')).toHaveLength(2)
-
-    const volume = container.querySelector(
-      '[aria-label="Open room 2,0 / north wall / shelf 3 / volume 4"]',
-    )
-    expect(volume).toBeInTheDocument()
-    fireEvent.click(volume!)
-    expect(container.querySelector('.book-reader')).not.toBeInTheDocument()
-    expect(screen.getByText('You move closer to the north wall. The volumes are within reach.')).toBeInTheDocument()
-
-    fireEvent.click(volume!)
+    const volume = screen.getAllByRole('button', { name: /Open room 0,0 \/ north wall/ })[0]
+    fireEvent.click(volume)
 
     expect(container.querySelector('.book-reader')).toBeInTheDocument()
-    expect(container.querySelector('.close-reader')).toBeInTheDocument()
     expect(container.querySelector('.reader-actions')?.textContent).toContain('forward')
     expect(screen.getByDisplayValue('1')).toBeInTheDocument()
   })
+
+  it('walks through mapped rooms with keyboard controls, uses stairs with E, and blocks sealed exits', () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
+
+    pressKey('ArrowRight')
+    expect(screen.getByText('room 0,0 / east view')).toBeInTheDocument()
+
+    pressKey('w', 5)
+    expect(screen.getByText('room 1,0 / east view')).toBeInTheDocument()
+    expect(screen.getByText('east hall')).toBeInTheDocument()
+
+    pressKey('w', 10)
+    expect(screen.getByText('room 2,0 / east view')).toBeInTheDocument()
+    expect(screen.getByText('east archive')).toBeInTheDocument()
+
+    pressKey('e')
+    expect(screen.getByText('Floor 1')).toBeInTheDocument()
+
+    pressKey('w', 10)
+    expect(screen.getByText('The east wall has no open passage here.')).toBeInTheDocument()
+  })
 })
+
+function pressKey(key: string, times = 1) {
+  for (let index = 0; index < times; index += 1) {
+    fireEvent.keyDown(window, { key })
+    fireEvent.keyUp(window, { key })
+  }
+}

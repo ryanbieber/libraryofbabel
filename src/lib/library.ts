@@ -7,6 +7,8 @@ export const SYMBOLS_PER_LINE = 80
 export const SYMBOLS_PER_PAGE = LINES_PER_PAGE * SYMBOLS_PER_LINE
 export const SYMBOLS_PER_BOOK = PAGES_PER_BOOK * SYMBOLS_PER_PAGE
 export const WALL_COUNT = 4
+export const SHELVES_PER_WALL = 5
+export const BOOKS_PER_SHELF = 32
 
 const wallLabels = ['north', 'east', 'south', 'west'] as const
 
@@ -80,15 +82,15 @@ export function nearbyBookAddress(
     roomQ,
     roomR,
     wall: positiveModulo(wall, WALL_COUNT),
-    shelf: positiveModulo(shelf, 5),
-    book: positiveModulo(book, 18),
+    shelf: positiveModulo(shelf, SHELVES_PER_WALL),
+    book: positiveModulo(book, BOOKS_PER_SHELF),
   }
 }
 
 export function deterministicJump(seed: string): BookAddress {
   const q = signedHash(`${seed}:q`, 4800)
   const r = signedHash(`${seed}:r`, 4800)
-  return nearbyBookAddress(q, r, hashToIndex(`${seed}:wall`) % WALL_COUNT, hashToIndex(`${seed}:shelf`) % 5, hashToIndex(`${seed}:book`) % 18)
+  return nearbyBookAddress(q, r, hashToIndex(`${seed}:wall`) % WALL_COUNT, hashToIndex(`${seed}:shelf`) % SHELVES_PER_WALL, hashToIndex(`${seed}:book`) % BOOKS_PER_SHELF)
 }
 
 export function sequenceOdds(value: string): {

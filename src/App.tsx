@@ -1,139 +1,260 @@
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Dices, HelpCircle, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { X } from 'lucide-react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { ArenaViewport } from './ArenaViewport'
 import {
   cardinalDirections,
-  canMove,
-  levelRooms,
   nearestRoom,
-  nextRoom,
   roomDoors,
   roomHasFeature,
-  startingRoom,
-  type DirectionIndex,
 } from './lib/level'
 import type { BookAddress } from './lib/library'
 import {
-  LINES_PER_PAGE,
-  PAGES_PER_BOOK,
-  SYMBOLS_PER_BOOK,
-  SYMBOLS_PER_LINE,
   addressLabel,
   clampPage,
   defaultAddress,
-  deterministicJump,
   generatePage,
   nearbyBookAddress,
-  possibleBooksExponent,
 } from './lib/library'
+import {
+  INTERACTION_RADIUS,
+  KEYBOARD_TURN_SPEED,
+  STARTING_PLAYER_POSE,
+  STEP_DISTANCE,
+  WALK_SPEED,
+  booksForRoom,
+  directionLabel,
+  distanceToBook,
+  isBookReachable,
+  movePose,
+  roomPositionFromPose,
+  rotatePose,
+  yawToDirection,
+  type PlayerPose,
+} from './lib/roomGeometry'
+import { highlightPage, type HighlightSegment } from './lib/words'
 import './App.css'
 
-type MovementCue = 'idle' | 'step' | 'approach' | 'retreat' | 'turn-left' | 'turn-right'
-type ViewDistance = 'center' | 'shelf'
+type MovementCue = 'idle' | 'step' | 'turn-left' | 'turn-right'
+
+type NearbyBook = {
+  address: BookAddress
+  distance: number
+}
+
+type TouchMovement = {
+  forward: number
+  strafe: number
+}
 
 function App() {
   const [floor, setFloor] = useState(0)
-  const [currentRoom, setCurrentRoom] = useState(startingRoom)
-  const [facing, setFacing] = useState<DirectionIndex>(defaultAddress.wall as DirectionIndex)
+  const [playerPose, setPlayerPoseState] = useState<PlayerPose>({ ...STARTING_PLAYER_POSE })
   const [selectedBook, setSelectedBook] = useState<BookAddress>(defaultAddress)
   const [readerOpen, setReaderOpen] = useState(false)
-  const [helpOpen, setHelpOpen] = useState(false)
+  const [splashOpen, setSplashOpen] = useState(true)
   const [movementCue, setMovementCue] = useState<MovementCue>('idle')
-  const [viewDistance, setViewDistance] = useState<ViewDistance>('center')
   const [page, setPage] = useState(1)
   const [message, setMessage] = useState('The door seals behind you. The shelves breathe dust.')
+  const playerPoseRef = useRef<PlayerPose>({ ...STARTING_PLAYER_POSE })
+  const modalOpenRef = useRef(false)
+  const keysPressed = useRef(new Set<string>())
+  const keyActionRef = useRef<(key: string) => void>(() => undefined)
+  const touchMovementRef = useRef<TouchMovement>({ forward: 0, strafe: 0 })
+  const cueTimeout = useRef<number | null>(null)
+
   const generatedPage = useMemo(() => generatePage({ ...selectedBook, page }), [selectedBook, page])
   const nextGeneratedPage = useMemo(
     () => generatePage({ ...selectedBook, page: clampPage(page + 1) }),
     [selectedBook, page],
   )
-  const totalExponent = Math.round(possibleBooksExponent()).toLocaleString()
+  const currentRoom = roomPositionFromPose(playerPose)
   const room = nearestRoom(currentRoom)
-  const doors = useMemo(() => roomDoors(currentRoom), [currentRoom])
+  const doors = roomDoors(currentRoom)
+  const facing = yawToDirection(playerPose.yaw)
+  const facingLabel = cardinalDirections[facing].label
   const canUseStairsUp = roomHasFeature(currentRoom, 'stairs-up')
   const canUseStairsDown = roomHasFeature(currentRoom, 'stairs-down')
+  const nearbyBooks: NearbyBook[] = useMemo(
+    () =>
+      booksForRoom(currentRoom.q, currentRoom.r)
+        .map((address) => ({ address, distance: distanceToBook(playerPose, address) }))
+        .filter((candidate) => candidate.distance <= INTERACTION_RADIUS)
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 6),
+    [currentRoom.q, currentRoom.r, playerPose],
+  )
+
+  keyActionRef.current = (key) => {
+    switch (key) {
+      case 'w':
+      case 'arrowup':
+        movePlayer(1, 0, STEP_DISTANCE)
+        break
+      case 's':
+      case 'arrowdown':
+        movePlayer(-1, 0, STEP_DISTANCE)
+        break
+      case 'a':
+        movePlayer(0, -1, STEP_DISTANCE * 0.85)
+        break
+      case 'd':
+        movePlayer(0, 1, STEP_DISTANCE * 0.85)
+        break
+      case 'arrowleft':
+        rotatePlayer(-Math.PI / 2, 'turn-left')
+        break
+      case 'arrowright':
+        rotatePlayer(Math.PI / 2, 'turn-right')
+        break
+      case 'e':
+        activateStairs()
+        break
+    }
+  }
+
+  useEffect(() => {
+    modalOpenRef.current = readerOpen || splashOpen
+    if (modalOpenRef.current) {
+      keysPressed.current.clear()
+      touchMovementRef.current = { forward: 0, strafe: 0 }
+    }
+  }, [readerOpen, splashOpen])
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (readerOpen || helpOpen) return
+      if (modalOpenRef.current || isTypingTarget(event.target)) return
 
-      if (event.key === 'ArrowUp' || event.key.toLowerCase() === 'w') {
+      if (event.key.toLowerCase() === 'e') {
         event.preventDefault()
-        moveForward()
+        if (!event.repeat) {
+          keyActionRef.current('e')
+        }
+        return
       }
-      if (event.key === 'ArrowDown' || event.key.toLowerCase() === 's') {
+
+      const key = movementKey(event.key)
+      if (key) {
+        keysPressed.current.add(key)
         event.preventDefault()
-        moveBack()
+        if (!event.repeat) {
+          keyActionRef.current(key)
+        }
       }
-      if (event.key === 'ArrowLeft' || event.key.toLowerCase() === 'a') {
+    }
+
+    function handleKeyUp(event: KeyboardEvent) {
+      const key = movementKey(event.key)
+      if (key) {
+        keysPressed.current.delete(key)
         event.preventDefault()
-        turn(-1)
       }
-      if (event.key === 'ArrowRight' || event.key.toLowerCase() === 'd') {
-        event.preventDefault()
-        turn(1)
-      }
+    }
+
+    function clearKeys() {
+      keysPressed.current.clear()
     }
 
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  })
+    window.addEventListener('keyup', handleKeyUp)
+    window.addEventListener('blur', clearKeys)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+      window.removeEventListener('blur', clearKeys)
+    }
+  }, [])
 
-  function moveForward() {
-    if (viewDistance === 'center') {
-      approachShelf()
+  useEffect(() => {
+    let animationFrame = 0
+    let lastFrame = performance.now()
+
+    function tick(now: number) {
+      const deltaSeconds = Math.min(0.05, (now - lastFrame) / 1000)
+      lastFrame = now
+
+      if (!modalOpenRef.current) {
+        const keys = keysPressed.current
+        const touchMovement = touchMovementRef.current
+        const forward = clampAxis(keyAxis(keys, 'w', 'arrowup') - keyAxis(keys, 's', 'arrowdown') + touchMovement.forward)
+        const strafe = clampAxis(keyAxis(keys, 'd') - keyAxis(keys, 'a') + touchMovement.strafe)
+        const turn = keyAxis(keys, 'arrowright') - keyAxis(keys, 'arrowleft')
+
+        if (turn !== 0) {
+          rotatePlayer(turn * KEYBOARD_TURN_SPEED * deltaSeconds)
+        }
+        if (forward !== 0 || strafe !== 0) {
+          movePlayer(forward, strafe, WALK_SPEED * deltaSeconds, false)
+        }
+      }
+
+      animationFrame = window.requestAnimationFrame(tick)
+    }
+
+    animationFrame = window.requestAnimationFrame(tick)
+    return () => window.cancelAnimationFrame(animationFrame)
+  }, [])
+
+  useEffect(
+    () => () => {
+      if (cueTimeout.current !== null) {
+        window.clearTimeout(cueTimeout.current)
+      }
+    },
+    [],
+  )
+
+  function setPlayerPose(nextPose: PlayerPose) {
+    playerPoseRef.current = nextPose
+    setPlayerPoseState(nextPose)
+  }
+
+  function triggerCue(cue: MovementCue) {
+    setMovementCue(cue)
+    if (cueTimeout.current !== null) {
+      window.clearTimeout(cueTimeout.current)
+    }
+    cueTimeout.current = window.setTimeout(() => setMovementCue('idle'), 220)
+  }
+
+  function movePlayer(forward: number, strafe: number, distance: number, showBlockedMessage = true) {
+    const result = movePose(playerPoseRef.current, forward, strafe, distance)
+    setPlayerPose(result.pose)
+
+    if (result.crossed !== undefined) {
+      const destination = nearestRoom(roomPositionFromPose(result.pose))
+      setReaderOpen(false)
+      setSelectedBook((current) =>
+        nearbyBookAddress(result.pose.roomQ, result.pose.roomR, yawToDirection(result.pose.yaw), current.shelf, current.book),
+      )
+      setMessage(`You pass through the ${directionLabel(result.crossed)} door into ${destination.name}.`)
+      if (showBlockedMessage) triggerCue('step')
       return
     }
 
-    moveThroughDoor(1)
-  }
-
-  function moveBack() {
-    if (viewDistance === 'shelf') {
-      setViewDistance('center')
-      setMovementCue('retreat')
-      setMessage(`You step back from the ${cardinalDirections[facing].label} wall.`)
-      window.setTimeout(() => setMovementCue('idle'), 260)
+    if (result.blocked !== undefined) {
+      if (showBlockedMessage) {
+        setMessage(`The ${directionLabel(result.blocked)} wall has no open passage here.`)
+        triggerCue('step')
+      }
       return
     }
 
-    moveThroughDoor(-1)
-  }
-
-  function approachShelf() {
-    setViewDistance('shelf')
-    setMovementCue('approach')
-    setMessage(`You move closer to the ${cardinalDirections[facing].label} wall. The volumes are within reach.`)
-    window.setTimeout(() => setMovementCue('idle'), 280)
-  }
-
-  function moveThroughDoor(multiplier: 1 | -1) {
-    if (!canMove(currentRoom, facing, multiplier)) {
-      const direction = multiplier === 1 ? cardinalDirections[facing].label : oppositeDirectionLabel(facing)
-      setMessage(`There is no ${direction} door from this room.`)
-      return
+    if (showBlockedMessage) {
+      triggerCue('step')
     }
-
-    const destination = nextRoom(currentRoom, facing, multiplier)
-    setMovementCue('step')
-    setCurrentRoom(destination)
-    setViewDistance('center')
-    setSelectedBook((current) => ({ ...current, roomQ: destination.q, roomR: destination.r, wall: facing }))
-    setReaderOpen(false)
-    setMessage(`You pass through the ${multiplier === 1 ? cardinalDirections[facing].label : oppositeDirectionLabel(facing)} door into ${nearestRoom(destination).name}.`)
-    window.setTimeout(() => setMovementCue('idle'), 220)
   }
 
-  function turn(delta: 1 | -1) {
-    const nextFacing = positiveModulo(facing + delta, cardinalDirections.length) as DirectionIndex
-    setMovementCue(delta < 0 ? 'turn-left' : 'turn-right')
-    setViewDistance('center')
-    setFacing(nextFacing)
+  function rotatePlayer(deltaYaw: number, cue?: MovementCue) {
+    const nextPose = rotatePose(playerPoseRef.current, deltaYaw)
+    setPlayerPose(nextPose)
     setSelectedBook((current) =>
-      nearbyBookAddress(currentRoom.q, currentRoom.r, nextFacing, current.shelf, current.book),
+      nearbyBookAddress(nextPose.roomQ, nextPose.roomR, yawToDirection(nextPose.yaw), current.shelf, current.book),
     )
-    setMessage(`You turn to face the ${cardinalDirections[nextFacing].label} wall.`)
-    window.setTimeout(() => setMovementCue('idle'), 180)
+
+    if (cue) {
+      triggerCue(cue)
+      setMessage(`You turn to face the ${cardinalDirections[yawToDirection(nextPose.yaw)].label} shelves.`)
+    }
   }
 
   function changeFloor(delta: number) {
@@ -148,33 +269,34 @@ function App() {
 
     setFloor((current) => current + delta)
     setReaderOpen(false)
-    setViewDistance('center')
     setMessage(delta > 0 ? 'You climb to the next floor. The floor plan repeats.' : 'You descend. The same floor plan waits below.')
   }
 
-  function openBook(address: BookAddress) {
-    if (viewDistance !== 'shelf') {
-      approachShelf()
+  function activateStairs() {
+    if (canUseStairsUp) {
+      changeFloor(1)
+      return
+    }
+    if (canUseStairsDown) {
+      changeFloor(-1)
       return
     }
 
+    setMessage('There are no stairs in this room.')
+  }
+
+  function openBook(address: BookAddress) {
     setSelectedBook(address)
+    if (!isBookReachable(playerPoseRef.current, address)) {
+      const wall = cardinalDirections[address.wall].label
+      setReaderOpen(false)
+      setMessage(`That volume is too far away. Move closer to the ${wall} shelves.`)
+      return
+    }
+
     setPage(1)
     setReaderOpen(true)
     setMessage('The volume opens like dry leather.')
-  }
-
-  function jump() {
-    const address = deterministicJump(`${floor}:${currentRoom.q}:${currentRoom.r}:${page}:${Date.now()}`)
-    const destination = levelRooms[Math.abs(address.roomQ + address.roomR + Date.now()) % levelRooms.length]
-    const nextFacing = address.wall as DirectionIndex
-    setCurrentRoom({ q: destination.q, r: destination.r })
-    setFacing(nextFacing)
-    setViewDistance('shelf')
-    setSelectedBook({ ...address, roomQ: destination.q, roomR: destination.r, wall: nextFacing })
-    setPage(1)
-    setReaderOpen(true)
-    setMessage('You find a random volume laid open on the reading table.')
   }
 
   return (
@@ -183,62 +305,29 @@ function App() {
         <div className={`scene scene-library movement-${movementCue}`}>
           <ArenaViewport
             floor={floor}
-            facing={facing}
+            playerPose={playerPose}
             currentRoom={currentRoom}
             roomName={room.name}
             doors={doors}
             selectedBook={selectedBook}
             movementCue={movementCue}
-            viewDistance={viewDistance}
-            facingLabel={cardinalDirections[facing].label}
+            facingLabel={facingLabel}
+            nearbyBooks={nearbyBooks}
             onOpenBook={openBook}
-            onMoveForward={moveForward}
-            onMoveBack={moveBack}
-            onTurnLeft={() => turn(-1)}
-            onTurnRight={() => turn(1)}
+            onLook={(deltaYaw) => rotatePlayer(deltaYaw)}
+            onTouchMoveChange={(movement) => {
+              touchMovementRef.current = movement
+            }}
+            onTouchStep={(movement) => movePlayer(movement.forward, movement.strafe, STEP_DISTANCE * 0.55)}
           />
         </div>
 
         <div className="message-bar" role="status">
           {message}
         </div>
-
-        <div className="command-bar" aria-label="Movement and actions">
-          <div className="status-box">
-            <strong>{`FLOOR ${floor}`}</strong>
-            <span>{`ROOM ${currentRoom.q},${currentRoom.r}`}</span>
-            <span>{cardinalDirections[facing].label}</span>
-          </div>
-          <div className="move-pad">
-            <button type="button" aria-label="Turn left" onClick={() => turn(-1)}>
-              <ArrowLeft size={22} aria-hidden="true" />
-            </button>
-            <button type="button" aria-label="Forward" onClick={moveForward}>
-              <ArrowUp size={22} aria-hidden="true" />
-            </button>
-            <button type="button" aria-label="Turn right" onClick={() => turn(1)}>
-              <ArrowRight size={22} aria-hidden="true" />
-            </button>
-            <button type="button" aria-label="Back" onClick={moveBack}>
-              <ArrowDown size={22} aria-hidden="true" />
-            </button>
-          </div>
-          <div className="action-buttons">
-            <button type="button" disabled={!canUseStairsUp} onClick={() => changeFloor(1)}>
-              stairs up
-            </button>
-            <button type="button" disabled={!canUseStairsDown} onClick={() => changeFloor(-1)}>
-              stairs down
-            </button>
-            <button type="button" aria-label="Random volume" onClick={jump}>
-              <Dices size={21} aria-hidden="true" />
-            </button>
-            <button type="button" aria-label="Open explanation" onClick={() => setHelpOpen(true)}>
-              <HelpCircle size={21} aria-hidden="true" />
-            </button>
-          </div>
-        </div>
       </section>
+
+      {splashOpen ? <SplashScreen onStart={() => setSplashOpen(false)} /> : null}
 
       {readerOpen ? (
         <BookReader
@@ -251,11 +340,24 @@ function App() {
           onPageChange={setPage}
         />
       ) : null}
-
-      {helpOpen ? (
-        <HelpPanel totalExponent={totalExponent} onClose={() => setHelpOpen(false)} />
-      ) : null}
     </main>
+  )
+}
+
+function SplashScreen({ onStart }: { onStart: () => void }) {
+  return (
+    <section className="splash-screen" aria-label="Start screen">
+      <div className="splash-panel">
+        <p className="splash-kicker">Library of Babel</p>
+        <h1>Enter the stacks</h1>
+        <p>Move with WASD. Use the arrow keys to turn.</p>
+        <p>On a touchscreen, drag to look and hold the top, bottom, or sides of the room to move.</p>
+        <p>Click or tap a nearby volume to open it. Press E in a stair room.</p>
+        <button type="button" onClick={onStart}>
+          Enter Library
+        </button>
+      </div>
+    </section>
   )
 }
 
@@ -287,12 +389,12 @@ function BookReader({
             <article className="book-page left">
               <span>floor {floor} / {addressLabel(selectedBook)}</span>
               <h2>page {page}</h2>
-              <pre>{leftPage.join('\n')}</pre>
+              <HighlightedPage lines={leftPage} />
             </article>
             <article className="book-page right">
               <span>floor {floor} / {addressLabel(selectedBook)}</span>
               <h2>page {clampPage(page + 1)}</h2>
-              <pre>{rightPage.join('\n')}</pre>
+              <HighlightedPage lines={rightPage} />
             </article>
           </div>
         </div>
@@ -318,44 +420,51 @@ function BookReader({
   )
 }
 
-function HelpPanel({
-  totalExponent,
-  onClose,
-}: {
-  totalExponent: string
-  onClose: () => void
-}) {
+function HighlightedPage({ lines }: { lines: string[] }) {
+  const highlightedLines = useMemo(() => highlightPage(lines), [lines])
+
+  return <pre>{highlightedLines.map((line, lineIndex) => (
+    <Fragment key={`${lineIndex}:${line.length}`}>
+      <HighlightedLine segments={line} />
+      {lineIndex < highlightedLines.length - 1 ? '\n' : null}
+    </Fragment>
+  ))}</pre>
+}
+
+function HighlightedLine({ segments }: { segments: HighlightSegment[] }) {
   return (
-    <section className="help-panel" aria-label="Detailed explanation">
-      <div>
-        <button type="button" className="close-reader" aria-label="Close explanation" onClick={onClose}>
-          <X size={22} aria-hidden="true" />
-        </button>
-        <h2>The tower repeats forever</h2>
-        <p>
-          Every floor has the same shape: stairs, walls, shelves, and volumes. Only the address
-          changes as you move.
-        </p>
-        <p>
-          Each volume has {PAGES_PER_BOOK} pages, {LINES_PER_PAGE} lines per page, and{' '}
-          {SYMBOLS_PER_LINE} symbols per line. With {SYMBOLS_PER_BOOK.toLocaleString()} slots and
-          25 symbols, there are roughly 10^{totalExponent} possible books.
-        </p>
-        <p>
-          The app does not store the library. It generates each page from the chosen address, so the
-          same shelf and volume always opens to the same text.
-        </p>
-      </div>
-    </section>
+    <>
+      {segments.map((segment, index) =>
+        segment.highlight ? (
+          <mark key={`${index}:${segment.text}`} className="english-word">
+            {segment.text}
+          </mark>
+        ) : (
+          <Fragment key={`${index}:${segment.text}`}>{segment.text}</Fragment>
+        ),
+      )}
+    </>
   )
 }
 
-function positiveModulo(value: number, modulo: number): number {
-  return ((value % modulo) + modulo) % modulo
+function movementKey(key: string): string | null {
+  const normalized = key.toLowerCase()
+  if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(normalized)) {
+    return normalized
+  }
+  return null
 }
 
-function oppositeDirectionLabel(facing: DirectionIndex): string {
-  return cardinalDirections[positiveModulo(facing + 2, cardinalDirections.length) as DirectionIndex].label
+function keyAxis(keys: Set<string>, positive: string, alternatePositive?: string): number {
+  return keys.has(positive) || (alternatePositive ? keys.has(alternatePositive) : false) ? 1 : 0
+}
+
+function clampAxis(value: number): number {
+  return Math.min(1, Math.max(-1, value))
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement
 }
 
 export default App

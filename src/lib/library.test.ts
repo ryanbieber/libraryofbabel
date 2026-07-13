@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   ALPHABET_SIZE,
+  BOOKS_PER_SHELF,
   LINES_PER_PAGE,
   PAGES_PER_BOOK,
+  SHELVES_PER_WALL,
   SYMBOLS_PER_BOOK,
   SYMBOLS_PER_LINE,
   clampPage,
@@ -10,6 +12,7 @@ import {
   deterministicJump,
   generatePage,
   isValidLibraryText,
+  nearbyBookAddress,
   normalizeLibraryText,
   sequenceOdds,
 } from './library'
@@ -21,6 +24,25 @@ describe('library constants', () => {
     expect(LINES_PER_PAGE).toBe(40)
     expect(SYMBOLS_PER_LINE).toBe(80)
     expect(SYMBOLS_PER_BOOK).toBe(1_312_000)
+    expect(SHELVES_PER_WALL).toBe(5)
+    expect(BOOKS_PER_SHELF).toBe(32)
+  })
+
+  it('wraps wall shelf and volume addresses into the Borges shelf shape', () => {
+    expect(nearbyBookAddress(0, 0, -1, -1, -1)).toEqual({
+      roomQ: 0,
+      roomR: 0,
+      wall: 3,
+      shelf: 4,
+      book: 31,
+    })
+    expect(nearbyBookAddress(0, 0, 4, 5, 32)).toEqual({
+      roomQ: 0,
+      roomR: 0,
+      wall: 0,
+      shelf: 0,
+      book: 0,
+    })
   })
 })
 
