@@ -441,6 +441,10 @@ function Doorway({
   const frameOverhang = compact ? 0.18 : 0.2
   const jambWidth = compact ? 0.13 : 0.14
   const handleY = compact ? 1.02 : 1.05
+  const bottomY = -height / 2
+  const slabDepth = compact ? 0.08 : 0.1
+  const slabColor = compact ? '#4b2c18' : '#53311d'
+  const panelColor = compact ? '#3d2414' : '#462815'
 
   return (
     <group
@@ -454,27 +458,31 @@ function Doorway({
         <boxGeometry args={[width * 0.86, height * 0.92, 0.06]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
-      <mesh position={[0, 0, -0.04]}>
-        <boxGeometry args={[width, height, 0.1]} />
-        <meshStandardMaterial color="#080708" roughness={1} />
+      <mesh position={[0, 0, -0.05]}>
+        <boxGeometry args={[width * 0.94, height * 0.98, slabDepth]} />
+        <meshStandardMaterial color={slabColor} roughness={0.96} />
       </mesh>
-      <mesh position={[0, 0.16, -0.01]}>
-        <boxGeometry args={[width * 0.68, height * 0.72, 0.06]} />
-        <meshStandardMaterial color="#11181c" roughness={1} emissive="#071013" emissiveIntensity={0.35} />
+      <mesh position={[0, bottomY + height * 0.72, 0]}>
+        <boxGeometry args={[width * 0.66, height * 0.34, 0.03]} />
+        <meshStandardMaterial color={panelColor} roughness={1} />
+      </mesh>
+      <mesh position={[0, bottomY + height * 0.3, 0]}>
+        <boxGeometry args={[width * 0.66, height * 0.28, 0.03]} />
+        <meshStandardMaterial color={panelColor} roughness={1} />
       </mesh>
       <mesh position={[0, height / 2 + frameOverhang / 2, 0.06]}>
         <boxGeometry args={[width + 0.22, frameOverhang, 0.2]} />
         <meshStandardMaterial color="#826b50" roughness={0.92} />
       </mesh>
-      <mesh position={[-width / 2 - jambWidth / 2, height / 2, 0.06]}>
+      <mesh position={[-width / 2 - jambWidth / 2, frameOverhang / 2, 0.06]}>
         <boxGeometry args={[jambWidth, height + frameOverhang, 0.2]} />
         <meshStandardMaterial color="#806044" roughness={0.95} />
       </mesh>
-      <mesh position={[width / 2 + jambWidth / 2, height / 2, 0.06]}>
+      <mesh position={[width / 2 + jambWidth / 2, frameOverhang / 2, 0.06]}>
         <boxGeometry args={[jambWidth, height + frameOverhang, 0.2]} />
         <meshStandardMaterial color="#806044" roughness={0.95} />
       </mesh>
-      <mesh position={[0, 0.03, 0.08]}>
+      <mesh position={[0, bottomY + 0.03, 0.08]}>
         <boxGeometry args={[width * 0.94, 0.06, 0.26]} />
         <meshStandardMaterial color="#8a8470" roughness={0.98} />
       </mesh>
