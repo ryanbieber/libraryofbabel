@@ -10,6 +10,7 @@ import {
   addressLabel,
   nearbyBookAddress,
 } from './lib/library'
+import { cameraYawFromPlayerYaw } from './lib/camera'
 import {
   INTERACTION_RADIUS,
   ROOM_HALF_SIZE,
@@ -267,7 +268,7 @@ function PlayerCamera({ playerPose, movementCue }: { playerPose: PlayerPose; mov
     const idleBob = Math.sin(clock.elapsedTime * 2.4) * 0.007
     const stepBob = movementCue === 'step' ? Math.sin(clock.elapsedTime * 20) * 0.018 : 0
     camera.position.set(playerPose.x, 1.52 + idleBob + stepBob, playerPose.z)
-    camera.rotation.set(0, playerPose.yaw, 0)
+    camera.rotation.set(0, cameraYawFromPlayerYaw(playerPose.yaw), 0)
   })
 
   return null
