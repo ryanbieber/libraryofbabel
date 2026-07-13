@@ -15,6 +15,7 @@ import type { LibraryNpc } from './lib/npcs'
 import {
   INTERACTION_RADIUS,
   ROOM_HALF_SIZE,
+  SHELF_WIDTH,
   distanceToBook,
   yawToDirection,
   type PlayerPose,
@@ -30,6 +31,7 @@ type NearbyBook = {
 type TouchMovement = {
   forward: number
   strafe: number
+  turnSlowdown: number
 }
 
 type ArenaViewportProps = {
@@ -53,10 +55,15 @@ type ArenaViewportProps = {
 }
 
 const roomSize = ROOM_HALF_SIZE * 2
-const shelfWidth = 5.86
+const shelfWidth = SHELF_WIDTH
 const bookSpacing = shelfWidth / BOOKS_PER_SHELF
+const shelfBackWidth = shelfWidth + 0.18
+const shelfBoardWidth = shelfWidth + 0.2
+const doorwayGapWidth = 1.44
 const TOUCH_LOOK_SENSITIVITY = 0.0024
 const MOUSE_LOOK_SENSITIVITY = 0.004
+const TOUCH_TURN_DEADZONE_PX = 0.8
+const TOUCH_TURN_RECOVERY_MS = 220
 
 export function ArenaViewport({
   floor,
@@ -79,7 +86,17 @@ export function ArenaViewport({
 }: ArenaViewportProps) {
   const canUseWebGL = useWebGLAvailable()
   const dragRef = useRef<{ pointerId: number; lastX: number; isTouch: boolean } | null>(null)
+  const turnRecoveryTimeoutRef = useRef<number | null>(null)
   const facing = yawToDirection(playerPose.yaw)
+
+  useEffect(
+    () => () => {
+      if (turnRecoveryTimeoutRef.current !== null) {
+        window.clearTimeout(turnRecoveryTimeoutRef.current)
+      }
+    },
+    [],
+  )
 
   function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (!isPrimaryPointer(event) || isInteractiveTarget(event.target)) return
@@ -88,7 +105,7 @@ export function ArenaViewport({
     dragRef.current = { pointerId: event.pointerId, lastX: event.clientX, isTouch }
     event.currentTarget.setPointerCapture?.(event.pointerId)
     if (isTouch) {
-      onTouchMoveChange({ forward: 1, strafe: 0 })
+      onTouchMoveChange({ forward: 1, strafe: 0, turnSlowdown: 0 })
       onTouchForwardStart()
     }
   }
@@ -100,6 +117,17 @@ export function ArenaViewport({
     const deltaX = event.clientX - drag.lastX
     dragRef.current = { ...drag, lastX: event.clientX }
     onLook(deltaX * (drag.isTouch ? TOUCH_LOOK_SENSITIVITY : MOUSE_LOOK_SENSITIVITY))
+    if (drag.isTouch && Math.abs(deltaX) > TOUCH_TURN_DEADZONE_PX) {
+      if (turnRecoveryTimeoutRef.current !== null) {
+        window.clearTimeout(turnRecoveryTimeoutRef.current)
+      }
+      onTouchMoveChange({ forward: 1, strafe: 0, turnSlowdown: 1 })
+      turnRecoveryTimeoutRef.current = window.setTimeout(() => {
+        if (dragRef.current?.pointerId === event.pointerId) {
+          onTouchMoveChange({ forward: 1, strafe: 0, turnSlowdown: 0 })
+        }
+      }, TOUCH_TURN_RECOVERY_MS)
+    }
   }
 
   function handlePointerEnd(event: ReactPointerEvent<HTMLDivElement>) {
@@ -107,7 +135,11 @@ export function ArenaViewport({
     if (drag?.pointerId === event.pointerId) {
       dragRef.current = null
       if (drag.isTouch) {
-        onTouchMoveChange({ forward: 0, strafe: 0 })
+        if (turnRecoveryTimeoutRef.current !== null) {
+          window.clearTimeout(turnRecoveryTimeoutRef.current)
+          turnRecoveryTimeoutRef.current = null
+        }
+        onTouchMoveChange({ forward: 0, strafe: 0, turnSlowdown: 0 })
       }
     }
   }
@@ -481,7 +513,7 @@ function ShelfWall({
   return (
     <group position={transform.position} rotation={transform.rotation}>
       <mesh position={[0, 0, -0.012]}>
-        <boxGeometry args={[6.04, 1.86, 0.18]} />
+        <boxGeometry args={[shelfBackWidth, 1.86, 0.18]} />
         <meshStandardMaterial color={shelfWood} roughness={1} />
       </mesh>
       {Array.from({ length: SHELVES_PER_WALL }, (_, shelf) => (
@@ -517,20 +549,23 @@ function ShelfBoard({ hasDoorGap }: { hasDoorGap: boolean }) {
   if (!hasDoorGap) {
     return (
       <mesh position={[0, -0.16, 0]}>
-        <boxGeometry args={[6.06, 0.035, 0.24]} />
+        <boxGeometry args={[shelfBoardWidth, 0.035, 0.24]} />
         <meshStandardMaterial color="#6d3a18" roughness={1} />
       </mesh>
     )
   }
 
+  const sideBoardWidth = (shelfBoardWidth - doorwayGapWidth) / 2
+  const sideBoardOffset = doorwayGapWidth / 2 + sideBoardWidth / 2
+
   return (
     <>
-      <mesh position={[-1.92, -0.16, 0]}>
-        <boxGeometry args={[2.22, 0.035, 0.24]} />
+      <mesh position={[-sideBoardOffset, -0.16, 0]}>
+        <boxGeometry args={[sideBoardWidth, 0.035, 0.24]} />
         <meshStandardMaterial color="#6d3a18" roughness={1} />
       </mesh>
-      <mesh position={[1.92, -0.16, 0]}>
-        <boxGeometry args={[2.22, 0.035, 0.24]} />
+      <mesh position={[sideBoardOffset, -0.16, 0]}>
+        <boxGeometry args={[sideBoardWidth, 0.035, 0.24]} />
         <meshStandardMaterial color="#6d3a18" roughness={1} />
       </mesh>
     </>

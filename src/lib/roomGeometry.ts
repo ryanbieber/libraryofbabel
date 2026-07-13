@@ -28,7 +28,7 @@ export type MoveResult = {
   door?: DirectionIndex
 }
 
-export const ROOM_HALF_SIZE = 3.6
+export const ROOM_HALF_SIZE = 4.2
 export const PLAYER_RADIUS = 0.22
 export const DOOR_HALF_WIDTH = 0.82
 export const INTERACTION_RADIUS = 1.25
@@ -45,7 +45,7 @@ export const STARTING_PLAYER_POSE: PlayerPose = {
 }
 
 const WALL_BOOK_Z_OFFSET = ROOM_HALF_SIZE - 0.18
-const SHELF_WIDTH = 5.86
+export const SHELF_WIDTH = ROOM_HALF_SIZE * 2 - 1.34
 const HALF_PI = Math.PI / 2
 
 export function roomPositionFromPose(pose: PlayerPose): RoomPosition {

@@ -35,10 +35,10 @@ describe('App interactions', () => {
     const viewport = screen.getByTestId('arena-viewport')
     expect(screen.queryByLabelText(/Open room 0,0 \/ north wall/)).not.toBeInTheDocument()
 
-    for (let step = 0; step < 18; step += 1) {
+    for (let step = 0; step < 48; step += 1) {
       const pointerId = step + 1
       fireEvent.pointerDown(viewport, { button: 0, clientX: 190, clientY: 420, pointerId, pointerType: 'touch' })
-      fireEvent.pointerMove(viewport, { clientX: 206, clientY: 420, pointerId, pointerType: 'touch' })
+      fireEvent.pointerMove(viewport, { clientX: 190, clientY: 420, pointerId, pointerType: 'touch' })
       fireEvent.pointerUp(viewport, { pointerId, pointerType: 'touch' })
     }
 
@@ -78,7 +78,7 @@ describe('App interactions', () => {
     expect(screen.getByText('Move closer to the east door.')).toBeInTheDocument()
     expect(screen.getByText('room 0,0 / east view')).toBeInTheDocument()
 
-    pressKey('w', 5)
+    pressKey('w', 6)
     expect(screen.getByText('The east door is shut. Click or tap it to open it.')).toBeInTheDocument()
     expect(screen.getByText('room 0,0 / east view')).toBeInTheDocument()
 
@@ -86,7 +86,7 @@ describe('App interactions', () => {
     expect(screen.getByText('room 1,0 / east view')).toBeInTheDocument()
     expect(screen.getByText('east hall')).toBeInTheDocument()
 
-    pressKey('w', 10)
+    pressKey('w', 12)
     fireEvent.click(screen.getByRole('button', { name: 'Open east door' }))
     expect(screen.getByText('room 2,0 / east view')).toBeInTheDocument()
     expect(screen.getByText('east archive')).toBeInTheDocument()
@@ -94,7 +94,7 @@ describe('App interactions', () => {
     pressKey('e')
     expect(screen.getByText('Floor 1')).toBeInTheDocument()
 
-    pressKey('w', 10)
+    pressKey('w', 12)
     expect(screen.getByText('The east wall has no open passage here.')).toBeInTheDocument()
   })
 })

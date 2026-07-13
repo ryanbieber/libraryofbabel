@@ -48,10 +48,13 @@ type NearbyBook = {
 type TouchMovement = {
   forward: number
   strafe: number
+  turnSlowdown: number
 }
 
-const TOUCH_FORWARD_SPEED_SCALE = 0.45
-const TOUCH_INITIAL_STEP_SCALE = 0.18
+const TOUCH_FORWARD_SPEED_SCALE = 0.34
+const TOUCH_INITIAL_STEP_SCALE = 0.08
+const TOUCH_ACCELERATION_PER_SECOND = 0.55
+const TOUCH_DECELERATION_PER_SECOND = 3.2
 
 function App() {
   const [floor, setFloor] = useState(0)
@@ -67,7 +70,8 @@ function App() {
   const modalOpenRef = useRef(false)
   const keysPressed = useRef(new Set<string>())
   const keyActionRef = useRef<(key: string) => void>(() => undefined)
-  const touchMovementRef = useRef<TouchMovement>({ forward: 0, strafe: 0 })
+  const touchMovementRef = useRef<TouchMovement>({ forward: 0, strafe: 0, turnSlowdown: 0 })
+  const touchForwardRampRef = useRef(0)
   const cueTimeout = useRef<number | null>(null)
 
   const generatedPage = useMemo(() => generatePage({ ...selectedBook, page }), [selectedBook, page])
@@ -129,7 +133,8 @@ function App() {
     modalOpenRef.current = readerOpen || splashOpen || dialogueNpc !== null
     if (modalOpenRef.current) {
       keysPressed.current.clear()
-      touchMovementRef.current = { forward: 0, strafe: 0 }
+      touchMovementRef.current = { forward: 0, strafe: 0, turnSlowdown: 0 }
+      touchForwardRampRef.current = 0
     }
   }, [readerOpen, splashOpen, dialogueNpc])
 
@@ -192,8 +197,14 @@ function App() {
       if (!modalOpenRef.current) {
         const keys = keysPressed.current
         const touchMovement = touchMovementRef.current
+        const touchForwardTarget = touchMovement.forward * (1 - touchMovement.turnSlowdown) * TOUCH_FORWARD_SPEED_SCALE
+        touchForwardRampRef.current = moveToward(
+          touchForwardRampRef.current,
+          touchForwardTarget,
+          (touchForwardTarget > touchForwardRampRef.current ? TOUCH_ACCELERATION_PER_SECOND : TOUCH_DECELERATION_PER_SECOND) * deltaSeconds,
+        )
         const forward = clampAxis(
-          keyAxis(keys, 'w', 'arrowup') - keyAxis(keys, 's', 'arrowdown') + touchMovement.forward * TOUCH_FORWARD_SPEED_SCALE,
+          keyAxis(keys, 'w', 'arrowup') - keyAxis(keys, 's', 'arrowdown') + touchForwardRampRef.current,
         )
         const strafe = clampAxis(keyAxis(keys, 'd') - keyAxis(keys, 'a') + touchMovement.strafe * TOUCH_FORWARD_SPEED_SCALE)
         const turn = keyAxis(keys, 'arrowright') - keyAxis(keys, 'arrowleft')
@@ -264,7 +275,8 @@ function App() {
   function openDoor(direction: DirectionIndex) {
     const pose = playerPoseRef.current
     const availableDoors = roomDoors(roomPositionFromPose(pose))
-    touchMovementRef.current = { forward: 0, strafe: 0 }
+    touchMovementRef.current = { forward: 0, strafe: 0, turnSlowdown: 0 }
+    touchForwardRampRef.current = 0
 
     if (!availableDoors.includes(direction)) {
       setMessage(`The ${directionLabel(direction)} wall has no open passage here.`)
@@ -550,6 +562,11 @@ function keyAxis(keys: Set<string>, positive: string, alternatePositive?: string
 
 function clampAxis(value: number): number {
   return Math.min(1, Math.max(-1, value))
+}
+
+function moveToward(current: number, target: number, maxDelta: number): number {
+  if (Math.abs(target - current) <= maxDelta) return target
+  return current + Math.sign(target - current) * maxDelta
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {
