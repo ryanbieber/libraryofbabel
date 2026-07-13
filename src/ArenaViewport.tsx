@@ -51,6 +51,8 @@ type ArenaViewportProps = {
 const roomSize = ROOM_HALF_SIZE * 2
 const shelfWidth = 5.86
 const bookSpacing = shelfWidth / BOOKS_PER_SHELF
+const TOUCH_LOOK_SENSITIVITY = 0.0024
+const MOUSE_LOOK_SENSITIVITY = 0.004
 
 export function ArenaViewport({
   floor,
@@ -90,7 +92,7 @@ export function ArenaViewport({
 
     const deltaX = event.clientX - drag.lastX
     dragRef.current = { ...drag, lastX: event.clientX }
-    onLook(deltaX * (drag.isTouch ? 0.006 : 0.004))
+    onLook(deltaX * (drag.isTouch ? TOUCH_LOOK_SENSITIVITY : MOUSE_LOOK_SENSITIVITY))
   }
 
   function handlePointerEnd(event: ReactPointerEvent<HTMLDivElement>) {

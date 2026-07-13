@@ -49,6 +49,9 @@ type TouchMovement = {
   strafe: number
 }
 
+const TOUCH_FORWARD_SPEED_SCALE = 0.45
+const TOUCH_INITIAL_STEP_SCALE = 0.18
+
 function App() {
   const [floor, setFloor] = useState(0)
   const [playerPose, setPlayerPoseState] = useState<PlayerPose>({ ...STARTING_PLAYER_POSE })
@@ -178,8 +181,10 @@ function App() {
       if (!modalOpenRef.current) {
         const keys = keysPressed.current
         const touchMovement = touchMovementRef.current
-        const forward = clampAxis(keyAxis(keys, 'w', 'arrowup') - keyAxis(keys, 's', 'arrowdown') + touchMovement.forward)
-        const strafe = clampAxis(keyAxis(keys, 'd') - keyAxis(keys, 'a') + touchMovement.strafe)
+        const forward = clampAxis(
+          keyAxis(keys, 'w', 'arrowup') - keyAxis(keys, 's', 'arrowdown') + touchMovement.forward * TOUCH_FORWARD_SPEED_SCALE,
+        )
+        const strafe = clampAxis(keyAxis(keys, 'd') - keyAxis(keys, 'a') + touchMovement.strafe * TOUCH_FORWARD_SPEED_SCALE)
         const turn = keyAxis(keys, 'arrowright') - keyAxis(keys, 'arrowleft')
 
         if (turn !== 0) {
@@ -348,7 +353,7 @@ function App() {
             onOpenBook={openBook}
             onOpenDoor={openDoor}
             onLook={(deltaYaw) => rotatePlayer(deltaYaw)}
-            onTouchForwardStart={() => movePlayer(1, 0, STEP_DISTANCE * 0.55)}
+            onTouchForwardStart={() => movePlayer(1, 0, STEP_DISTANCE * TOUCH_INITIAL_STEP_SCALE)}
             onTouchMoveChange={(movement) => {
               touchMovementRef.current = movement
             }}

@@ -35,7 +35,7 @@ describe('App interactions', () => {
     const viewport = screen.getByTestId('arena-viewport')
     expect(screen.queryByLabelText(/Open room 0,0 \/ north wall/)).not.toBeInTheDocument()
 
-    for (let step = 0; step < 6; step += 1) {
+    for (let step = 0; step < 18; step += 1) {
       const pointerId = step + 1
       fireEvent.pointerDown(viewport, { button: 0, clientX: 190, clientY: 420, pointerId, pointerType: 'touch' })
       fireEvent.pointerMove(viewport, { clientX: 206, clientY: 420, pointerId, pointerType: 'touch' })
