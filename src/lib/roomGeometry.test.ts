@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { defaultAddress } from './library'
 import {
+  BOOK_INTERACTION_RADIUS,
   DOOR_HALF_WIDTH,
   INTERACTION_RADIUS,
   PLAYER_RADIUS,
@@ -65,7 +66,7 @@ describe('first-person room geometry', () => {
     const pose = poseNearBook(defaultAddress)
     const bookPosition = bookWorldPosition(defaultAddress)
 
-    expect(distanceToBook(pose, defaultAddress)).toBeLessThan(INTERACTION_RADIUS)
+    expect(distanceToBook(pose, defaultAddress)).toBeLessThan(BOOK_INTERACTION_RADIUS)
     expect(Math.abs(bookPosition.z)).toBeGreaterThan(ROOM_HALF_SIZE - 0.3)
     expect(isBookReachable(pose, defaultAddress)).toBe(true)
   })

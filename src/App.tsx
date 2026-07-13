@@ -18,7 +18,7 @@ import {
   PAGES_PER_BOOK,
 } from './lib/library'
 import {
-  INTERACTION_RADIUS,
+  BOOK_INTERACTION_RADIUS,
   KEYBOARD_TURN_SPEED,
   STARTING_PLAYER_POSE,
   STEP_DISTANCE,
@@ -95,7 +95,7 @@ function App() {
     () =>
       booksForRoom(currentRoom.q, currentRoom.r)
         .map((address) => ({ address, distance: distanceToBook(playerPose, address) }))
-        .filter((candidate) => candidate.distance <= INTERACTION_RADIUS)
+        .filter((candidate) => candidate.distance <= BOOK_INTERACTION_RADIUS)
         .sort((a, b) => a.distance - b.distance)
         .slice(0, 6),
     [currentRoom.q, currentRoom.r, playerPose],
