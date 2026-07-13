@@ -13,7 +13,7 @@ import {
 import { cameraYawFromPlayerYaw } from './lib/camera'
 import type { LibraryNpc } from './lib/npcs'
 import {
-  INTERACTION_RADIUS,
+  BOOK_INTERACTION_RADIUS,
   ROOM_HALF_SIZE,
   SHELF_WIDTH,
   distanceToBook,
@@ -524,7 +524,7 @@ function ShelfWall({
           {Array.from({ length: BOOKS_PER_SHELF }, (_, book) => {
             const address = nearbyBookAddress(currentRoom.q, currentRoom.r, wall, shelf, book)
             const isSelected = addressLabel(address) === addressLabel(selectedBook)
-            const isReachable = distanceToBook(playerPose, address) <= INTERACTION_RADIUS
+            const isReachable = distanceToBook(playerPose, address) <= BOOK_INTERACTION_RADIUS
             const x = bookXPosition(book)
             if (hasDoor && shelf >= 2 && Math.abs(x) < 0.72) return null
 

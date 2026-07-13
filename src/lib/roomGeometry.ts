@@ -32,6 +32,7 @@ export const ROOM_HALF_SIZE = 4.2
 export const PLAYER_RADIUS = 0.22
 export const DOOR_HALF_WIDTH = 0.82
 export const INTERACTION_RADIUS = 1.25
+export const BOOK_INTERACTION_RADIUS = 1.75
 export const STEP_DISTANCE = 0.74
 export const WALK_SPEED = 2.55
 export const KEYBOARD_TURN_SPEED = 2.45
@@ -120,7 +121,7 @@ export function distanceToBook(pose: PlayerPose, address: BookAddress): number {
 }
 
 export function isBookReachable(pose: PlayerPose, address: BookAddress): boolean {
-  return distanceToBook(pose, address) <= INTERACTION_RADIUS
+  return distanceToBook(pose, address) <= BOOK_INTERACTION_RADIUS
 }
 
 export function doorWorldPosition(direction: DirectionIndex): { x: number; z: number } {
@@ -178,7 +179,7 @@ export function enterDoor(pose: PlayerPose, direction: DirectionIndex): MoveResu
 export function poseNearBook(address: BookAddress): PlayerPose {
   const position = bookWorldPosition(address)
   const wall = positiveModulo(address.wall, WALL_COUNT) as DirectionIndex
-  const inset = INTERACTION_RADIUS * 0.58
+  const inset = BOOK_INTERACTION_RADIUS * 0.58
 
   switch (wall) {
     case 0:
