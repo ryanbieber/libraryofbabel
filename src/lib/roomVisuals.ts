@@ -2,6 +2,7 @@ import type { RoomKind } from './level'
 
 type Rgb = readonly [number, number, number]
 type TableAccessory = 'archive-ledgers' | 'display-case' | 'open-books'
+type TorchPosition = readonly [number, number, number]
 
 export type RoomVisualProfile = {
   shelf: {
@@ -30,10 +31,23 @@ export type RoomVisualProfile = {
     fogNear: number
     fogFar: number
     ambientIntensity: number
+    hemisphereColor: string
+    groundColor: string
+    hemisphereIntensity: number
     mainColor: string
     mainIntensity: number
     accentColor: string
     accentIntensity: number
+  }
+  torches: {
+    positions: readonly TorchPosition[]
+    stemColor: string
+    baseColor: string
+    flameColor: string
+    haloColor: string
+    flameScale: number
+    lightIntensity: number
+    lightDistance: number
   }
   plaque: {
     positions: readonly number[]
@@ -96,10 +110,28 @@ const roomVisualProfiles = {
       fogNear: 2.8,
       fogFar: 8.2,
       ambientIntensity: 0.44,
+      hemisphereColor: '#5a3517',
+      groundColor: '#150b06',
+      hemisphereIntensity: 0.34,
       mainColor: '#bf8642',
       mainIntensity: 9.5,
       accentColor: '#d89a4a',
       accentIntensity: 3.2,
+    },
+    torches: {
+      positions: [
+        [-2.9, 1.18, -2.78],
+        [2.9, 1.18, -2.78],
+        [-2.9, 1.18, 2.78],
+        [2.9, 1.18, 2.78],
+      ],
+      stemColor: '#5a3517',
+      baseColor: '#8b7347',
+      flameColor: '#d89a4a',
+      haloColor: '#7a3f16',
+      flameScale: 0.92,
+      lightIntensity: 2.7,
+      lightDistance: 3.6,
     },
     plaque: {
       positions: [-1.18, 1.18],
@@ -160,10 +192,28 @@ const roomVisualProfiles = {
       fogNear: 4.6,
       fogFar: 12.6,
       ambientIntensity: 0.68,
+      hemisphereColor: '#bedbe3',
+      groundColor: '#111820',
+      hemisphereIntensity: 0.44,
       mainColor: '#efe4c4',
       mainIntensity: 12,
       accentColor: '#79c6db',
       accentIntensity: 5.6,
+    },
+    torches: {
+      positions: [
+        [-2.45, 1.42, -1.7],
+        [2.45, 1.42, -1.7],
+        [-2.45, 1.42, 1.7],
+        [2.45, 1.42, 1.7],
+      ],
+      stemColor: '#456f78',
+      baseColor: '#a9a48c',
+      flameColor: '#9ee5ef',
+      haloColor: '#79c6db',
+      flameScale: 0.74,
+      lightIntensity: 3.4,
+      lightDistance: 4.4,
     },
     plaque: {
       positions: [0],
@@ -224,10 +274,26 @@ const roomVisualProfiles = {
       fogNear: 3.6,
       fogFar: 10.8,
       ambientIntensity: 0.54,
+      hemisphereColor: '#245e61',
+      groundColor: '#09090b',
+      hemisphereIntensity: 0.28,
       mainColor: '#d5c3a3',
       mainIntensity: 11,
       accentColor: '#1ed2c3',
       accentIntensity: 4.5,
+    },
+    torches: {
+      positions: [
+        [-2.95, 1.26, -2.95],
+        [2.95, 1.26, 2.95],
+      ],
+      stemColor: '#0b6f67',
+      baseColor: '#aaa99e',
+      flameColor: '#1ed2c3',
+      haloColor: '#168c87',
+      flameScale: 1,
+      lightIntensity: 4.5,
+      lightDistance: 4.5,
     },
     plaque: {
       positions: [-1.42, 1.42],

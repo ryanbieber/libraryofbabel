@@ -271,9 +271,12 @@ function ArenaScene({
       <color attach="background" args={[profile.lighting.background]} />
       <fog attach="fog" args={[profile.lighting.fog, profile.lighting.fogNear, profile.lighting.fogFar]} />
       <ambientLight intensity={profile.lighting.ambientIntensity} />
+      <hemisphereLight
+        color={profile.lighting.hemisphereColor}
+        groundColor={profile.lighting.groundColor}
+        intensity={profile.lighting.hemisphereIntensity}
+      />
       <pointLight color={profile.lighting.mainColor} intensity={profile.lighting.mainIntensity} position={[0, 2.45, 0]} distance={8} />
-      <pointLight color={profile.lighting.accentColor} intensity={profile.lighting.accentIntensity} position={[-2.9, 1.9, -2.9]} distance={4.5} />
-      <pointLight color={profile.lighting.accentColor} intensity={profile.lighting.accentIntensity} position={[2.9, 1.9, 2.9]} distance={4.5} />
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
         <planeGeometry args={[roomSize, roomSize]} />
@@ -300,8 +303,7 @@ function ArenaScene({
       <ReadingTable profile={profile} />
       {npc ? <SeatedMonk npc={npc} questMarker={questMarker} onTalk={onTalkToNpc} /> : null}
       <RoomPlaques profile={profile} />
-      <Torch position={[-2.95, 1.26, -2.95]} profile={profile} />
-      <Torch position={[2.95, 1.26, 2.95]} profile={profile} />
+      <ThemedTorches profile={profile} />
       {cardinalDirections.map((_, wall) => (
         <ShelfWall
           key={`shelf:${wall}`}
@@ -316,7 +318,6 @@ function ArenaScene({
         />
       ))}
       <DustMotes profile={profile} />
-      <Stairs />
     </>
   )
 }
@@ -810,37 +811,50 @@ function seededUnit(seed: number): number {
   return (Math.sin(seed) * 43758.5453) % 1
 }
 
-function Torch({ position, profile }: { position: [number, number, number]; profile: RoomVisualProfile }) {
+function ThemedTorches({ profile }: { profile: RoomVisualProfile }) {
   return (
-    <group position={position}>
-      <mesh position={[0, -0.54, 0]}>
-        <boxGeometry args={[0.08, 1.08, 0.08]} />
-        <meshStandardMaterial color={profile.lighting.accentColor} roughness={0.9} />
-      </mesh>
-      <mesh position={[0, -1.1, 0]}>
-        <boxGeometry args={[0.5, 0.08, 0.22]} />
-        <meshStandardMaterial color="#aaa99e" roughness={0.9} />
-      </mesh>
-      <mesh position={[0, 0.12, 0]}>
-        <coneGeometry args={[0.17, 0.46, 5]} />
-        <meshStandardMaterial color={profile.lighting.accentColor} emissive={profile.lighting.accentColor} emissiveIntensity={1.7} />
-      </mesh>
-    </group>
+    <>
+      {profile.torches.positions.map((position) => (
+        <Torch key={position.join(':')} position={position} profile={profile} />
+      ))}
+    </>
   )
 }
 
-function Stairs() {
+function Torch({ position, profile }: { position: readonly [number, number, number]; profile: RoomVisualProfile }) {
+  const torch = profile.torches
+
   return (
-    <>
-      <mesh rotation={[-Math.PI / 2, 0, 0.12]} position={[-2.45, 0.08, 1.55]}>
-        <boxGeometry args={[1.35, 0.86, 0.16]} />
-        <meshStandardMaterial color="#777b82" roughness={1} />
+    <group position={[position[0], position[1], position[2]]}>
+      <pointLight color={torch.flameColor} intensity={torch.lightIntensity} distance={torch.lightDistance} position={[0, 0.16, 0]} />
+      <mesh position={[0, -0.54, 0]}>
+        <boxGeometry args={[0.08, 1.08, 0.08]} />
+        <meshStandardMaterial color={torch.stemColor} roughness={0.9} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, -0.12]} position={[2.45, 0.08, -1.55]}>
-        <boxGeometry args={[1.35, 0.86, 0.16]} />
-        <meshStandardMaterial color="#8e9299" roughness={1} />
+      <mesh position={[0, -1.1, 0]}>
+        <boxGeometry args={[0.5, 0.08, 0.22]} />
+        <meshStandardMaterial color={torch.baseColor} roughness={0.9} />
       </mesh>
-    </>
+      <mesh position={[0, 0.11, 0]} scale={[torch.flameScale * 0.72, torch.flameScale * 1.05, torch.flameScale * 0.72]}>
+        <sphereGeometry args={[0.18, 12, 8]} />
+        <meshStandardMaterial color={torch.flameColor} emissive={torch.flameColor} emissiveIntensity={1.7} />
+      </mesh>
+      <mesh position={[0, 0.29, 0]} scale={[torch.flameScale * 0.5, torch.flameScale * 0.62, torch.flameScale * 0.5]}>
+        <sphereGeometry args={[0.14, 10, 8]} />
+        <meshStandardMaterial color={torch.flameColor} emissive={torch.flameColor} emissiveIntensity={1.7} />
+      </mesh>
+      <mesh position={[0, 0.16, 0]} scale={torch.flameScale}>
+        <sphereGeometry args={[0.24, 10, 8]} />
+        <meshStandardMaterial
+          color={torch.haloColor}
+          emissive={torch.haloColor}
+          emissiveIntensity={0.9}
+          transparent
+          opacity={0.18}
+          depthWrite={false}
+        />
+      </mesh>
+    </group>
   )
 }
 
