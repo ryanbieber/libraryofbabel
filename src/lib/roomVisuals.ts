@@ -44,6 +44,7 @@ export type RoomVisualProfile = {
     stemColor: string
     baseColor: string
     flameColor: string
+    coreColor: string
     haloColor: string
     flameScale: number
     lightIntensity: number
@@ -128,6 +129,7 @@ const roomVisualProfiles = {
       stemColor: '#5a3517',
       baseColor: '#8b7347',
       flameColor: '#d89a4a',
+      coreColor: '#ffd37a',
       haloColor: '#7a3f16',
       flameScale: 0.92,
       lightIntensity: 2.7,
@@ -210,6 +212,7 @@ const roomVisualProfiles = {
       stemColor: '#456f78',
       baseColor: '#a9a48c',
       flameColor: '#9ee5ef',
+      coreColor: '#fbffe3',
       haloColor: '#79c6db',
       flameScale: 0.74,
       lightIntensity: 3.4,
@@ -290,6 +293,7 @@ const roomVisualProfiles = {
       stemColor: '#0b6f67',
       baseColor: '#aaa99e',
       flameColor: '#1ed2c3',
+      coreColor: '#e7ffe8',
       haloColor: '#168c87',
       flameScale: 1,
       lightIntensity: 4.5,

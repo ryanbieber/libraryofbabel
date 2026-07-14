@@ -1,5 +1,5 @@
-import { Canvas, useFrame } from '@react-three/fiber'
-import type { PointerEvent as ReactPointerEvent } from 'react'
+import { Canvas, type ThreeEvent, useFrame } from '@react-three/fiber'
+import type { PointerEvent as ReactPointerEvent, RefObject } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { cardinalDirections, type DirectionIndex, type RoomKind, type RoomPosition } from './lib/level'
@@ -95,6 +95,8 @@ export function ArenaViewport({
   const canUseWebGL = useWebGLAvailable()
   const dragRef = useRef<{ pointerId: number; lastX: number; isTouch: boolean } | null>(null)
   const turnRecoveryTimeoutRef = useRef<number | null>(null)
+  const hoveredBookRef = useRef<BookAddress | null>(null)
+  const [hoveredBook, setHoveredBook] = useState<BookAddress | null>(null)
   const facing = yawToDirection(playerPose.yaw)
 
   useEffect(
@@ -106,8 +108,16 @@ export function ArenaViewport({
     [],
   )
 
+  useEffect(() => {
+    setHoveredReachableBook(null)
+  }, [currentRoom.q, currentRoom.r])
+
   function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (!isPrimaryPointer(event) || isInteractiveTarget(event.target)) return
+    if (hoveredBookRef.current !== null) {
+      onHoldMoveChange({ forward: 0, strafe: 0, turnSlowdown: 0 })
+      return
+    }
 
     const isTouch = event.pointerType !== 'mouse'
     dragRef.current = { pointerId: event.pointerId, lastX: event.clientX, isTouch }
@@ -149,15 +159,22 @@ export function ArenaViewport({
     }
   }
 
+  function setHoveredReachableBook(address: BookAddress | null) {
+    hoveredBookRef.current = address
+    setHoveredBook(address)
+  }
+
   return (
     <div
       className={`arena-viewport movement-${movementCue}`}
       data-testid="arena-viewport"
       data-room-kind={roomKind}
+      data-book-hovered={hoveredBook ? 'true' : 'false'}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}
       onPointerCancel={handlePointerEnd}
+      onPointerLeave={() => setHoveredReachableBook(null)}
     >
       {canUseWebGL ? (
         <Canvas
@@ -171,10 +188,12 @@ export function ArenaViewport({
             roomKind={roomKind}
             doors={doors}
             selectedBook={selectedBook}
+            hoveredBook={hoveredBook}
             movementCue={movementCue}
             npc={npc}
             questMarker={questMarker}
             onOpenBook={onOpenBook}
+            onHoverBook={setHoveredReachableBook}
             onOpenDoor={onOpenDoor}
             onTalkToNpc={onTalkToNpc}
           />
@@ -243,10 +262,12 @@ function ArenaScene({
   roomKind,
   doors,
   selectedBook,
+  hoveredBook,
   movementCue,
   npc,
   questMarker,
   onOpenBook,
+  onHoverBook,
   onOpenDoor,
   onTalkToNpc,
 }: {
@@ -255,10 +276,12 @@ function ArenaScene({
   roomKind: RoomKind
   doors: DirectionIndex[]
   selectedBook: BookAddress
+  hoveredBook: BookAddress | null
   movementCue: MovementCue
   npc: LibraryNpc | null
   questMarker: QuestMarkerState
   onOpenBook: (address: BookAddress) => void
+  onHoverBook: (address: BookAddress | null) => void
   onOpenDoor: (direction: DirectionIndex) => void
   onTalkToNpc: () => void
 }) {
@@ -312,8 +335,10 @@ function ArenaScene({
           hasDoor={doors.includes(wall as DirectionIndex)}
           profile={profile}
           selectedBook={selectedBook}
+          hoveredBook={hoveredBook}
           playerPose={playerPose}
           onOpenBook={onOpenBook}
+          onHoverBook={onHoverBook}
           onOpenDoor={onOpenDoor}
         />
       ))}
@@ -606,8 +631,10 @@ function ShelfWall({
   hasDoor,
   profile,
   selectedBook,
+  hoveredBook,
   playerPose,
   onOpenBook,
+  onHoverBook,
   onOpenDoor,
 }: {
   currentRoom: RoomPosition
@@ -615,15 +642,18 @@ function ShelfWall({
   hasDoor: boolean
   profile: RoomVisualProfile
   selectedBook: BookAddress
+  hoveredBook: BookAddress | null
   playerPose: PlayerPose
   onOpenBook: (address: BookAddress) => void
+  onHoverBook: (address: BookAddress | null) => void
   onOpenDoor: (direction: DirectionIndex) => void
 }) {
   const shelfWood = useMemo(() => new THREE.Color(profile.shelf.woodColor), [profile.shelf.woodColor])
   const transform = shelfTransform(wall)
+  const groupRef = useRef<THREE.Group>(null)
 
   return (
-    <group position={transform.position} rotation={transform.rotation}>
+    <group ref={groupRef} position={transform.position} rotation={transform.rotation}>
       <mesh position={[0, 0, -0.012]}>
         <boxGeometry args={[shelfBackWidth, profile.shelf.backHeight, 0.18]} />
         <meshStandardMaterial color={shelfWood} roughness={1} />
@@ -634,6 +664,7 @@ function ShelfWall({
           {Array.from({ length: BOOKS_PER_SHELF }, (_, book) => {
             const address = nearbyBookAddress(currentRoom.q, currentRoom.r, wall, shelf, book)
             const isSelected = addressLabel(address) === addressLabel(selectedBook)
+            const isHovered = hoveredBook !== null && addressLabel(address) === addressLabel(hoveredBook)
             const isReachable = distanceToBook(playerPose, address) <= BOOK_INTERACTION_RADIUS
             const x = bookXPosition(book)
             if (hasDoor && Math.abs(x) < 0.72) return null
@@ -643,18 +674,113 @@ function ShelfWall({
                 key={`${shelf}:${book}`}
                 address={address}
                 isSelected={isSelected}
+                isHovered={isHovered}
                 isReachable={isReachable}
                 shelf={shelf}
                 book={book}
                 profile={profile}
                 onOpenBook={onOpenBook}
+                onHoverBook={onHoverBook}
               />
             )
           })}
         </group>
       ))}
+      <BookHoverPanel
+        currentRoom={currentRoom}
+        groupRef={groupRef}
+        wall={wall}
+        hasDoor={hasDoor}
+        profile={profile}
+        playerPose={playerPose}
+        onOpenBook={onOpenBook}
+        onHoverBook={onHoverBook}
+      />
       {hasDoor ? <Doorway compact parentCenterY={transform.position[1]} onOpen={() => onOpenDoor(wall)} /> : null}
     </group>
+  )
+}
+
+function BookHoverPanel({
+  currentRoom,
+  groupRef,
+  wall,
+  hasDoor,
+  profile,
+  playerPose,
+  onOpenBook,
+  onHoverBook,
+}: {
+  currentRoom: RoomPosition
+  groupRef: RefObject<THREE.Group | null>
+  wall: DirectionIndex
+  hasDoor: boolean
+  profile: RoomVisualProfile
+  playerPose: PlayerPose
+  onOpenBook: (address: BookAddress) => void
+  onHoverBook: (address: BookAddress | null) => void
+}) {
+  const panelHeight = (SHELVES_PER_WALL - 1) * profile.shelf.verticalStep + 0.54
+  const panelY = profile.shelf.verticalStart - ((SHELVES_PER_WALL - 1) * profile.shelf.verticalStep) / 2 - 0.02
+
+  function addressFromEvent(event: ThreeEvent<PointerEvent | MouseEvent>): BookAddress | null {
+    const group = groupRef.current
+    if (!group) return null
+
+    const localPoint = group.worldToLocal(event.point.clone())
+    if (Math.abs(localPoint.x) > shelfWidth / 2 || Math.abs(localPoint.y - panelY) > panelHeight / 2) {
+      return null
+    }
+
+    const shelf = Math.round((profile.shelf.verticalStart - localPoint.y) / profile.shelf.verticalStep)
+    if (shelf < 0 || shelf >= SHELVES_PER_WALL) return null
+
+    const book = Math.floor((localPoint.x + shelfWidth / 2) / bookSpacing)
+    if (book < 0 || book >= BOOKS_PER_SHELF) return null
+    if (hasDoor && Math.abs(bookXPosition(book)) < 0.72) return null
+
+    const address = nearbyBookAddress(currentRoom.q, currentRoom.r, wall, shelf, book)
+    return distanceToBook(playerPose, address) <= BOOK_INTERACTION_RADIUS ? address : null
+  }
+
+  function updateHover(event: ThreeEvent<PointerEvent>) {
+    const address = addressFromEvent(event)
+    if (!address) {
+      onHoverBook(null)
+      return
+    }
+    stopBookPointerEvent(event)
+    onHoverBook(address)
+  }
+
+  function openHoveredBook(event: ThreeEvent<PointerEvent | MouseEvent>) {
+    const address = addressFromEvent(event)
+    if (!address) return
+    stopBookPointerEvent(event)
+    onHoverBook(address)
+    onOpenBook(address)
+  }
+
+  return (
+    <mesh
+      position={[0, panelY, 0.245]}
+      onPointerMove={updateHover}
+      onPointerOver={updateHover}
+      onPointerOut={(event) => {
+        stopBookPointerEvent(event)
+        onHoverBook(null)
+      }}
+      onPointerDown={(event) => {
+        const address = addressFromEvent(event)
+        if (!address) return
+        stopBookPointerEvent(event)
+        onHoverBook(address)
+      }}
+      onClick={openHoveredBook}
+    >
+      <planeGeometry args={[shelfWidth, panelHeight]} />
+      <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+    </mesh>
   )
 }
 
@@ -688,41 +814,68 @@ function ShelfBoard({ hasDoorGap, profile }: { hasDoorGap: boolean; profile: Roo
 function BookSpine({
   address,
   isSelected,
+  isHovered,
   isReachable,
   shelf,
   book,
   profile,
   onOpenBook,
+  onHoverBook,
 }: {
   address: BookAddress
   isSelected: boolean
+  isHovered: boolean
   isReachable: boolean
   shelf: number
   book: number
   profile: RoomVisualProfile
   onOpenBook: (address: BookAddress) => void
+  onHoverBook: (address: BookAddress | null) => void
 }) {
   const palette = profile.shelf.bookPalette
-  const height = profile.shelf.bookHeightBase + ((book + shelf) % 3) * profile.shelf.bookHeightStep
-  const color = isSelected ? '#efd15b' : palette[(book + shelf * 2) % palette.length]
+  const baseHeight = profile.shelf.bookHeightBase + ((book + shelf) % 3) * profile.shelf.bookHeightStep
+  const height = isHovered ? baseHeight + 0.05 : baseHeight
+  const color = isHovered ? '#fff1a8' : isSelected ? '#efd15b' : palette[(book + shelf * 2) % palette.length]
+  const depth = isHovered ? profile.shelf.bookDepth + 0.055 : profile.shelf.bookDepth
+  const z = isHovered ? 0.13 : 0.09
 
   return (
     <mesh
-      position={[-shelfWidth / 2 + bookSpacing * (book + 0.5), -0.01, 0.09]}
+      position={[-shelfWidth / 2 + bookSpacing * (book + 0.5), -0.01, z]}
+      onPointerOver={(event) => {
+        if (!isReachable) return
+        stopBookPointerEvent(event)
+        onHoverBook(address)
+      }}
+      onPointerOut={(event) => {
+        if (!isReachable) return
+        stopBookPointerEvent(event)
+        onHoverBook(null)
+      }}
+      onPointerDown={(event) => {
+        if (!isReachable) return
+        stopBookPointerEvent(event)
+      }}
       onClick={(event) => {
-        event.stopPropagation()
+        if (!isReachable) return
+        stopBookPointerEvent(event)
         onOpenBook(address)
       }}
     >
-      <boxGeometry args={[bookSpacing * profile.shelf.bookWidthScale, height, profile.shelf.bookDepth]} />
+      <boxGeometry args={[bookSpacing * profile.shelf.bookWidthScale, height, depth]} />
       <meshStandardMaterial
         color={color}
-        roughness={0.85}
-        emissive={isSelected || isReachable ? '#302000' : '#000000'}
-        emissiveIntensity={isReachable ? 0.65 : 0.35}
+        roughness={isHovered ? 0.55 : 0.85}
+        emissive={isHovered ? '#5a3b00' : isSelected || isReachable ? '#302000' : '#000000'}
+        emissiveIntensity={isHovered ? 1 : isReachable ? 0.45 : 0.2}
       />
     </mesh>
   )
+}
+
+function stopBookPointerEvent(event: ThreeEvent<PointerEvent | MouseEvent>) {
+  event.stopPropagation()
+  event.nativeEvent.stopPropagation()
 }
 
 function bookXPosition(book: number): number {
@@ -823,10 +976,43 @@ function ThemedTorches({ profile }: { profile: RoomVisualProfile }) {
 
 function Torch({ position, profile }: { position: readonly [number, number, number]; profile: RoomVisualProfile }) {
   const torch = profile.torches
+  const lightRef = useRef<THREE.PointLight>(null)
+  const flameRef = useRef<THREE.Group>(null)
+  const outerMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
+  const coreMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
+  const haloMaterialRef = useRef<THREE.MeshBasicMaterial>(null)
+  const flickerSeed = Math.abs(position[0] * 1.7 + position[1] * 2.9 + position[2] * 3.7)
+
+  useFrame(({ clock }) => {
+    const time = clock.elapsedTime + flickerSeed
+    const flicker = 0.88 + Math.sin(time * 8.7) * 0.08 + Math.sin(time * 17.1) * 0.045
+    if (lightRef.current) {
+      lightRef.current.intensity = torch.lightIntensity * flicker
+    }
+    if (flameRef.current) {
+      flameRef.current.scale.set(0.9 + flicker * 0.1, 0.78 + flicker * 0.26, 0.9 + flicker * 0.08)
+      flameRef.current.rotation.y = Math.sin(time * 5.2) * 0.14
+    }
+    if (outerMaterialRef.current) {
+      outerMaterialRef.current.opacity = 0.48 + flicker * 0.22
+    }
+    if (coreMaterialRef.current) {
+      coreMaterialRef.current.opacity = 0.62 + flicker * 0.26
+    }
+    if (haloMaterialRef.current) {
+      haloMaterialRef.current.opacity = 0.08 + flicker * 0.1
+    }
+  })
 
   return (
     <group position={[position[0], position[1], position[2]]}>
-      <pointLight color={torch.flameColor} intensity={torch.lightIntensity} distance={torch.lightDistance} position={[0, 0.16, 0]} />
+      <pointLight
+        ref={lightRef}
+        color={torch.flameColor}
+        intensity={torch.lightIntensity}
+        distance={torch.lightDistance}
+        position={[0, 0.16, 0]}
+      />
       <mesh position={[0, -0.54, 0]}>
         <boxGeometry args={[0.08, 1.08, 0.08]} />
         <meshStandardMaterial color={torch.stemColor} roughness={0.9} />
@@ -835,25 +1021,51 @@ function Torch({ position, profile }: { position: readonly [number, number, numb
         <boxGeometry args={[0.5, 0.08, 0.22]} />
         <meshStandardMaterial color={torch.baseColor} roughness={0.9} />
       </mesh>
-      <mesh position={[0, 0.11, 0]} scale={[torch.flameScale * 0.72, torch.flameScale * 1.05, torch.flameScale * 0.72]}>
-        <sphereGeometry args={[0.18, 12, 8]} />
-        <meshStandardMaterial color={torch.flameColor} emissive={torch.flameColor} emissiveIntensity={1.7} />
+      <mesh position={[0, 0.04, 0]}>
+        <cylinderGeometry args={[0.18, 0.12, 0.16, 8]} />
+        <meshStandardMaterial color={torch.baseColor} metalness={0.15} roughness={0.62} />
       </mesh>
-      <mesh position={[0, 0.29, 0]} scale={[torch.flameScale * 0.5, torch.flameScale * 0.62, torch.flameScale * 0.5]}>
-        <sphereGeometry args={[0.14, 10, 8]} />
-        <meshStandardMaterial color={torch.flameColor} emissive={torch.flameColor} emissiveIntensity={1.7} />
-      </mesh>
-      <mesh position={[0, 0.16, 0]} scale={torch.flameScale}>
-        <sphereGeometry args={[0.24, 10, 8]} />
-        <meshStandardMaterial
-          color={torch.haloColor}
-          emissive={torch.haloColor}
-          emissiveIntensity={0.9}
-          transparent
-          opacity={0.18}
-          depthWrite={false}
-        />
-      </mesh>
+      <group ref={flameRef}>
+        <mesh position={[0, 0.22, 0]} scale={[torch.flameScale * 0.72, torch.flameScale, torch.flameScale * 0.72]}>
+          <coneGeometry args={[0.2, 0.56, 9, 1, true]} />
+          <meshBasicMaterial
+            ref={outerMaterialRef}
+            color={torch.flameColor}
+            transparent
+            opacity={0.66}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+        <mesh position={[0, 0.2, 0]} scale={[torch.flameScale * 0.42, torch.flameScale * 0.82, torch.flameScale * 0.42]}>
+          <coneGeometry args={[0.16, 0.46, 8, 1, true]} />
+          <meshBasicMaterial
+            ref={coreMaterialRef}
+            color={torch.coreColor}
+            transparent
+            opacity={0.82}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+        <mesh position={[0, 0.06, 0]} scale={[torch.flameScale * 0.54, torch.flameScale * 0.34, torch.flameScale * 0.54]}>
+          <sphereGeometry args={[0.18, 12, 8]} />
+          <meshBasicMaterial color={torch.coreColor} transparent opacity={0.72} depthWrite={false} blending={THREE.AdditiveBlending} />
+        </mesh>
+        <mesh position={[0, 0.16, 0]} scale={torch.flameScale}>
+          <sphereGeometry args={[0.24, 10, 8]} />
+          <meshBasicMaterial
+            ref={haloMaterialRef}
+            color={torch.haloColor}
+            transparent
+            opacity={0.18}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+      </group>
     </group>
   )
 }
