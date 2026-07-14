@@ -52,7 +52,6 @@ describe('App interactions', () => {
       return (
         <BookReader
           selectedBook={defaultAddress}
-          floor={0}
           spread={spread}
           leftPageNumber={1}
           rightPageNumber={2}
@@ -138,7 +137,7 @@ describe('App interactions', () => {
     expect(screen.queryByLabelText('Submit book coordinates')).not.toBeInTheDocument()
   })
 
-  it('requires clicking a nearby door to enter mapped rooms, uses stairs with E, and blocks sealed exits', () => {
+  it('requires clicking a nearby door to enter mapped rooms and blocks sealed exits', () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
 
@@ -163,9 +162,6 @@ describe('App interactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open east door' }))
     expect(screen.getByText('room 2,0 / east view')).toBeInTheDocument()
     expect(screen.getByText('east archive')).toBeInTheDocument()
-
-    pressKey('e')
-    expect(screen.getByText('Floor 1')).toBeInTheDocument()
 
     holdViewportForward(viewport, 88)
     expect(screen.getByText('The east wall has no open passage here.')).toBeInTheDocument()

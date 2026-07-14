@@ -5,7 +5,7 @@ export type RoomPosition = {
   r: number
 }
 
-export type RoomFeature = 'stairs-up' | 'stairs-down' | 'stacks' | 'gallery'
+export type RoomFeature = 'stacks' | 'gallery'
 
 export type LevelRoom = RoomPosition & {
   name: string
@@ -26,11 +26,11 @@ export const levelRooms: LevelRoom[] = [
   { q: -1, r: -1, name: 'upper west stack', features: ['stacks'] },
   { q: 0, r: -1, name: 'north gallery', features: ['gallery'] },
   { q: 1, r: -1, name: 'upper east stack', features: ['stacks'] },
-  { q: -2, r: 0, name: 'west archive', features: ['stairs-down'] },
+  { q: -2, r: 0, name: 'west archive', features: ['stacks'] },
   { q: -1, r: 0, name: 'west hall', features: ['stacks'] },
   { q: 0, r: 0, name: 'central catalog', features: ['gallery'] },
   { q: 1, r: 0, name: 'east hall', features: ['stacks'] },
-  { q: 2, r: 0, name: 'east archive', features: ['stairs-up'] },
+  { q: 2, r: 0, name: 'east archive', features: ['stacks'] },
   { q: -1, r: 1, name: 'lower west stack', features: ['stacks'] },
   { q: 0, r: 1, name: 'south gallery', features: ['gallery'] },
   { q: 1, r: 1, name: 'lower east stack', features: ['stacks'] },
