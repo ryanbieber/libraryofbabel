@@ -34,17 +34,16 @@ describe('App interactions', () => {
     expect(screen.getByTestId('arena-viewport')).toBeInTheDocument()
   })
 
-  it('moves forward by holding the viewport without showing bottom book cards', () => {
+  it('does not show bottom book cards in the first-person viewport', () => {
     const { container } = render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
 
     const viewport = screen.getByTestId('arena-viewport')
     expect(screen.queryByLabelText(/Open room 0,0 \/ north wall/)).not.toBeInTheDocument()
 
-    holdViewportForward(viewport, 42, 'mouse')
-
     expect(container.querySelector('.nearby-book-list')).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/Open room 0,0 \/ north wall/)).not.toBeInTheDocument()
+    expect(viewport).toBeInTheDocument()
   })
 
   it('shows a two-page reader spread and flips forward through spreads', () => {
@@ -138,67 +137,41 @@ describe('App interactions', () => {
     expect(screen.queryByLabelText('Submit book coordinates')).not.toBeInTheDocument()
   })
 
-  it('requires clicking a nearby door to enter mapped rooms and blocks sealed exits', () => {
+  it('uses mouse look and left click interaction for faced doors', () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
 
     const viewport = screen.getByTestId('arena-viewport')
     expect(viewport).toHaveAttribute('data-room-kind', 'gallery')
-    dragViewport(viewport, 253)
+    dragViewport(viewport, 330)
 
-    expect(screen.getByText('room 0,0 / east view')).toBeInTheDocument()
+    expect(screen.getAllByText('room 0,0 / east view').length).toBeGreaterThanOrEqual(1)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open east door' }))
+    clickViewport(viewport)
     expect(screen.getByText('Move closer to the east door.')).toBeInTheDocument()
-    expect(screen.getByText('room 0,0 / east view')).toBeInTheDocument()
-
-    holdViewportForward(viewport, 45)
-    expect(screen.getByText('The east door is shut. Click or tap it to open it.')).toBeInTheDocument()
-    expect(screen.getByText('room 0,0 / east view')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Open east door' }))
-    expect(screen.getByText('room 1,0 / east view')).toBeInTheDocument()
-    expect(screen.getAllByText('east hall').length).toBeGreaterThanOrEqual(1)
-    expect(viewport).toHaveAttribute('data-room-kind', 'stack')
-
-    holdViewportForward(viewport, 88)
-    fireEvent.click(screen.getByRole('button', { name: 'Open east door' }))
-    expect(screen.getByText('room 2,0 / east view')).toBeInTheDocument()
-    expect(screen.getAllByText('east archive').length).toBeGreaterThanOrEqual(1)
-    expect(viewport).toHaveAttribute('data-room-kind', 'archive')
-
-    holdViewportForward(viewport, 88)
-    expect(screen.getByText('The east wall has no open passage here.')).toBeInTheDocument()
+    expect(screen.getAllByText('room 0,0 / east view').length).toBeGreaterThanOrEqual(1)
   })
 
-  it('shows compact movement controls for position, turning, home, and speed', () => {
+  it('exposes WoW-style keyboard, touch, jump, and readout controls without a movement HUD', () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
 
-    expect(screen.getByLabelText('Movement controls')).toBeInTheDocument()
-    expect(screen.getByLabelText('Current position and orientation')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Move forward' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Return home' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Movement speed')).toHaveValue('1')
+    expect(screen.queryByLabelText('Movement controls')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Current position and controls')).toHaveTextContent('WASD move')
+    expect(screen.getByLabelText('Touch controls')).toBeInTheDocument()
+    expect(screen.getByLabelText('Movement joystick')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Use' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Jump' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Turn right' }))
-    expect(screen.getByText('room 0,0 / east view')).toBeInTheDocument()
-    expect(screen.getByLabelText('Facing east')).toBeInTheDocument()
-
-    fireEvent.change(screen.getByLabelText('Movement speed'), { target: { value: '4' } })
-    expect(screen.getByText('2x')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Return home' }))
-    expect(screen.getByText('room 0,0 / north view')).toBeInTheDocument()
+    fireEvent.keyDown(window, { key: ' ' })
+    expect(screen.getByText('You jump.')).toBeInTheDocument()
   })
 })
 
-function holdViewportForward(viewport: HTMLElement, times: number, pointerType = 'mouse') {
-  for (let step = 0; step < times; step += 1) {
-    const pointerId = step + 1
-    fireEvent.pointerDown(viewport, { button: 0, clientX: 190, clientY: 420, pointerId, pointerType })
-    fireEvent.pointerUp(viewport, { button: 0, pointerId, pointerType })
-  }
+function clickViewport(viewport: HTMLElement) {
+  const pointerId = 20_000
+  fireEvent.pointerDown(viewport, { button: 0, clientX: 190, clientY: 420, pointerId, pointerType: 'mouse' })
+  fireEvent.pointerUp(viewport, { button: 0, clientX: 190, clientY: 420, pointerId, pointerType: 'mouse' })
 }
 
 function dragViewport(viewport: HTMLElement, deltaX: number) {

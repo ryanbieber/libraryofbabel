@@ -345,189 +345,117 @@ button.door-chip.available:focus-visible {
   pointer-events: none;
 }
 
-.movement-hud {
+.control-readout {
   position: absolute;
-  right: 14px;
-  bottom: 48px;
-  z-index: 12;
+  bottom: 40px;
+  left: 10px;
+  z-index: 10;
   display: grid;
-  width: min(340px, calc(100vw - 28px));
-  gap: 10px;
-  padding: 12px;
-  border: 2px solid rgb(207 169 76 / 72%);
-  background: rgb(7 7 12 / 88%);
-  box-shadow:
-    0 18px 50px rgb(0 0 0 / 42%),
-    inset 0 0 28px rgb(207 169 76 / 8%);
+  gap: 3px;
+  max-width: min(520px, calc(100vw - 20px));
+  padding: 8px 10px;
+  border: 2px solid rgb(207 169 76 / 62%);
+  background: rgb(7 7 12 / 78%);
+  color: #d8c795;
+  font-size: 0.74rem;
+  line-height: 1.16;
+  pointer-events: none;
+  text-transform: uppercase;
+}
+
+.control-readout strong {
   color: #f6d67a;
 }
 
-.movement-hud-status {
-  display: grid;
-  grid-template-columns: 1.35fr 0.82fr 0.82fr;
-  gap: 8px;
-  min-width: 0;
+.mobile-landscape-controls,
+.portrait-lock {
+  display: none;
 }
 
-.movement-hud-status div {
-  min-width: 0;
+.touch-joystick {
+  position: absolute;
+  bottom: 28px;
+  left: 28px;
+  width: 116px;
+  height: 116px;
+  border: 2px solid rgb(246 214 122 / 48%);
+  border-radius: 999px;
+  background: rgb(7 7 12 / 44%);
+  box-shadow:
+    0 10px 38px rgb(0 0 0 / 36%),
+    inset 0 0 24px rgb(246 214 122 / 8%);
+  touch-action: none;
 }
 
-.movement-hud-status span {
-  display: block;
-  color: #d8c795;
-  font-size: 0.62rem;
-  font-weight: 900;
-  line-height: 1;
-  text-transform: uppercase;
+.touch-joystick-knob {
+  position: absolute;
+  top: calc(50% - 24px);
+  left: calc(50% - 24px);
+  width: 48px;
+  height: 48px;
+  border: 2px solid #fff1ac;
+  border-radius: 999px;
+  background: rgb(246 214 122 / 22%);
 }
 
-.movement-hud-status strong {
-  display: block;
-  margin-top: 4px;
-  overflow: hidden;
-  color: #fff1ac;
-  font-size: 0.78rem;
-  line-height: 1.08;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
+.touch-actions {
+  position: absolute;
+  right: 28px;
+  bottom: 32px;
+  display: flex;
+  gap: 14px;
 }
 
-.movement-hud-body {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 12px;
-  align-items: center;
-}
-
-.movement-pad {
-  display: grid;
-  grid-template-columns: repeat(3, 42px);
-  grid-template-rows: repeat(3, 42px);
-  gap: 6px;
-}
-
-.movement-button {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  padding: 0;
-  border: 2px solid rgb(216 199 149 / 38%);
-  background: rgb(255 241 172 / 10%);
+.touch-actions button {
+  width: 76px;
+  height: 76px;
+  border: 2px solid rgb(246 214 122 / 64%);
+  border-radius: 999px;
+  background: rgb(7 7 12 / 62%);
   color: #f6d67a;
   cursor: pointer;
-  transition:
-    background 120ms ease,
-    border-color 120ms ease,
-    color 120ms ease,
-    transform 120ms ease;
-}
-
-.movement-button:hover,
-.movement-button:focus-visible {
-  border-color: #fff1ac;
-  background: rgb(246 214 122 / 18%);
-  color: #fff1ac;
-  outline: 0;
-}
-
-.movement-button:active {
-  background: rgb(198 150 50 / 34%);
-  transform: translateY(1px);
-}
-
-.movement-forward {
-  grid-column: 2;
-}
-
-.movement-left {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-.movement-home {
-  grid-column: 2;
-  grid-row: 2;
-}
-
-.movement-right {
-  grid-column: 3;
-  grid-row: 2;
-}
-
-.movement-back {
-  grid-column: 2;
-  grid-row: 3;
-}
-
-.movement-orientation {
-  display: grid;
-  grid-template-columns: 42px 1fr 42px;
-  gap: 8px;
-  align-items: center;
-}
-
-.movement-bearing {
-  position: relative;
-  display: grid;
-  width: 58px;
-  height: 58px;
-  place-items: center;
-  justify-self: center;
-  border: 2px solid rgb(216 199 149 / 42%);
-  border-radius: 999px;
-  background: rgb(0 0 0 / 30%);
-  color: #f6d67a;
-}
-
-.movement-bearing svg {
-  position: absolute;
-  color: rgb(246 214 122 / 72%);
-  transition: transform 160ms ease;
-}
-
-.movement-bearing span {
-  position: relative;
-  z-index: 1;
-  color: #fff1ac;
-  font-size: 0.86rem;
-  font-weight: 900;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.movement-speed {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-  min-width: 0;
-  color: #d8c795;
-  font-size: 0.76rem;
+  font: inherit;
+  font-size: 0.8rem;
   font-weight: 900;
   text-transform: uppercase;
+  touch-action: manipulation;
 }
 
-.movement-speed span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
+@media (max-height: 520px) and (orientation: landscape) {
+  .mobile-landscape-controls {
+    position: absolute;
+    inset: 0;
+    z-index: 11;
+    display: block;
+    pointer-events: none;
+  }
+
+  .touch-joystick,
+  .touch-actions {
+    pointer-events: auto;
+  }
+
+  .control-readout {
+    display: none;
+  }
 }
 
-.movement-speed input {
-  width: 100%;
-  min-width: 0;
-  accent-color: #f6d67a;
-}
-
-.movement-speed strong {
-  min-width: 2.5rem;
-  color: #fff1ac;
-  text-align: right;
-  text-transform: none;
+@media (max-width: 620px) and (orientation: portrait) {
+  .portrait-lock {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    border: 0;
+    background: rgb(5 5 6 / 94%);
+    color: #f6d67a;
+    font-size: clamp(1.4rem, 7vw, 2.6rem);
+    font-weight: 900;
+    text-align: center;
+    text-transform: uppercase;
+  }
 }
 
 .book-reader,
@@ -907,8 +835,8 @@ button.door-chip.available:focus-visible {
   }
 
   .game-frame {
-    width: min(100vw, 390px);
-    height: min(100vh, 860px);
+    width: 100vw;
+    height: 100vh;
   }
 
   .message-bar {
@@ -941,52 +869,10 @@ button.door-chip.available:focus-visible {
     font-size: 1.82rem;
   }
 
-  .movement-hud {
-    right: 8px;
-    bottom: 50px;
-    left: 8px;
-    width: auto;
-    padding: 10px;
-  }
-
-  .movement-hud-status {
-    grid-template-columns: 1fr 0.7fr 0.7fr;
-  }
-
-  .movement-hud-body {
-    grid-template-columns: auto 1fr;
-    gap: 10px;
-  }
-
-  .movement-pad {
-    grid-template-columns: repeat(3, 38px);
-    grid-template-rows: repeat(3, 38px);
-    gap: 5px;
-  }
-
-  .movement-button {
-    width: 38px;
-    height: 38px;
-  }
-
-  .movement-orientation {
-    grid-template-columns: 38px 1fr 38px;
-    gap: 7px;
-  }
-
-  .movement-bearing {
-    width: 50px;
-    height: 50px;
-  }
-
-  .movement-speed {
-    grid-template-columns: auto auto;
-    justify-content: start;
-    gap: 7px 10px;
-  }
-
-  .movement-speed input {
-    grid-column: 1 / -1;
+  .control-readout {
+    right: 10px;
+    max-width: calc(100vw - 20px);
+    font-size: 0.68rem;
   }
 
   .npc-dialogue {
