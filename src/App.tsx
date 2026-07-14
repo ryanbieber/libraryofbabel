@@ -5,7 +5,6 @@ import {
   cardinalDirections,
   nearestRoom,
   roomDoors,
-  roomHasFeature,
   type DirectionIndex,
 } from './lib/level'
 import type { BookAddress } from './lib/library'
@@ -75,7 +74,6 @@ const HOLD_DECELERATION_PER_SECOND = 4.2
 const significantWordOdds = targetWordOdds(QUEST_TARGET_WORD)
 
 function App() {
-  const [floor, setFloor] = useState(0)
   const [playerPose, setPlayerPoseState] = useState<PlayerPose>({ ...STARTING_PLAYER_POSE })
   const [selectedBook, setSelectedBook] = useState<BookAddress>(defaultAddress)
   const [readerOpen, setReaderOpen] = useState(false)
@@ -88,7 +86,6 @@ function App() {
   const [message, setMessage] = useState('The door seals behind you. The shelves breathe dust.')
   const playerPoseRef = useRef<PlayerPose>({ ...STARTING_PLAYER_POSE })
   const modalOpenRef = useRef(false)
-  const keyActionRef = useRef<(key: string) => void>(() => undefined)
   const holdMovementRef = useRef<HoldMovement>({ forward: 0, strafe: 0, turnSlowdown: 0 })
   const holdForwardRampRef = useRef(0)
   const cueTimeout = useRef<number | null>(null)
@@ -103,20 +100,11 @@ function App() {
   const facing = yawToDirection(playerPose.yaw)
   const facingLabel = cardinalDirections[facing].label
   const currentNpc = useMemo(
-    () => npcForRoom(floor, { q: currentRoom.q, r: currentRoom.r }),
-    [floor, currentRoom.q, currentRoom.r],
+    () => npcForRoom(0, { q: currentRoom.q, r: currentRoom.r }),
+    [currentRoom.q, currentRoom.r],
   )
   const canTalkToNpc = isNpcReachable(playerPose, currentNpc)
   const questMarker = questMarkerForNpc(currentNpc, wordQuestStatus)
-  const canUseStairsUp = roomHasFeature(currentRoom, 'stairs-up')
-  const canUseStairsDown = roomHasFeature(currentRoom, 'stairs-down')
-  keyActionRef.current = (key) => {
-    switch (key) {
-      case 'e':
-        activateStairs()
-        break
-    }
-  }
 
   useEffect(() => {
     modalOpenRef.current = readerOpen || splashOpen || dialogueNpc !== null
@@ -128,27 +116,7 @@ function App() {
 
   useEffect(() => {
     setDialogueNpc(null)
-  }, [floor, currentRoom.q, currentRoom.r])
-
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (modalOpenRef.current || isTypingTarget(event.target)) return
-
-      if (event.key.toLowerCase() === 'e') {
-        event.preventDefault()
-        if (!event.repeat) {
-          keyActionRef.current('e')
-        }
-        return
-      }
-
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [])
+  }, [currentRoom.q, currentRoom.r])
 
   useEffect(() => {
     let animationFrame = 0
@@ -274,35 +242,6 @@ function App() {
     }
   }
 
-  function changeFloor(delta: number) {
-    if (delta > 0 && !canUseStairsUp) {
-      setMessage('There are no stairs up in this room.')
-      return
-    }
-    if (delta < 0 && !canUseStairsDown) {
-      setMessage('There are no stairs down in this room.')
-      return
-    }
-
-    setFloor((current) => current + delta)
-    setReaderOpen(false)
-    setDialogueNpc(null)
-    setMessage(delta > 0 ? 'You climb to the next floor. The floor plan repeats.' : 'You descend. The same floor plan waits below.')
-  }
-
-  function activateStairs() {
-    if (canUseStairsUp) {
-      changeFloor(1)
-      return
-    }
-    if (canUseStairsDown) {
-      changeFloor(-1)
-      return
-    }
-
-    setMessage('There are no stairs in this room.')
-  }
-
   function openBook(address: BookAddress) {
     setSelectedBook(address)
     setDialogueNpc(null)
@@ -377,7 +316,6 @@ function App() {
       <section className="game-frame" aria-label="Library game viewport">
         <div className={`scene scene-library movement-${movementCue}`}>
           <ArenaViewport
-            floor={floor}
             playerPose={playerPose}
             currentRoom={currentRoom}
             roomName={room.name}
@@ -409,7 +347,6 @@ function App() {
       {readerOpen ? (
         <BookReader
           selectedBook={selectedBook}
-          floor={floor}
           spread={spread}
           leftPageNumber={leftPageNumber}
           rightPageNumber={rightPageNumber}
@@ -455,7 +392,7 @@ function SplashScreen({ onStart }: { onStart: () => void }) {
           reality as traps disguised as ideas.
         </p>
         <p className="splash-controls">
-          Hold to walk, drag to look, click nearby books and doors, press E at stairs.
+          Hold to walk, drag to look, click nearby books and doors.
         </p>
         <button type="button" onClick={onStart}>
           Enter Library
@@ -467,7 +404,6 @@ function SplashScreen({ onStart }: { onStart: () => void }) {
 
 export function BookReader({
   selectedBook,
-  floor,
   spread,
   leftPageNumber,
   rightPageNumber,
@@ -477,7 +413,6 @@ export function BookReader({
   onSpreadChange,
 }: {
   selectedBook: BookAddress
-  floor: number
   spread: number
   leftPageNumber: number
   rightPageNumber: number
@@ -521,12 +456,12 @@ export function BookReader({
         <div className="book-cover">
           <div className={spreadClassName}>
             <article className="book-page left">
-              <span>floor {floor} / {addressLabel(selectedBook)}</span>
+              <span>{addressLabel(selectedBook)}</span>
               <h2>page {leftPageNumber}</h2>
               <HighlightedPage lines={leftPage} />
             </article>
             <article className="book-page right">
-              <span>floor {floor} / {addressLabel(selectedBook)}</span>
+              <span>{addressLabel(selectedBook)}</span>
               <h2>page {rightPageNumber}</h2>
               <HighlightedPage lines={rightPage} />
             </article>
@@ -727,10 +662,6 @@ function spreadToLeftPage(spread: number): number {
 
 function spreadToRightPage(spread: number): number {
   return clampPage(spreadToLeftPage(spread) + 1)
-}
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement
 }
 
 function npcQuestKicker(quest: LibraryNpc['quest']): string {

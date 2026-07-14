@@ -29,7 +29,6 @@ The app uses the story's familiar book structure:
 - Hold to walk forward.
 - Drag while holding to look around.
 - Click or tap nearby books and doors.
-- Press `E` in a stair room.
 
 ## Development
 

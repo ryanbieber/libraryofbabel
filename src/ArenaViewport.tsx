@@ -41,7 +41,6 @@ type HoldMovement = {
 export type QuestMarkerState = 'available' | 'active' | null
 
 type ArenaViewportProps = {
-  floor: number
   playerPose: PlayerPose
   currentRoom: RoomPosition
   roomName: string
@@ -73,7 +72,6 @@ const DRAG_TURN_RECOVERY_MS = 180
 const DRAG_TURN_SLOWDOWN_MAX_DELTA = 52
 
 export function ArenaViewport({
-  floor,
   playerPose,
   currentRoom,
   roomName,
@@ -182,8 +180,7 @@ export function ArenaViewport({
 
       <div className="arena-crosshair" aria-hidden="true" />
       <div className="arena-plaque" aria-hidden="true">
-        <strong>Floor {floor}</strong>
-        <span>{facingLabel}</span>
+        <strong>{facingLabel}</strong>
       </div>
       <div className="room-label">
         <strong>{roomName}</strong>
