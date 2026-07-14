@@ -158,36 +158,40 @@ describe('App interactions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open east door' }))
     expect(screen.getByText('room 1,0 / east view')).toBeInTheDocument()
-    expect(screen.getByText('east hall')).toBeInTheDocument()
+    expect(screen.getAllByText('east hall').length).toBeGreaterThanOrEqual(1)
     expect(viewport).toHaveAttribute('data-room-kind', 'stack')
 
     holdViewportForward(viewport, 88)
     fireEvent.click(screen.getByRole('button', { name: 'Open east door' }))
     expect(screen.getByText('room 2,0 / east view')).toBeInTheDocument()
-    expect(screen.getByText('east archive')).toBeInTheDocument()
+    expect(screen.getAllByText('east archive').length).toBeGreaterThanOrEqual(1)
     expect(viewport).toHaveAttribute('data-room-kind', 'archive')
 
     holdViewportForward(viewport, 88)
     expect(screen.getByText('The east wall has no open passage here.')).toBeInTheDocument()
   })
 
-  it('does not move with WASD after pointer controls replace keyboard movement', () => {
+  it('shows compact movement controls for position, turning, home, and speed', () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
 
-    pressKey('w', 30)
+    expect(screen.getByLabelText('Movement controls')).toBeInTheDocument()
+    expect(screen.getByLabelText('Current position and orientation')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Move forward' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Return home' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Movement speed')).toHaveValue('1')
 
-    expect(screen.queryByLabelText(/Open room 0,0 \/ north wall/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Turn right' }))
+    expect(screen.getByText('room 0,0 / east view')).toBeInTheDocument()
+    expect(screen.getByLabelText('Facing east')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Movement speed'), { target: { value: '4' } })
+    expect(screen.getByText('2x')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Return home' }))
     expect(screen.getByText('room 0,0 / north view')).toBeInTheDocument()
   })
 })
-
-function pressKey(key: string, times = 1) {
-  for (let index = 0; index < times; index += 1) {
-    fireEvent.keyDown(window, { key })
-    fireEvent.keyUp(window, { key })
-  }
-}
 
 function holdViewportForward(viewport: HTMLElement, times: number, pointerType = 'mouse') {
   for (let step = 0; step < times; step += 1) {
