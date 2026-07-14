@@ -329,15 +329,27 @@ function App() {
     setReaderOpen(false)
     setDialogueNpc(currentNpc)
     if (currentNpc.quest === 'significant-word') {
-      setWordQuestStatus((current) => current === 'not-started' ? 'accepted' : current)
-      setMessage('The hooded monk waits for wall, shelf, volume, and page.')
+      setMessage('The hooded monk offers a quest from the open book.')
       return
     }
 
     setMessage('The hooded monk raises two ink-stained fingers from the open book.')
   }
 
+  function acceptSignificantWordQuest() {
+    setWordQuestStatus((current) => current === 'not-started' ? 'accepted' : current)
+    setWordQuestFeedback(null)
+    setMessage('The hooded monk waits for room, wall, shelf, volume, and page.')
+  }
+
   function submitSignificantWordQuest(values: WordQuestFormValues) {
+    if (wordQuestStatus === 'not-started') {
+      const text = 'Accept the monk quest before testing coordinates.'
+      setWordQuestFeedback({ tone: 'error', text })
+      setMessage(text)
+      return
+    }
+
     const result = parseSignificantWordSubmission(values)
     if (!result.valid) {
       setWordQuestFeedback({ tone: 'error', text: result.message })
@@ -414,6 +426,7 @@ function App() {
           questStatus={wordQuestStatus}
           questFeedback={wordQuestFeedback}
           onClose={() => setDialogueNpc(null)}
+          onAcceptSignificantWordQuest={acceptSignificantWordQuest}
           onSubmitSignificantWordQuest={submitSignificantWordQuest}
         />
       ) : null}
@@ -425,11 +438,25 @@ function SplashScreen({ onStart }: { onStart: () => void }) {
   return (
     <section className="splash-screen" aria-label="Start screen">
       <div className="splash-panel">
-        <p className="splash-kicker">Library of Babel</p>
-        <h1>Enter the stacks</h1>
-        <p>Hold the room to walk forward. Drag while holding to look around.</p>
-        <p>Mouse and touch use the same movement: hold to advance, swipe or drag to turn.</p>
-        <p>Click or tap a nearby volume or door to open it. Press E in a stair room.</p>
+        <p className="splash-kicker">An homage to Borges</p>
+        <h1>The Library of Babel</h1>
+        <p className="splash-lede">
+          In Jorge Luis Borges's 1941 story, the universe is imagined as an endless library: every book
+          that can be written, every truth, every lie, every biography, and every nonsense page, all
+          shelved somewhere in the dark.
+        </p>
+        <p>
+          This app turns that impossible premise into a place you can walk through: rooms, walls,
+          shelves, volumes, and deterministic pages. It is not trying to solve the library. It is here to
+          let you feel the absurd scale of a system that contains everything and almost no meaning.
+        </p>
+        <p className="splash-author">
+          Borges was an Argentine writer whose fiction often treated infinity, labyrinths, language, and
+          reality as traps disguised as ideas.
+        </p>
+        <p className="splash-controls">
+          Hold to walk, drag to look, click nearby books and doors, press E at stairs.
+        </p>
         <button type="button" onClick={onStart}>
           Enter Library
         </button>
@@ -532,12 +559,14 @@ function NpcDialoguePanel({
   questStatus,
   questFeedback,
   onClose,
+  onAcceptSignificantWordQuest,
   onSubmitSignificantWordQuest,
 }: {
   npc: LibraryNpc
   questStatus: WordQuestStatus
   questFeedback: WordQuestFeedback | null
   onClose: () => void
+  onAcceptSignificantWordQuest: () => void
   onSubmitSignificantWordQuest: (values: WordQuestFormValues) => void
 }) {
   const [formValues, setFormValues] = useState<WordQuestFormValues>({
@@ -579,7 +608,14 @@ function NpcDialoguePanel({
             </>
           ) : null}
         </div>
-        {isSignificantWordQuest ? (
+        {isSignificantWordQuest && questStatus === 'not-started' ? (
+          <div className="quest-offer">
+            <button type="button" onClick={onAcceptSignificantWordQuest}>
+              accept quest
+            </button>
+          </div>
+        ) : null}
+        {isSignificantWordQuest && questStatus !== 'not-started' ? (
           <div className="quest-ledger" aria-label="Quest address book">
             <form className="quest-form" aria-label="Submit book coordinates" onSubmit={handleSubmit}>
               <label>

@@ -15,12 +15,15 @@ describe('App interactions', () => {
     vi.restoreAllMocks()
   })
 
-  it('starts with a splash screen that explains pointer movement', () => {
+  it('starts with a splash screen that introduces the Borges premise', () => {
     const { container } = render(<App />)
 
     expect(screen.getByLabelText('Start screen')).toBeInTheDocument()
-    expect(screen.getByText(/Hold the room to walk forward/)).toBeInTheDocument()
-    expect(screen.getByText(/Mouse and touch use the same movement/)).toBeInTheDocument()
+    expect(screen.getByText(/Jorge Luis Borges's 1941 story/)).toBeInTheDocument()
+    expect(screen.getByText(/universe is imagined as an endless library/)).toBeInTheDocument()
+    expect(screen.getByText(/This app turns that impossible premise into a place you can walk through/)).toBeInTheDocument()
+    expect(screen.getByText(/An homage to Borges/)).toBeInTheDocument()
+    expect(screen.getByText(/Hold to walk, drag to look/)).toBeInTheDocument()
     expect(screen.queryByText(/Move with WASD/)).not.toBeInTheDocument()
     expect(container.querySelector('.command-bar')).not.toBeInTheDocument()
 
@@ -87,8 +90,15 @@ describe('App interactions', () => {
     expect(screen.getByLabelText('Monk dialogue')).toBeInTheDocument()
     expect(screen.getByText(/Significant word/)).toBeInTheDocument()
     expect(screen.getByText(/contains the word babel/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'accept quest' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Quest address book')).not.toBeInTheDocument()
+    expect(container.querySelector('.npc-quest-marker.available')?.textContent).toBe('!')
+
+    fireEvent.click(screen.getByRole('button', { name: 'accept quest' }))
+
     expect(screen.getByLabelText('Quest address book')).toBeInTheDocument()
     expect(screen.getByLabelText('Submit book coordinates')).toBeInTheDocument()
+    expect(container.querySelector('.npc-quest-marker.active')?.textContent).toBe('?')
 
     fireEvent.click(screen.getByRole('button', { name: 'Close monk dialogue' }))
 
@@ -101,6 +111,7 @@ describe('App interactions', () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
     fireEvent.click(screen.getByRole('button', { name: /Talk to Hooded keeper of improbable words/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'accept quest' }))
 
     fireEvent.change(screen.getByLabelText('Quest room'), { target: { value: '0,0' } })
     fireEvent.change(screen.getByLabelText('Quest wall'), { target: { value: 'ceiling' } })
@@ -115,6 +126,16 @@ describe('App interactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'test page' }))
 
     expect(screen.getAllByText(/A confident heretic is still a heretic/)).toHaveLength(2)
+  })
+
+  it('does not activate the starting monk quest until the player accepts it', () => {
+    const { container } = render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
+    fireEvent.click(screen.getByRole('button', { name: /Talk to Hooded keeper of improbable words/ }))
+
+    expect(container.querySelector('.npc-quest-marker.available')?.textContent).toBe('!')
+    expect(container.querySelector('.npc-quest-marker.active')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Submit book coordinates')).not.toBeInTheDocument()
   })
 
   it('requires clicking a nearby door to enter mapped rooms, uses stairs with E, and blocks sealed exits', () => {
