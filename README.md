@@ -4,6 +4,8 @@ An interactive homage to Jorge Luis Borges's **The Library of Babel**.
 
 Play it here: <https://ryanbieber.github.io/libraryofbabel/>
 
+![Library of Babel landing screen](docs/library-of-babel-screenshot.png)
+
 ## About
 
 This project turns Borges's impossible library into a browser-based space: rooms, walls, shelves,

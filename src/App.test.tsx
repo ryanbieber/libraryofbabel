@@ -2,7 +2,8 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import App, { BookReader } from './App'
+import App from './App'
+import { BookReader } from './components/BookReader'
 import { defaultAddress, generatePage } from './lib/library'
 
 describe('App interactions', () => {

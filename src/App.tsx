@@ -1,6 +1,8 @@
-import { X } from 'lucide-react'
-import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArenaViewport, type QuestMarkerState } from './ArenaViewport'
+import { BookReader } from './components/BookReader'
+import { NpcDialoguePanel } from './components/NpcDialoguePanel'
+import { SplashScreen } from './components/SplashScreen'
 import {
   cardinalDirections,
   nearestRoom,
@@ -9,21 +11,11 @@ import {
 } from './lib/level'
 import type { BookAddress } from './lib/library'
 import {
-  addressLabel,
-  BOOKS_PER_SHELF,
-  clampPage,
   defaultAddress,
   generatePage,
   nearbyBookAddress,
-  PAGES_PER_BOOK,
-  SHELVES_PER_WALL,
 } from './lib/library'
-import {
-  QUEST_TARGET_WORD,
-  pageContainsWord,
-  targetWordOdds,
-  type SignificantWordSubmission,
-} from './lib/quest'
+import { spreadToLeftPage, spreadToRightPage } from './lib/bookSpread'
 import {
   STARTING_PLAYER_POSE,
   STEP_DISTANCE,
@@ -39,7 +31,12 @@ import {
   type PlayerPose,
 } from './lib/roomGeometry'
 import { isNpcReachable, npcForRoom, type LibraryNpc } from './lib/npcs'
-import { highlightPage, type HighlightSegment } from './lib/words'
+import {
+  resolveSignificantWordQuestSubmission,
+  type WordQuestFeedback,
+  type WordQuestFormValues,
+  type WordQuestStatus,
+} from './lib/significantWordQuest'
 import './App.css'
 
 type MovementCue = 'idle' | 'step' | 'turn-left' | 'turn-right'
@@ -50,28 +47,10 @@ type HoldMovement = {
   turnSlowdown: number
 }
 
-type WordQuestStatus = 'not-started' | 'accepted' | 'completed'
-
-type WordQuestFeedback = {
-  tone: 'success' | 'error'
-  text: string
-}
-
-type WordQuestFormValues = {
-  room: string
-  wall: string
-  shelf: string
-  volume: string
-  page: string
-}
-
-type PageTurnDirection = 'forward' | 'back' | null
-
 const HOLD_FORWARD_SPEED_SCALE = 0.62
 const HOLD_INITIAL_STEP_SCALE = 0.16
 const HOLD_ACCELERATION_PER_SECOND = 1.25
 const HOLD_DECELERATION_PER_SECOND = 4.2
-const significantWordOdds = targetWordOdds(QUEST_TARGET_WORD)
 
 function App() {
   const [playerPose, setPlayerPoseState] = useState<PlayerPose>({ ...STARTING_PLAYER_POSE })
@@ -282,33 +261,12 @@ function App() {
   }
 
   function submitSignificantWordQuest(values: WordQuestFormValues) {
-    if (wordQuestStatus === 'not-started') {
-      const text = 'Accept the monk quest before testing coordinates.'
-      setWordQuestFeedback({ tone: 'error', text })
-      setMessage(text)
-      return
+    const result = resolveSignificantWordQuestSubmission(values, wordQuestStatus)
+    if (result.nextStatus !== undefined) {
+      setWordQuestStatus(result.nextStatus)
     }
-
-    const result = parseSignificantWordSubmission(values)
-    if (!result.valid) {
-      setWordQuestFeedback({ tone: 'error', text: result.message })
-      setMessage(result.message)
-      return
-    }
-
-    const page = generatePage(result.submission)
-    if (pageContainsWord(page, QUEST_TARGET_WORD)) {
-      const location = `room ${result.display.room}, wall ${result.display.wall}, shelf ${result.display.shelf}, volume ${result.display.volume}, page ${result.display.page}`
-      const text = `At last, a coordinate instead of a sermon: ${location}. The word is there. Bring your patience back for the next quest.`
-      setWordQuestStatus('completed')
-      setWordQuestFeedback({ tone: 'success', text })
-      setMessage('The monk accepts the book coordinates and prepares the next quest.')
-      return
-    }
-
-    const text = `No ${QUEST_TARGET_WORD} on that page. A confident heretic is still a heretic.`
-    setWordQuestFeedback({ tone: 'error', text })
-    setMessage(text)
+    setWordQuestFeedback(result.feedback)
+    setMessage(result.message)
   }
 
   return (
@@ -371,277 +329,6 @@ function App() {
   )
 }
 
-function SplashScreen({ onStart }: { onStart: () => void }) {
-  return (
-    <section className="splash-screen" aria-label="Start screen">
-      <div className="splash-panel">
-        <p className="splash-kicker">An homage to Borges</p>
-        <h1>The Library of Babel</h1>
-        <p className="splash-lede">
-          In Jorge Luis Borges's 1941 story, the universe is imagined as an endless library: every book
-          that can be written, every truth, every lie, every biography, and every nonsense page, all
-          shelved somewhere in the dark.
-        </p>
-        <p>
-          This app turns that impossible premise into a place you can walk through: rooms, walls,
-          shelves, volumes, and deterministic pages. It is not trying to solve the library. It is here to
-          let you feel the absurd scale of a system that contains everything and almost no meaning.
-        </p>
-        <p className="splash-author">
-          Borges was an Argentine writer whose fiction often treated infinity, labyrinths, language, and
-          reality as traps disguised as ideas.
-        </p>
-        <p className="splash-controls">
-          Hold to walk, drag to look, click nearby books and doors.
-        </p>
-        <button type="button" onClick={onStart}>
-          Enter Library
-        </button>
-      </div>
-    </section>
-  )
-}
-
-export function BookReader({
-  selectedBook,
-  spread,
-  leftPageNumber,
-  rightPageNumber,
-  leftPage,
-  rightPage,
-  onClose,
-  onSpreadChange,
-}: {
-  selectedBook: BookAddress
-  spread: number
-  leftPageNumber: number
-  rightPageNumber: number
-  leftPage: string[]
-  rightPage: string[]
-  onClose: () => void
-  onSpreadChange: (spread: number) => void
-}) {
-  const [turnDirection, setTurnDirection] = useState<PageTurnDirection>(null)
-  const turnTimeoutRef = useRef<number | null>(null)
-
-  useEffect(
-    () => () => {
-      if (turnTimeoutRef.current !== null) {
-        window.clearTimeout(turnTimeoutRef.current)
-      }
-    },
-    [],
-  )
-
-  function requestSpread(nextSpreadValue: number) {
-    const nextSpread = clampSpread(nextSpreadValue)
-    if (nextSpread === spread) return
-
-    setTurnDirection(nextSpread > spread ? 'forward' : 'back')
-    onSpreadChange(nextSpread)
-    if (turnTimeoutRef.current !== null) {
-      window.clearTimeout(turnTimeoutRef.current)
-    }
-    turnTimeoutRef.current = window.setTimeout(() => setTurnDirection(null), 420)
-  }
-
-  const spreadClassName = ['book-spread', turnDirection ? `turn-${turnDirection}` : ''].join(' ')
-
-  return (
-    <section className="book-reader" aria-label="Open book reader">
-      <div className="book-shell">
-        <button type="button" className="close-reader" aria-label="Close book" onClick={onClose}>
-          <X size={22} aria-hidden="true" />
-        </button>
-        <div className="book-cover">
-          <div className={spreadClassName}>
-            <article className="book-page left">
-              <span>{addressLabel(selectedBook)}</span>
-              <h2>page {leftPageNumber}</h2>
-              <HighlightedPage lines={leftPage} />
-            </article>
-            <article className="book-page right">
-              <span>{addressLabel(selectedBook)}</span>
-              <h2>page {rightPageNumber}</h2>
-              <HighlightedPage lines={rightPage} />
-            </article>
-          </div>
-        </div>
-        <div className="reader-actions">
-          <button type="button" onClick={() => requestSpread(spread - 1)}>
-            back
-          </button>
-          <label>
-            spread
-            <input
-              value={spread}
-              aria-label="Spread number"
-              inputMode="numeric"
-              onChange={(event) => requestSpread(Number(event.target.value))}
-            />
-          </label>
-          <button type="button" onClick={() => requestSpread(spread + 1)}>
-            forward
-          </button>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function NpcDialoguePanel({
-  npc,
-  questStatus,
-  questFeedback,
-  onClose,
-  onAcceptSignificantWordQuest,
-  onSubmitSignificantWordQuest,
-}: {
-  npc: LibraryNpc
-  questStatus: WordQuestStatus
-  questFeedback: WordQuestFeedback | null
-  onClose: () => void
-  onAcceptSignificantWordQuest: () => void
-  onSubmitSignificantWordQuest: (values: WordQuestFormValues) => void
-}) {
-  const [formValues, setFormValues] = useState<WordQuestFormValues>({
-    room: '',
-    wall: '',
-    shelf: '',
-    volume: '',
-    page: '',
-  })
-  const isSignificantWordQuest = npc.quest === 'significant-word'
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    onSubmitSignificantWordQuest(formValues)
-  }
-
-  return (
-    <section className="npc-dialogue" aria-label="Monk dialogue">
-      <div className="npc-dialogue-panel">
-        <button type="button" className="close-reader" aria-label="Close monk dialogue" onClick={onClose}>
-          <X size={22} aria-hidden="true" />
-        </button>
-        <p className="splash-kicker">{npcQuestKicker(npc.quest)}</p>
-        <h2>{npc.name}</h2>
-        <div className="npc-dialogue-lines">
-          {npc.dialogue.map((line) => (
-            <p key={line}>{line}</p>
-          ))}
-          {isSignificantWordQuest ? (
-            <>
-              <p>
-                A specific five-letter word has about a {formatPercent(significantWordOdds.bookChance)} chance in a
-                book, roughly 1 in {formatWhole(significantWordOdds.oneInBooks)} books. A single page is roughly 1 in{' '}
-                {formatWhole(significantWordOdds.oneInPages)}.
-              </p>
-              {questStatus === 'completed' ? (
-                <p>The coordinate is accepted. The next quest can begin when the stacks stop laughing.</p>
-              ) : null}
-            </>
-          ) : null}
-        </div>
-        {isSignificantWordQuest && questStatus === 'not-started' ? (
-          <div className="quest-offer">
-            <button type="button" onClick={onAcceptSignificantWordQuest}>
-              accept quest
-            </button>
-          </div>
-        ) : null}
-        {isSignificantWordQuest && questStatus !== 'not-started' ? (
-          <div className="quest-ledger" aria-label="Quest address book">
-            <form className="quest-form" aria-label="Submit book coordinates" onSubmit={handleSubmit}>
-              <label>
-                room
-                <input
-                  value={formValues.room}
-                  aria-label="Quest room"
-                  placeholder="0,0"
-                  onChange={(event) => setFormValues((current) => ({ ...current, room: event.target.value }))}
-                />
-              </label>
-              <label>
-                wall
-                <input
-                  value={formValues.wall}
-                  aria-label="Quest wall"
-                  placeholder="north"
-                  onChange={(event) => setFormValues((current) => ({ ...current, wall: event.target.value }))}
-                />
-              </label>
-              <label>
-                shelf
-                <input
-                  value={formValues.shelf}
-                  aria-label="Quest shelf"
-                  inputMode="numeric"
-                  placeholder="1"
-                  onChange={(event) => setFormValues((current) => ({ ...current, shelf: event.target.value }))}
-                />
-              </label>
-              <label>
-                volume
-                <input
-                  value={formValues.volume}
-                  aria-label="Quest volume"
-                  inputMode="numeric"
-                  placeholder="1"
-                  onChange={(event) => setFormValues((current) => ({ ...current, volume: event.target.value }))}
-                />
-              </label>
-              <label>
-                page
-                <input
-                  value={formValues.page}
-                  aria-label="Quest page"
-                  inputMode="numeric"
-                  placeholder="1"
-                  onChange={(event) => setFormValues((current) => ({ ...current, page: event.target.value }))}
-                />
-              </label>
-              <button type="submit">test page</button>
-            </form>
-          </div>
-        ) : null}
-        {isSignificantWordQuest && questFeedback ? (
-          <p className={`quest-feedback ${questFeedback.tone}`} role="status">
-            {questFeedback.text}
-          </p>
-        ) : null}
-      </div>
-    </section>
-  )
-}
-
-function HighlightedPage({ lines }: { lines: string[] }) {
-  const highlightedLines = useMemo(() => highlightPage(lines), [lines])
-
-  return <pre>{highlightedLines.map((line, lineIndex) => (
-    <Fragment key={`${lineIndex}:${line.length}`}>
-      <HighlightedLine segments={line} />
-      {lineIndex < highlightedLines.length - 1 ? '\n' : null}
-    </Fragment>
-  ))}</pre>
-}
-
-function HighlightedLine({ segments }: { segments: HighlightSegment[] }) {
-  return (
-    <>
-      {segments.map((segment, index) =>
-        segment.highlight ? (
-          <mark key={`${index}:${segment.text}`} className="english-word">
-            {segment.text}
-          </mark>
-        ) : (
-          <Fragment key={`${index}:${segment.text}`}>{segment.text}</Fragment>
-        ),
-      )}
-    </>
-  )
-}
-
 function clampAxis(value: number): number {
   return Math.min(1, Math.max(-1, value))
 }
@@ -651,107 +338,9 @@ function moveToward(current: number, target: number, maxDelta: number): number {
   return current + Math.sign(target - current) * maxDelta
 }
 
-function clampSpread(spread: number): number {
-  if (!Number.isFinite(spread)) return 1
-  return Math.min(Math.ceil(PAGES_PER_BOOK / 2), Math.max(1, Math.round(spread)))
-}
-
-function spreadToLeftPage(spread: number): number {
-  return clampPage((clampSpread(spread) - 1) * 2 + 1)
-}
-
-function spreadToRightPage(spread: number): number {
-  return clampPage(spreadToLeftPage(spread) + 1)
-}
-
-function npcQuestKicker(quest: LibraryNpc['quest']): string {
-  if (quest === 'significant-word') return 'Significant word'
-  return quest === 'messiah' ? 'Man of the Book' : 'Crimson rumor'
-}
-
 function questMarkerForNpc(npc: LibraryNpc | null, status: WordQuestStatus): QuestMarkerState {
   if (npc?.quest !== 'significant-word' || status === 'completed') return null
   return status === 'not-started' ? 'available' : 'active'
-}
-
-function parseSignificantWordSubmission(values: WordQuestFormValues): {
-  valid: true
-  submission: SignificantWordSubmission
-  display: { room: string; wall: string; shelf: number; volume: number; page: number }
-} | {
-  valid: false
-  message: string
-} {
-  const room = parseRoom(values.room)
-  const wall = parseWall(values.wall)
-  const shelf = parseInteger(values.shelf)
-  const volume = parseInteger(values.volume)
-  const page = parseInteger(values.page)
-
-  if (room === null) {
-    return { valid: false, message: 'Room must be two coordinates like 0,0 or -2,1.' }
-  }
-  if (wall === null) {
-    return { valid: false, message: 'Choose a wall: north, east, south, west, or 1-4.' }
-  }
-  if (shelf === null || shelf < 1 || shelf > SHELVES_PER_WALL) {
-    return { valid: false, message: `Shelf must be 1-${SHELVES_PER_WALL}.` }
-  }
-  if (volume === null || volume < 1 || volume > BOOKS_PER_SHELF) {
-    return { valid: false, message: `Volume must be 1-${BOOKS_PER_SHELF}.` }
-  }
-  if (page === null || page < 1 || page > PAGES_PER_BOOK) {
-    return { valid: false, message: `Page must be 1-${PAGES_PER_BOOK}.` }
-  }
-
-  return {
-    valid: true,
-    submission: {
-      roomQ: room.q,
-      roomR: room.r,
-      wall,
-      shelf: shelf - 1,
-      book: volume - 1,
-      page,
-    },
-    display: {
-      room: `${room.q},${room.r}`,
-      wall: cardinalDirections[wall].label,
-      shelf,
-      volume,
-      page,
-    },
-  }
-}
-
-function parseRoom(value: string): { q: number; r: number } | null {
-  const match = value.trim().match(/^(-?\d+)\s*,\s*(-?\d+)$/)
-  if (!match) return null
-  return { q: Number(match[1]), r: Number(match[2]) }
-}
-
-function parseWall(value: string): DirectionIndex | null {
-  const clean = value.trim().toLowerCase()
-  const numeric = parseInteger(clean)
-  if (numeric !== null && numeric >= 1 && numeric <= cardinalDirections.length) {
-    return (numeric - 1) as DirectionIndex
-  }
-
-  const index = cardinalDirections.findIndex((direction) => direction.label === clean || direction.shortLabel.toLowerCase() === clean)
-  return index === -1 ? null : index as DirectionIndex
-}
-
-function parseInteger(value: string): number | null {
-  if (!/^\d+$/.test(value.trim())) return null
-  return Number(value)
-}
-
-function formatPercent(value: number): string {
-  return `${(value * 100).toFixed(1)}%`
-}
-
-function formatWhole(value: number): string {
-  return Math.round(value).toLocaleString('en-US')
 }
 
 export default App
