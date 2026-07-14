@@ -2,6 +2,15 @@
   "name": "libraryofbabel",
   "private": false,
   "version": "0.0.0",
+  "description": "An interactive homage to Jorge Luis Borges's The Library of Babel.",
+  "homepage": "https://ryanbieber.github.io/libraryofbabel/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ryanbieber/libraryofbabel.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ryanbieber/libraryofbabel/issues"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
