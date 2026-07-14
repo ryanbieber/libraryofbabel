@@ -50,6 +50,16 @@
   touch-action: none;
 }
 
+.arena-viewport[data-room-kind='archive'] {
+  background:
+    linear-gradient(180deg, #5f5144 0 19%, #473729 19% 23%, #110d0a 23% 100%);
+}
+
+.arena-viewport[data-room-kind='gallery'] {
+  background:
+    linear-gradient(180deg, #89939d 0 19%, #626c76 19% 23%, #10151a 23% 100%);
+}
+
 .arena-viewport:active {
   cursor: grabbing;
 }

@@ -6,9 +6,11 @@ export type RoomPosition = {
 }
 
 export type RoomFeature = 'stacks' | 'gallery'
+export type RoomKind = 'archive' | 'gallery' | 'stack'
 
 export type LevelRoom = RoomPosition & {
   name: string
+  kind: RoomKind
   features: RoomFeature[]
 }
 
@@ -22,19 +24,19 @@ export const cardinalDirections = [
 export const startingRoom: RoomPosition = { q: 0, r: 0 }
 
 export const levelRooms: LevelRoom[] = [
-  { q: 0, r: -2, name: 'north index', features: ['stacks'] },
-  { q: -1, r: -1, name: 'upper west stack', features: ['stacks'] },
-  { q: 0, r: -1, name: 'north gallery', features: ['gallery'] },
-  { q: 1, r: -1, name: 'upper east stack', features: ['stacks'] },
-  { q: -2, r: 0, name: 'west archive', features: ['stacks'] },
-  { q: -1, r: 0, name: 'west hall', features: ['stacks'] },
-  { q: 0, r: 0, name: 'central catalog', features: ['gallery'] },
-  { q: 1, r: 0, name: 'east hall', features: ['stacks'] },
-  { q: 2, r: 0, name: 'east archive', features: ['stacks'] },
-  { q: -1, r: 1, name: 'lower west stack', features: ['stacks'] },
-  { q: 0, r: 1, name: 'south gallery', features: ['gallery'] },
-  { q: 1, r: 1, name: 'lower east stack', features: ['stacks'] },
-  { q: 0, r: 2, name: 'south index', features: ['stacks'] },
+  { q: 0, r: -2, name: 'north index', kind: 'stack', features: ['stacks'] },
+  { q: -1, r: -1, name: 'upper west stack', kind: 'stack', features: ['stacks'] },
+  { q: 0, r: -1, name: 'north gallery', kind: 'gallery', features: ['gallery'] },
+  { q: 1, r: -1, name: 'upper east stack', kind: 'stack', features: ['stacks'] },
+  { q: -2, r: 0, name: 'west archive', kind: 'archive', features: ['stacks'] },
+  { q: -1, r: 0, name: 'west hall', kind: 'stack', features: ['stacks'] },
+  { q: 0, r: 0, name: 'central catalog', kind: 'gallery', features: ['gallery'] },
+  { q: 1, r: 0, name: 'east hall', kind: 'stack', features: ['stacks'] },
+  { q: 2, r: 0, name: 'east archive', kind: 'archive', features: ['stacks'] },
+  { q: -1, r: 1, name: 'lower west stack', kind: 'stack', features: ['stacks'] },
+  { q: 0, r: 1, name: 'south gallery', kind: 'gallery', features: ['gallery'] },
+  { q: 1, r: 1, name: 'lower east stack', kind: 'stack', features: ['stacks'] },
+  { q: 0, r: 2, name: 'south index', kind: 'stack', features: ['stacks'] },
 ]
 
 const roomMap = new Map(levelRooms.map((room) => [roomKey(room), room]))

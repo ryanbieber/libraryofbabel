@@ -15,7 +15,36 @@ describe('library level', () => {
   it('keeps archive rooms as ordinary stack rooms without stairs', () => {
     expect(roomHasFeature({ q: 2, r: 0 }, 'stacks')).toBe(true)
     expect(roomHasFeature({ q: -2, r: 0 }, 'stacks')).toBe(true)
+    expect(levelRooms.find((room) => room.name === 'east archive')?.kind).toBe('archive')
+    expect(levelRooms.find((room) => room.name === 'west archive')?.kind).toBe('archive')
     expect(levelRooms.flatMap((room) => room.features).some((feature) => feature.startsWith('stairs'))).toBe(false)
+  })
+
+  it('adds visual room kinds without changing the core map coordinates', () => {
+    expect(levelRooms.map((room) => roomKey(room))).toEqual([
+      '0,-2',
+      '-1,-1',
+      '0,-1',
+      '1,-1',
+      '-2,0',
+      '-1,0',
+      '0,0',
+      '1,0',
+      '2,0',
+      '-1,1',
+      '0,1',
+      '1,1',
+      '0,2',
+    ])
+    expect(levelRooms.filter((room) => room.kind === 'archive').map((room) => room.name)).toEqual([
+      'west archive',
+      'east archive',
+    ])
+    expect(levelRooms.filter((room) => room.kind === 'gallery').map((room) => room.name)).toEqual([
+      'north gallery',
+      'central catalog',
+      'south gallery',
+    ])
   })
 
   it('keeps the whole map reachable from the starting room', () => {
