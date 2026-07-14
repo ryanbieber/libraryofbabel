@@ -28,14 +28,13 @@ export type MoveResult = {
   door?: DirectionIndex
 }
 
-export const ROOM_HALF_SIZE = 4.2
+export const ROOM_HALF_SIZE = 5.4
 export const PLAYER_RADIUS = 0.22
 export const DOOR_HALF_WIDTH = 0.82
 export const INTERACTION_RADIUS = 1.25
 export const BOOK_INTERACTION_RADIUS = 1.75
 export const STEP_DISTANCE = 0.74
-export const WALK_SPEED = 2.55
-export const KEYBOARD_TURN_SPEED = 2.45
+export const WALK_SPEED = 2.75
 
 export const STARTING_PLAYER_POSE: PlayerPose = {
   roomQ: 0,

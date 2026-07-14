@@ -37,7 +37,7 @@ type NearbyBook = {
   distance: number
 }
 
-type TouchMovement = {
+type HoldMovement = {
   forward: number
   strafe: number
   turnSlowdown: number
@@ -59,8 +59,8 @@ type ArenaViewportProps = {
   onOpenDoor: (direction: DirectionIndex) => void
   onTalkToNpc: () => void
   onLook: (deltaYaw: number) => void
-  onTouchForwardStart: () => void
-  onTouchMoveChange: (movement: TouchMovement) => void
+  onHoldForwardStart: () => void
+  onHoldMoveChange: (movement: HoldMovement) => void
 }
 
 const roomSize = ROOM_HALF_SIZE * 2
@@ -69,11 +69,11 @@ const bookSpacing = shelfWidth / BOOKS_PER_SHELF
 const shelfBackWidth = shelfWidth + 0.18
 const shelfBoardWidth = shelfWidth + 0.2
 const doorwayGapWidth = 1.44
-const TOUCH_LOOK_SENSITIVITY = 0.0031
-const MOUSE_LOOK_SENSITIVITY = 0.004
-const TOUCH_TURN_DEADZONE_PX = 0.8
-const TOUCH_TURN_RECOVERY_MS = 220
-const TOUCH_TURN_SLOWDOWN_MAX_DELTA = 34
+const TOUCH_LOOK_SENSITIVITY = 0.0042
+const MOUSE_LOOK_SENSITIVITY = 0.0062
+const DRAG_TURN_DEADZONE_PX = 0.6
+const DRAG_TURN_RECOVERY_MS = 180
+const DRAG_TURN_SLOWDOWN_MAX_DELTA = 52
 
 export function ArenaViewport({
   floor,
@@ -91,8 +91,8 @@ export function ArenaViewport({
   onOpenDoor,
   onTalkToNpc,
   onLook,
-  onTouchForwardStart,
-  onTouchMoveChange,
+  onHoldForwardStart,
+  onHoldMoveChange,
 }: ArenaViewportProps) {
   const canUseWebGL = useWebGLAvailable()
   const dragRef = useRef<{ pointerId: number; lastX: number; isTouch: boolean } | null>(null)
@@ -114,10 +114,8 @@ export function ArenaViewport({
     const isTouch = event.pointerType !== 'mouse'
     dragRef.current = { pointerId: event.pointerId, lastX: event.clientX, isTouch }
     event.currentTarget.setPointerCapture?.(event.pointerId)
-    if (isTouch) {
-      onTouchMoveChange({ forward: 1, strafe: 0, turnSlowdown: 0 })
-      onTouchForwardStart()
-    }
+    onHoldMoveChange({ forward: 1, strafe: 0, turnSlowdown: 0 })
+    onHoldForwardStart()
   }
 
   function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
@@ -127,17 +125,17 @@ export function ArenaViewport({
     const deltaX = event.clientX - drag.lastX
     dragRef.current = { ...drag, lastX: event.clientX }
     onLook(deltaX * (drag.isTouch ? TOUCH_LOOK_SENSITIVITY : MOUSE_LOOK_SENSITIVITY))
-    if (drag.isTouch && Math.abs(deltaX) > TOUCH_TURN_DEADZONE_PX) {
+    if (Math.abs(deltaX) > DRAG_TURN_DEADZONE_PX) {
       if (turnRecoveryTimeoutRef.current !== null) {
         window.clearTimeout(turnRecoveryTimeoutRef.current)
       }
-      const turnSlowdown = Math.min(1, Math.abs(deltaX) / TOUCH_TURN_SLOWDOWN_MAX_DELTA)
-      onTouchMoveChange({ forward: 1, strafe: 0, turnSlowdown })
+      const turnSlowdown = Math.min(1, Math.abs(deltaX) / DRAG_TURN_SLOWDOWN_MAX_DELTA)
+      onHoldMoveChange({ forward: 1, strafe: 0, turnSlowdown })
       turnRecoveryTimeoutRef.current = window.setTimeout(() => {
         if (dragRef.current?.pointerId === event.pointerId) {
-          onTouchMoveChange({ forward: 1, strafe: 0, turnSlowdown: 0 })
+          onHoldMoveChange({ forward: 1, strafe: 0, turnSlowdown: 0 })
         }
-      }, TOUCH_TURN_RECOVERY_MS)
+      }, DRAG_TURN_RECOVERY_MS)
     }
   }
 
@@ -145,13 +143,11 @@ export function ArenaViewport({
     const drag = dragRef.current
     if (drag?.pointerId === event.pointerId) {
       dragRef.current = null
-      if (drag.isTouch) {
-        if (turnRecoveryTimeoutRef.current !== null) {
-          window.clearTimeout(turnRecoveryTimeoutRef.current)
-          turnRecoveryTimeoutRef.current = null
-        }
-        onTouchMoveChange({ forward: 0, strafe: 0, turnSlowdown: 0 })
+      if (turnRecoveryTimeoutRef.current !== null) {
+        window.clearTimeout(turnRecoveryTimeoutRef.current)
+        turnRecoveryTimeoutRef.current = null
       }
+      onHoldMoveChange({ forward: 0, strafe: 0, turnSlowdown: 0 })
     }
   }
 

@@ -19,7 +19,6 @@ import {
 } from './lib/library'
 import {
   BOOK_INTERACTION_RADIUS,
-  KEYBOARD_TURN_SPEED,
   STARTING_PLAYER_POSE,
   STEP_DISTANCE,
   WALK_SPEED,
@@ -46,16 +45,16 @@ type NearbyBook = {
   distance: number
 }
 
-type TouchMovement = {
+type HoldMovement = {
   forward: number
   strafe: number
   turnSlowdown: number
 }
 
-const TOUCH_FORWARD_SPEED_SCALE = 0.34
-const TOUCH_INITIAL_STEP_SCALE = 0.08
-const TOUCH_ACCELERATION_PER_SECOND = 0.55
-const TOUCH_DECELERATION_PER_SECOND = 3.2
+const HOLD_FORWARD_SPEED_SCALE = 0.62
+const HOLD_INITIAL_STEP_SCALE = 0.16
+const HOLD_ACCELERATION_PER_SECOND = 1.25
+const HOLD_DECELERATION_PER_SECOND = 4.2
 
 function App() {
   const [floor, setFloor] = useState(0)
@@ -69,10 +68,9 @@ function App() {
   const [message, setMessage] = useState('The door seals behind you. The shelves breathe dust.')
   const playerPoseRef = useRef<PlayerPose>({ ...STARTING_PLAYER_POSE })
   const modalOpenRef = useRef(false)
-  const keysPressed = useRef(new Set<string>())
   const keyActionRef = useRef<(key: string) => void>(() => undefined)
-  const touchMovementRef = useRef<TouchMovement>({ forward: 0, strafe: 0, turnSlowdown: 0 })
-  const touchForwardRampRef = useRef(0)
+  const holdMovementRef = useRef<HoldMovement>({ forward: 0, strafe: 0, turnSlowdown: 0 })
+  const holdForwardRampRef = useRef(0)
   const cueTimeout = useRef<number | null>(null)
 
   const leftPageNumber = spreadToLeftPage(spread)
@@ -103,26 +101,6 @@ function App() {
 
   keyActionRef.current = (key) => {
     switch (key) {
-      case 'w':
-      case 'arrowup':
-        movePlayer(1, 0, STEP_DISTANCE)
-        break
-      case 's':
-      case 'arrowdown':
-        movePlayer(-1, 0, STEP_DISTANCE)
-        break
-      case 'a':
-        movePlayer(0, -1, STEP_DISTANCE * 0.85)
-        break
-      case 'd':
-        movePlayer(0, 1, STEP_DISTANCE * 0.85)
-        break
-      case 'arrowleft':
-        rotatePlayer(-Math.PI / 2, 'turn-left')
-        break
-      case 'arrowright':
-        rotatePlayer(Math.PI / 2, 'turn-right')
-        break
       case 'e':
         activateStairs()
         break
@@ -132,9 +110,8 @@ function App() {
   useEffect(() => {
     modalOpenRef.current = readerOpen || splashOpen || dialogueNpc !== null
     if (modalOpenRef.current) {
-      keysPressed.current.clear()
-      touchMovementRef.current = { forward: 0, strafe: 0, turnSlowdown: 0 }
-      touchForwardRampRef.current = 0
+      holdMovementRef.current = { forward: 0, strafe: 0, turnSlowdown: 0 }
+      holdForwardRampRef.current = 0
     }
   }, [readerOpen, splashOpen, dialogueNpc])
 
@@ -154,35 +131,11 @@ function App() {
         return
       }
 
-      const key = movementKey(event.key)
-      if (key) {
-        keysPressed.current.add(key)
-        event.preventDefault()
-        if (!event.repeat) {
-          keyActionRef.current(key)
-        }
-      }
-    }
-
-    function handleKeyUp(event: KeyboardEvent) {
-      const key = movementKey(event.key)
-      if (key) {
-        keysPressed.current.delete(key)
-        event.preventDefault()
-      }
-    }
-
-    function clearKeys() {
-      keysPressed.current.clear()
     }
 
     window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('keyup', handleKeyUp)
-    window.addEventListener('blur', clearKeys)
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('keyup', handleKeyUp)
-      window.removeEventListener('blur', clearKeys)
     }
   }, [])
 
@@ -195,23 +148,15 @@ function App() {
       lastFrame = now
 
       if (!modalOpenRef.current) {
-        const keys = keysPressed.current
-        const touchMovement = touchMovementRef.current
-        const touchForwardTarget = touchMovement.forward * (1 - touchMovement.turnSlowdown) * TOUCH_FORWARD_SPEED_SCALE
-        touchForwardRampRef.current = moveToward(
-          touchForwardRampRef.current,
-          touchForwardTarget,
-          (touchForwardTarget > touchForwardRampRef.current ? TOUCH_ACCELERATION_PER_SECOND : TOUCH_DECELERATION_PER_SECOND) * deltaSeconds,
+        const holdMovement = holdMovementRef.current
+        const holdForwardTarget = holdMovement.forward * (1 - holdMovement.turnSlowdown) * HOLD_FORWARD_SPEED_SCALE
+        holdForwardRampRef.current = moveToward(
+          holdForwardRampRef.current,
+          holdForwardTarget,
+          (holdForwardTarget > holdForwardRampRef.current ? HOLD_ACCELERATION_PER_SECOND : HOLD_DECELERATION_PER_SECOND) * deltaSeconds,
         )
-        const forward = clampAxis(
-          keyAxis(keys, 'w', 'arrowup') - keyAxis(keys, 's', 'arrowdown') + touchForwardRampRef.current,
-        )
-        const strafe = clampAxis(keyAxis(keys, 'd') - keyAxis(keys, 'a') + touchMovement.strafe * TOUCH_FORWARD_SPEED_SCALE)
-        const turn = keyAxis(keys, 'arrowright') - keyAxis(keys, 'arrowleft')
-
-        if (turn !== 0) {
-          rotatePlayer(turn * KEYBOARD_TURN_SPEED * deltaSeconds)
-        }
+        const forward = clampAxis(holdForwardRampRef.current)
+        const strafe = clampAxis(holdMovement.strafe * HOLD_FORWARD_SPEED_SCALE)
         if (forward !== 0 || strafe !== 0) {
           movePlayer(forward, strafe, WALK_SPEED * deltaSeconds, false)
         }
@@ -275,8 +220,8 @@ function App() {
   function openDoor(direction: DirectionIndex) {
     const pose = playerPoseRef.current
     const availableDoors = roomDoors(roomPositionFromPose(pose))
-    touchMovementRef.current = { forward: 0, strafe: 0, turnSlowdown: 0 }
-    touchForwardRampRef.current = 0
+    holdMovementRef.current = { forward: 0, strafe: 0, turnSlowdown: 0 }
+    holdForwardRampRef.current = 0
 
     if (!availableDoors.includes(direction)) {
       setMessage(`The ${directionLabel(direction)} wall has no open passage here.`)
@@ -395,9 +340,9 @@ function App() {
             onOpenDoor={openDoor}
             onTalkToNpc={talkToNpc}
             onLook={(deltaYaw) => rotatePlayer(deltaYaw)}
-            onTouchForwardStart={() => movePlayer(1, 0, STEP_DISTANCE * TOUCH_INITIAL_STEP_SCALE)}
-            onTouchMoveChange={(movement) => {
-              touchMovementRef.current = movement
+            onHoldForwardStart={() => movePlayer(1, 0, STEP_DISTANCE * HOLD_INITIAL_STEP_SCALE)}
+            onHoldMoveChange={(movement) => {
+              holdMovementRef.current = movement
             }}
           />
         </div>
@@ -434,8 +379,8 @@ function SplashScreen({ onStart }: { onStart: () => void }) {
       <div className="splash-panel">
         <p className="splash-kicker">Library of Babel</p>
         <h1>Enter the stacks</h1>
-        <p>Move with WASD. Use the arrow keys to turn.</p>
-        <p>On mobile, touch and hold the room to walk forward. Drag while holding to look around.</p>
+        <p>Hold the room to walk forward. Drag while holding to look around.</p>
+        <p>Mouse and touch use the same movement: hold to advance, swipe or drag to turn.</p>
         <p>Click or tap a nearby volume or door to open it. Press E in a stair room.</p>
         <button type="button" onClick={onStart}>
           Enter Library
@@ -552,18 +497,6 @@ function HighlightedLine({ segments }: { segments: HighlightSegment[] }) {
       )}
     </>
   )
-}
-
-function movementKey(key: string): string | null {
-  const normalized = key.toLowerCase()
-  if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(normalized)) {
-    return normalized
-  }
-  return null
-}
-
-function keyAxis(keys: Set<string>, positive: string, alternatePositive?: string): number {
-  return keys.has(positive) || (alternatePositive ? keys.has(alternatePositive) : false) ? 1 : 0
 }
 
 function clampAxis(value: number): number {
