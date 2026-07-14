@@ -143,6 +143,7 @@ describe('App interactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
 
     const viewport = screen.getByTestId('arena-viewport')
+    expect(viewport).toHaveAttribute('data-room-kind', 'gallery')
     dragViewport(viewport, 253)
 
     expect(screen.getByText('room 0,0 / east view')).toBeInTheDocument()
@@ -158,11 +159,13 @@ describe('App interactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open east door' }))
     expect(screen.getByText('room 1,0 / east view')).toBeInTheDocument()
     expect(screen.getByText('east hall')).toBeInTheDocument()
+    expect(viewport).toHaveAttribute('data-room-kind', 'stack')
 
     holdViewportForward(viewport, 88)
     fireEvent.click(screen.getByRole('button', { name: 'Open east door' }))
     expect(screen.getByText('room 2,0 / east view')).toBeInTheDocument()
     expect(screen.getByText('east archive')).toBeInTheDocument()
+    expect(viewport).toHaveAttribute('data-room-kind', 'archive')
 
     holdViewportForward(viewport, 88)
     expect(screen.getByText('The east wall has no open passage here.')).toBeInTheDocument()

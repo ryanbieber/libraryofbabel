@@ -277,6 +277,7 @@ function App() {
             playerPose={playerPose}
             currentRoom={currentRoom}
             roomName={room.name}
+            roomKind={room.kind}
             doors={doors}
             selectedBook={selectedBook}
             movementCue={movementCue}
