@@ -2,7 +2,8 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import App from './App'
+import App, { BookReader } from './App'
+import { defaultAddress, generatePage } from './lib/library'
 
 describe('App interactions', () => {
   beforeEach(() => {
@@ -29,7 +30,7 @@ describe('App interactions', () => {
     expect(screen.getByTestId('arena-viewport')).toBeInTheDocument()
   })
 
-  it('moves forward by holding the viewport and opens a reachable volume in the reader', () => {
+  it('moves forward by holding the viewport without showing bottom book cards', () => {
     const { container } = render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
 
@@ -38,10 +39,32 @@ describe('App interactions', () => {
 
     holdViewportForward(viewport, 42, 'mouse')
 
-    const volume = screen.getAllByRole('button', { name: /Open room 0,0 \/ north wall/ })[0]
-    fireEvent.click(volume)
+    expect(container.querySelector('.nearby-book-list')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/Open room 0,0 \/ north wall/)).not.toBeInTheDocument()
+  })
+
+  it('shows a two-page reader spread and flips forward through spreads', () => {
+    function ReaderHarness() {
+      const spread = 1
+      return (
+        <BookReader
+          selectedBook={defaultAddress}
+          floor={0}
+          spread={spread}
+          leftPageNumber={1}
+          rightPageNumber={2}
+          leftPage={generatePage({ ...defaultAddress, page: 1 })}
+          rightPage={generatePage({ ...defaultAddress, page: 2 })}
+          onClose={() => undefined}
+          onSpreadChange={() => undefined}
+        />
+      )
+    }
+
+    const { container } = render(<ReaderHarness />)
 
     expect(container.querySelector('.book-reader')).toBeInTheDocument()
+    expect(container.querySelectorAll('.book-page')).toHaveLength(2)
     expect(screen.getByText('page 1')).toBeInTheDocument()
     expect(screen.getByText('page 2')).toBeInTheDocument()
     expect(container.querySelector('.reader-actions')?.textContent).toContain('forward')
@@ -49,26 +72,49 @@ describe('App interactions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'forward' }))
 
-    expect(screen.getByText('page 3')).toBeInTheDocument()
-    expect(screen.getByText('page 4')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('2')).toBeInTheDocument()
+    expect(container.querySelector('.book-spread.turn-forward')).toBeInTheDocument()
   })
 
   it('shows a reachable monk Talk action and opens then closes the dialogue panel', () => {
-    render(<App />)
+    const { container } = render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
 
-    const talkButton = screen.getByRole('button', { name: /Talk to Hooded keeper of the red rumor/ })
+    expect(container.querySelector('.npc-quest-marker.available')?.textContent).toBe('!')
+
+    const talkButton = screen.getByRole('button', { name: /Talk to Hooded keeper of improbable words/ })
     fireEvent.click(talkButton)
 
     expect(screen.getByLabelText('Monk dialogue')).toBeInTheDocument()
-    expect(screen.getByText(/Crimson rumor/)).toBeInTheDocument()
-    expect(screen.getByText(/crimson book/i)).toBeInTheDocument()
+    expect(screen.getByText(/Significant word/)).toBeInTheDocument()
+    expect(screen.getByText(/contains the word babel/i)).toBeInTheDocument()
+    expect(screen.getByLabelText('Quest address book')).toBeInTheDocument()
+    expect(screen.getByLabelText('Submit book coordinates')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Close monk dialogue' }))
 
     expect(screen.queryByLabelText('Monk dialogue')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Talk to Hooded keeper of the red rumor/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Talk to Hooded keeper of improbable words/ })).toBeInTheDocument()
+    expect(container.querySelector('.npc-quest-marker.active')?.textContent).toBe('?')
+  })
+
+  it('validates the starting monk quest submission and rejects false coordinates', () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
+    fireEvent.click(screen.getByRole('button', { name: /Talk to Hooded keeper of improbable words/ }))
+
+    fireEvent.change(screen.getByLabelText('Quest room'), { target: { value: '0,0' } })
+    fireEvent.change(screen.getByLabelText('Quest wall'), { target: { value: 'ceiling' } })
+    fireEvent.change(screen.getByLabelText('Quest shelf'), { target: { value: '1' } })
+    fireEvent.change(screen.getByLabelText('Quest volume'), { target: { value: '1' } })
+    fireEvent.change(screen.getByLabelText('Quest page'), { target: { value: '1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'test page' }))
+
+    expect(screen.getAllByText('Choose a wall: north, east, south, west, or 1-4.')).toHaveLength(2)
+
+    fireEvent.change(screen.getByLabelText('Quest wall'), { target: { value: 'north' } })
+    fireEvent.click(screen.getByRole('button', { name: 'test page' }))
+
+    expect(screen.getAllByText(/A confident heretic is still a heretic/)).toHaveLength(2)
   })
 
   it('requires clicking a nearby door to enter mapped rooms, uses stairs with E, and blocks sealed exits', () => {

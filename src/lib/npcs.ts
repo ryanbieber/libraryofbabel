@@ -1,7 +1,7 @@
 import type { RoomPosition } from './level'
 import { INTERACTION_RADIUS, type PlayerPose } from './roomGeometry'
 
-export type NpcQuest = 'messiah' | 'crimson-book'
+export type NpcQuest = 'messiah' | 'crimson-book' | 'significant-word'
 
 export type LibraryNpc = {
   id: string
@@ -32,6 +32,22 @@ const crimsonBookLines = [
 ]
 
 export function npcForRoom(floor: number, room: RoomPosition): LibraryNpc | null {
+  if (floor === 0 && room.q === 0 && room.r === 0) {
+    return {
+      id: 'monk:0:0:0',
+      floor,
+      room,
+      name: 'Hooded keeper of improbable words',
+      quest: 'significant-word',
+      dialogue: [
+        'Reader, bring me a book that contains the word babel.',
+        'Do not wave a pretty binding at me. Tell me the room, wall, shelf, volume, and page, and I will test the page myself.',
+        'Most pilgrims return with arithmetic and call it faith. I prefer coordinates.',
+      ],
+      position: NPC_POSITION,
+    }
+  }
+
   const spawnHash = stableHash(`library-monk:${floor}:${room.q}:${room.r}`)
   if ((spawnHash + 1) % SPAWN_BUCKETS !== 0) {
     return null

@@ -32,16 +32,13 @@ import {
 
 type MovementCue = 'idle' | 'step' | 'turn-left' | 'turn-right'
 
-type NearbyBook = {
-  address: BookAddress
-  distance: number
-}
-
 type HoldMovement = {
   forward: number
   strafe: number
   turnSlowdown: number
 }
+
+export type QuestMarkerState = 'available' | 'active' | null
 
 type ArenaViewportProps = {
   floor: number
@@ -52,8 +49,8 @@ type ArenaViewportProps = {
   selectedBook: BookAddress
   movementCue: MovementCue
   facingLabel: string
-  nearbyBooks: NearbyBook[]
   npc: LibraryNpc | null
+  questMarker: QuestMarkerState
   canTalkToNpc: boolean
   onOpenBook: (address: BookAddress) => void
   onOpenDoor: (direction: DirectionIndex) => void
@@ -84,8 +81,8 @@ export function ArenaViewport({
   selectedBook,
   movementCue,
   facingLabel,
-  nearbyBooks,
   npc,
+  questMarker,
   canTalkToNpc,
   onOpenBook,
   onOpenDoor,
@@ -173,6 +170,7 @@ export function ArenaViewport({
             selectedBook={selectedBook}
             movementCue={movementCue}
             npc={npc}
+            questMarker={questMarker}
             onOpenBook={onOpenBook}
             onOpenDoor={onOpenDoor}
             onTalkToNpc={onTalkToNpc}
@@ -214,25 +212,15 @@ export function ArenaViewport({
           )
         })}
       </div>
-      {nearbyBooks.length > 0 ? (
-        <div className="nearby-book-list" aria-label="Nearby shelf volumes">
-          {nearbyBooks.map(({ address }) => (
-            <button
-              type="button"
-              key={addressLabel(address)}
-              aria-label={`Open ${addressLabel(address)}`}
-              onClick={() => onOpenBook(address)}
-            >
-              <span>{cardinalDirections[address.wall].shortLabel}</span>
-              <strong>{address.shelf + 1}-{address.book + 1}</strong>
-            </button>
-          ))}
-        </div>
-      ) : null}
       {npc && canTalkToNpc ? (
         <button type="button" className="npc-talk-button" aria-label={`Talk to ${npc.name}`} onClick={onTalkToNpc}>
           Talk
         </button>
+      ) : null}
+      {npc && questMarker ? (
+        <div className={`npc-quest-marker ${questMarker}`} aria-hidden="true">
+          {questMarker === 'available' ? '!' : '?'}
+        </div>
       ) : null}
     </div>
   )
@@ -254,6 +242,7 @@ function ArenaScene({
   selectedBook,
   movementCue,
   npc,
+  questMarker,
   onOpenBook,
   onOpenDoor,
   onTalkToNpc,
@@ -264,6 +253,7 @@ function ArenaScene({
   selectedBook: BookAddress
   movementCue: MovementCue
   npc: LibraryNpc | null
+  questMarker: QuestMarkerState
   onOpenBook: (address: BookAddress) => void
   onOpenDoor: (direction: DirectionIndex) => void
   onTalkToNpc: () => void
@@ -303,7 +293,7 @@ function ArenaScene({
       </mesh>
 
       <ReadingTable />
-      {npc ? <SeatedMonk npc={npc} onTalk={onTalkToNpc} /> : null}
+      {npc ? <SeatedMonk npc={npc} questMarker={questMarker} onTalk={onTalkToNpc} /> : null}
       <Torch position={[-2.95, 1.26, -2.95]} />
       <Torch position={[2.95, 1.26, 2.95]} />
       {cardinalDirections.map((_, wall) => (
@@ -323,7 +313,7 @@ function ArenaScene({
   )
 }
 
-function SeatedMonk({ npc, onTalk }: { npc: LibraryNpc; onTalk: () => void }) {
+function SeatedMonk({ npc, questMarker, onTalk }: { npc: LibraryNpc; questMarker: QuestMarkerState; onTalk: () => void }) {
   const animatedGroupRef = useRef<THREE.Group>(null)
   const hoodRef = useRef<THREE.Mesh>(null)
   const bookGlow = npc.quest === 'crimson-book' ? '#7b1116' : '#302000'
@@ -381,9 +371,48 @@ function SeatedMonk({ npc, onTalk }: { npc: LibraryNpc; onTalk: () => void }) {
           <boxGeometry args={[0.76, 1.1, 0.62]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
+        {questMarker ? <QuestMarkerBillboard state={questMarker} /> : null}
       </group>
     </group>
   )
+}
+
+function QuestMarkerBillboard({ state }: { state: Exclude<QuestMarkerState, null> }) {
+  const texture = useMemo(() => createQuestMarkerTexture(state), [state])
+
+  useEffect(() => () => texture.dispose(), [texture])
+
+  return (
+    <sprite position={[0, 1.42, -0.02]} scale={[0.42, 0.42, 1]}>
+      <spriteMaterial map={texture} transparent depthTest={false} />
+    </sprite>
+  )
+}
+
+function createQuestMarkerTexture(state: Exclude<QuestMarkerState, null>): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas')
+  canvas.width = 128
+  canvas.height = 128
+  const context = canvas.getContext('2d')
+  if (context) {
+    const isAvailable = state === 'available'
+    context.clearRect(0, 0, canvas.width, canvas.height)
+    context.fillStyle = isAvailable ? '#f1c84b' : '#d8dce4'
+    context.strokeStyle = isAvailable ? '#5c3d00' : '#3f4652'
+    context.lineWidth = 10
+    context.shadowColor = isAvailable ? 'rgba(255, 224, 112, 0.82)' : 'rgba(230, 236, 248, 0.72)'
+    context.shadowBlur = 18
+    context.font = '900 104px Georgia, serif'
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+    const glyph = isAvailable ? '!' : '?'
+    context.strokeText(glyph, 64, 62)
+    context.fillText(glyph, 64, 62)
+  }
+
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  return texture
 }
 
 function PlayerCamera({ playerPose, movementCue }: { playerPose: PlayerPose; movementCue: MovementCue }) {
