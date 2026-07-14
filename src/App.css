@@ -64,6 +64,10 @@
   cursor: grabbing;
 }
 
+.arena-viewport[data-book-hovered='true'] {
+  cursor: pointer;
+}
+
 .arena-viewport canvas {
   display: block;
   width: 100% !important;
