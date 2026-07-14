@@ -329,15 +329,27 @@ function App() {
     setReaderOpen(false)
     setDialogueNpc(currentNpc)
     if (currentNpc.quest === 'significant-word') {
-      setWordQuestStatus((current) => current === 'not-started' ? 'accepted' : current)
-      setMessage('The hooded monk waits for wall, shelf, volume, and page.')
+      setMessage('The hooded monk offers a quest from the open book.')
       return
     }
 
     setMessage('The hooded monk raises two ink-stained fingers from the open book.')
   }
 
+  function acceptSignificantWordQuest() {
+    setWordQuestStatus((current) => current === 'not-started' ? 'accepted' : current)
+    setWordQuestFeedback(null)
+    setMessage('The hooded monk waits for room, wall, shelf, volume, and page.')
+  }
+
   function submitSignificantWordQuest(values: WordQuestFormValues) {
+    if (wordQuestStatus === 'not-started') {
+      const text = 'Accept the monk quest before testing coordinates.'
+      setWordQuestFeedback({ tone: 'error', text })
+      setMessage(text)
+      return
+    }
+
     const result = parseSignificantWordSubmission(values)
     if (!result.valid) {
       setWordQuestFeedback({ tone: 'error', text: result.message })
@@ -414,6 +426,7 @@ function App() {
           questStatus={wordQuestStatus}
           questFeedback={wordQuestFeedback}
           onClose={() => setDialogueNpc(null)}
+          onAcceptSignificantWordQuest={acceptSignificantWordQuest}
           onSubmitSignificantWordQuest={submitSignificantWordQuest}
         />
       ) : null}
@@ -546,12 +559,14 @@ function NpcDialoguePanel({
   questStatus,
   questFeedback,
   onClose,
+  onAcceptSignificantWordQuest,
   onSubmitSignificantWordQuest,
 }: {
   npc: LibraryNpc
   questStatus: WordQuestStatus
   questFeedback: WordQuestFeedback | null
   onClose: () => void
+  onAcceptSignificantWordQuest: () => void
   onSubmitSignificantWordQuest: (values: WordQuestFormValues) => void
 }) {
   const [formValues, setFormValues] = useState<WordQuestFormValues>({
@@ -593,7 +608,14 @@ function NpcDialoguePanel({
             </>
           ) : null}
         </div>
-        {isSignificantWordQuest ? (
+        {isSignificantWordQuest && questStatus === 'not-started' ? (
+          <div className="quest-offer">
+            <button type="button" onClick={onAcceptSignificantWordQuest}>
+              accept quest
+            </button>
+          </div>
+        ) : null}
+        {isSignificantWordQuest && questStatus !== 'not-started' ? (
           <div className="quest-ledger" aria-label="Quest address book">
             <form className="quest-form" aria-label="Submit book coordinates" onSubmit={handleSubmit}>
               <label>
