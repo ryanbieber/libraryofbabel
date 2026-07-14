@@ -477,7 +477,9 @@ button.door-chip.available:focus-visible {
 
 .splash-panel {
   position: relative;
-  width: min(620px, calc(100vw - 36px));
+  width: min(720px, calc(100vw - 36px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
   padding: 28px;
   border: 3px solid #2a180c;
   background: #d8bd7d;
@@ -508,6 +510,25 @@ button.door-chip.available:focus-visible {
   color: #2f1d0b;
   font-size: 1.05rem;
   line-height: 1.45;
+}
+
+.splash-panel .splash-lede {
+  font-size: 1.12rem;
+}
+
+.splash-panel .splash-author {
+  padding-top: 12px;
+  border-top: 2px solid rgb(82 46 16 / 28%);
+  color: #4c2d0a;
+  font-size: 0.98rem;
+}
+
+.splash-panel .splash-controls {
+  margin-bottom: 14px;
+  color: #5b3610;
+  font-size: 0.88rem;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .splash-screen button {
@@ -725,6 +746,7 @@ button.door-chip.available:focus-visible {
 
   .splash-panel {
     width: min(342px, calc(100vw - 48px));
+    max-height: calc(100vh - 48px);
     padding: 24px;
   }
 
@@ -734,6 +756,15 @@ button.door-chip.available:focus-visible {
 
   .splash-panel p {
     font-size: 0.98rem;
+  }
+
+  .splash-panel .splash-lede {
+    font-size: 1rem;
+  }
+
+  .splash-panel .splash-author,
+  .splash-panel .splash-controls {
+    font-size: 0.84rem;
   }
 
   .book-spread {

@@ -425,11 +425,25 @@ function SplashScreen({ onStart }: { onStart: () => void }) {
   return (
     <section className="splash-screen" aria-label="Start screen">
       <div className="splash-panel">
-        <p className="splash-kicker">Library of Babel</p>
-        <h1>Enter the stacks</h1>
-        <p>Hold the room to walk forward. Drag while holding to look around.</p>
-        <p>Mouse and touch use the same movement: hold to advance, swipe or drag to turn.</p>
-        <p>Click or tap a nearby volume or door to open it. Press E in a stair room.</p>
+        <p className="splash-kicker">An homage to Borges</p>
+        <h1>The Library of Babel</h1>
+        <p className="splash-lede">
+          In Jorge Luis Borges's 1941 story, the universe is imagined as an endless library: every book
+          that can be written, every truth, every lie, every biography, and every nonsense page, all
+          shelved somewhere in the dark.
+        </p>
+        <p>
+          This app turns that impossible premise into a place you can walk through: rooms, walls,
+          shelves, volumes, and deterministic pages. It is not trying to solve the library. It is here to
+          let you feel the absurd scale of a system that contains everything and almost no meaning.
+        </p>
+        <p className="splash-author">
+          Borges was an Argentine writer whose fiction often treated infinity, labyrinths, language, and
+          reality as traps disguised as ideas.
+        </p>
+        <p className="splash-controls">
+          Hold to walk, drag to look, click nearby books and doors, press E at stairs.
+        </p>
         <button type="button" onClick={onStart}>
           Enter Library
         </button>

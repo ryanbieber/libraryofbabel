@@ -15,12 +15,15 @@ describe('App interactions', () => {
     vi.restoreAllMocks()
   })
 
-  it('starts with a splash screen that explains pointer movement', () => {
+  it('starts with a splash screen that introduces the Borges premise', () => {
     const { container } = render(<App />)
 
     expect(screen.getByLabelText('Start screen')).toBeInTheDocument()
-    expect(screen.getByText(/Hold the room to walk forward/)).toBeInTheDocument()
-    expect(screen.getByText(/Mouse and touch use the same movement/)).toBeInTheDocument()
+    expect(screen.getByText(/Jorge Luis Borges's 1941 story/)).toBeInTheDocument()
+    expect(screen.getByText(/universe is imagined as an endless library/)).toBeInTheDocument()
+    expect(screen.getByText(/This app turns that impossible premise into a place you can walk through/)).toBeInTheDocument()
+    expect(screen.getByText(/An homage to Borges/)).toBeInTheDocument()
+    expect(screen.getByText(/Hold to walk, drag to look/)).toBeInTheDocument()
     expect(screen.queryByText(/Move with WASD/)).not.toBeInTheDocument()
     expect(container.querySelector('.command-bar')).not.toBeInTheDocument()
 
