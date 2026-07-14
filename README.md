@@ -1,8 +1,22 @@
 # Library of Babel
 
-A public proof-of-concept React app for GitHub Pages. It turns the Library of Babel premise into an interactive 3D browser of addressed rooms, shelves, books, and deterministic pages.
+An interactive homage to Jorge Luis Borges's **The Library of Babel**.
 
-The app uses the canonical book scale:
+Play it here: <https://ryanbieber.github.io/libraryofbabel/>
+
+## About
+
+This project turns Borges's impossible library into a browser-based space: rooms, walls, shelves,
+volumes, and deterministic pages. It is not an adaptation, solution, or archive. It is a small game-like
+tribute to the story's unsettling premise: a universe that contains every possible book, almost all of it
+meaningless, with truth hidden somewhere inside the noise.
+
+No book text is stored. Pages are generated in the browser from a book address and page number, so the
+same coordinates always return the same page.
+
+## Scale
+
+The app uses the story's familiar book structure:
 
 - 410 pages per book
 - 40 lines per page
@@ -10,7 +24,12 @@ The app uses the canonical book scale:
 - 25 symbols in the alphabet
 - 1,312,000 symbols per book
 
-No book text is stored. Pages are generated deterministically in the browser from a book address and page number.
+## Controls
+
+- Hold to walk forward.
+- Drag while holding to look around.
+- Click or tap nearby books and doors.
+- Press `E` in a stair room.
 
 ## Development
 
@@ -29,4 +48,4 @@ npm run build
 
 ## Deployment
 
-GitHub Pages deploys from `.github/workflows/pages.yml` using GitHub Actions.
+GitHub Pages deploys from `.github/workflows/pages.yml` when changes land on `main`.
