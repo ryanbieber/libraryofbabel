@@ -246,52 +246,6 @@ button.door-chip.available:focus-visible {
   outline: 2px solid rgb(255 241 172 / 72%);
 }
 
-.nearby-book-list {
-  position: absolute;
-  bottom: 52px;
-  left: 12px;
-  z-index: 8;
-  display: flex;
-  max-width: min(520px, calc(100vw - 24px));
-  gap: 6px;
-  pointer-events: auto;
-}
-
-.nearby-book-list button {
-  display: grid;
-  grid-template-columns: 18px auto;
-  align-items: center;
-  min-width: 62px;
-  min-height: 38px;
-  padding: 4px 8px;
-  border: 2px solid rgb(246 214 122 / 78%);
-  background: rgb(8 8 11 / 88%);
-  color: #f6d67a;
-  cursor: pointer;
-  font: inherit;
-  line-height: 1;
-}
-
-.nearby-book-list button:hover,
-.nearby-book-list button:focus-visible {
-  border-color: #fff1ac;
-  background: rgb(58 46 34 / 92%);
-  outline: 0;
-}
-
-.nearby-book-list span {
-  color: #d8c795;
-  font-size: 0.7rem;
-  font-weight: 900;
-}
-
-.nearby-book-list strong {
-  overflow: hidden;
-  font-size: 0.8rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .npc-talk-button {
   position: absolute;
   right: 12px;
@@ -314,6 +268,40 @@ button.door-chip.available:focus-visible {
   border-color: #fff1ac;
   background: rgb(58 46 34 / 94%);
   outline: 0;
+}
+
+.npc-quest-marker {
+  position: absolute;
+  right: 36px;
+  bottom: 108px;
+  z-index: 9;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  background: rgb(8 8 11 / 78%);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+  text-shadow: 0 2px 0 rgb(0 0 0 / 62%);
+}
+
+.npc-quest-marker.available {
+  color: #f1c84b;
+  box-shadow:
+    0 0 18px rgb(255 224 112 / 52%),
+    inset 0 0 14px rgb(241 200 75 / 14%);
+}
+
+.npc-quest-marker.active {
+  color: #d8dce4;
+  box-shadow:
+    0 0 18px rgb(230 236 248 / 42%),
+    inset 0 0 14px rgb(216 220 228 / 12%);
 }
 
 .reader-actions button,
@@ -397,6 +385,87 @@ button.door-chip.available:focus-visible {
   color: #2f1d0b;
   font-size: 1rem;
   line-height: 1.45;
+}
+
+.quest-ledger {
+  margin-top: 18px;
+  padding: 14px 16px 16px;
+  border: 3px solid rgb(82 46 16 / 58%);
+  background:
+    linear-gradient(90deg, rgb(86 52 19 / 15%), transparent 48%, rgb(86 52 19 / 18%) 52%, transparent),
+    repeating-linear-gradient(0deg, rgb(86 52 19 / 8%) 0 2px, transparent 2px 12px),
+    #d9bd7b;
+  box-shadow:
+    inset 0 0 32px rgb(82 46 16 / 24%);
+}
+
+.quest-form {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr repeat(3, 0.72fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.quest-form label {
+  display: grid;
+  gap: 5px;
+  color: #51300c;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.quest-form input {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  box-sizing: border-box;
+  border: 2px solid rgb(82 46 16 / 52%);
+  background: rgb(255 244 200 / 52%);
+  color: #241406;
+  font: inherit;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.quest-form button {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 2px solid #8c5b1a;
+  background: linear-gradient(#25202a, #111018);
+  color: #f6d67a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.quest-form button:hover,
+.quest-form button:focus-visible {
+  border-color: #fff1ac;
+  color: #ffe39a;
+  outline: 0;
+}
+
+.quest-feedback {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 2px solid rgb(82 46 16 / 48%);
+  background: rgb(255 244 200 / 42%);
+  color: #2f1d0b;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.quest-feedback.success {
+  border-color: #426b2c;
+  background: rgb(221 238 171 / 54%);
+}
+
+.quest-feedback.error {
+  border-color: #7b1116;
+  background: rgb(178 33 42 / 14%);
 }
 
 .splash-screen {
@@ -493,6 +562,7 @@ button.door-chip.available:focus-visible {
   grid-template-columns: 1fr 1fr;
   min-height: min(72vh, 740px);
   overflow: hidden;
+  perspective: 1200px;
   box-shadow: inset 0 0 55px rgb(63 32 8 / 54%);
 }
 
@@ -503,15 +573,26 @@ button.door-chip.available:focus-visible {
     repeating-linear-gradient(0deg, rgb(86 52 19 / 10%) 0 2px, transparent 2px 10px),
     #d8bd7d;
   color: #241406;
+  backface-visibility: hidden;
 }
 
 .book-page.left {
+  transform-origin: right center;
   border-right: 3px solid rgb(82 46 16 / 46%);
   box-shadow: inset -28px 0 32px rgb(64 33 9 / 22%);
 }
 
 .book-page.right {
+  transform-origin: left center;
   box-shadow: inset 28px 0 32px rgb(64 33 9 / 20%);
+}
+
+.book-spread.turn-forward .book-page.right {
+  animation: page-flip-forward 420ms cubic-bezier(0.2, 0.72, 0.18, 1);
+}
+
+.book-spread.turn-back .book-page.left {
+  animation: page-flip-back 420ms cubic-bezier(0.2, 0.72, 0.18, 1);
 }
 
 .book-page span {
@@ -598,17 +679,18 @@ button.door-chip.available:focus-visible {
     height: 23%;
   }
 
-  .nearby-book-list {
-    right: 106px;
-    bottom: 58px;
-    left: 10px;
-    overflow-x: auto;
-  }
-
   .npc-talk-button {
     right: 10px;
     bottom: 58px;
     min-width: 84px;
+  }
+
+  .npc-quest-marker {
+    right: 31px;
+    bottom: 108px;
+    width: 38px;
+    height: 38px;
+    font-size: 1.82rem;
   }
 
   .npc-dialogue {
@@ -625,6 +707,14 @@ button.door-chip.available:focus-visible {
 
   .npc-dialogue-panel h2 {
     font-size: 1.28rem;
+  }
+
+  .quest-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .quest-form button {
+    grid-column: 1 / -1;
   }
 
   .splash-screen {
@@ -652,6 +742,11 @@ button.door-chip.available:focus-visible {
 
   .book-page.right {
     display: none;
+  }
+
+  .book-spread.turn-forward .book-page.left,
+  .book-spread.turn-back .book-page.left {
+    animation: page-flip-mobile 420ms cubic-bezier(0.2, 0.72, 0.18, 1);
   }
 }
 
@@ -724,5 +819,56 @@ button.door-chip.available:focus-visible {
   from {
     opacity: 0;
     transform: scaleX(0.24) scaleY(0.82);
+  }
+}
+
+@keyframes page-flip-forward {
+  0% {
+    transform: rotateY(0deg);
+    filter: brightness(1);
+  }
+
+  48% {
+    transform: rotateY(-82deg);
+    filter: brightness(0.7);
+  }
+
+  100% {
+    transform: rotateY(0deg);
+    filter: brightness(1);
+  }
+}
+
+@keyframes page-flip-back {
+  0% {
+    transform: rotateY(0deg);
+    filter: brightness(1);
+  }
+
+  48% {
+    transform: rotateY(82deg);
+    filter: brightness(0.7);
+  }
+
+  100% {
+    transform: rotateY(0deg);
+    filter: brightness(1);
+  }
+}
+
+@keyframes page-flip-mobile {
+  0% {
+    transform: rotateY(0deg);
+    filter: brightness(1);
+  }
+
+  50% {
+    transform: rotateY(-74deg);
+    filter: brightness(0.72);
+  }
+
+  100% {
+    transform: rotateY(0deg);
+    filter: brightness(1);
   }
 }

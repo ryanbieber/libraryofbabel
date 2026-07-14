@@ -39,9 +39,9 @@ describe('library monk NPCs', () => {
     const startingRoomNpc = npcForRoom(0, { q: 0, r: 0 })
     const otherFloorNpc = npcForRoom(1, { q: 1, r: 1 })
 
-    expect(startingRoomNpc?.quest).toBe('crimson-book')
+    expect(startingRoomNpc?.quest).toBe('significant-word')
     expect(startingRoomNpc?.dialogue).toEqual(npcForRoom(0, { q: 0, r: 0 })?.dialogue)
-    expect(startingRoomNpc?.dialogue.join(' ')).toMatch(/crimson book|crimson hexagon/i)
+    expect(startingRoomNpc?.dialogue.join(' ')).toMatch(/room, wall, shelf, volume, and page/i)
     expect(otherFloorNpc?.quest).toBe('messiah')
     expect(otherFloorNpc?.dialogue.join(' ')).toMatch(/Man of the Book|page has learned to walk/i)
   })
