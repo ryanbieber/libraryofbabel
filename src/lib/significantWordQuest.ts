@@ -2,7 +2,7 @@ import { isFloorIndex, isGalleryIndex } from './level'
 import { BOOKS_PER_SHELF, PAGES_PER_BOOK, SHELF_WALLS, SHELVES_PER_WALL, generatePage, type ShelfWall } from './library'
 import { QUEST_TARGET_WORD, pageContainsWord, type SignificantWordSubmission } from './quest'
 
-export type WordQuestStatus = 'not-started' | 'accepted' | 'completed'
+export type WordQuestStatus = 'not-started' | 'accepted' | 'ready-to-complete' | 'completed'
 export type WordQuestFeedback = { tone: 'success' | 'error'; text: string }
 export type WordQuestFormValues = {
   floor: string
@@ -36,8 +36,8 @@ export function resolveSignificantWordQuestSubmission(
     const text = `At last, a coordinate instead of a sermon: ${location}. The word is there.`
     return {
       feedback: { tone: 'success', text },
-      message: 'The monk accepts the book coordinates and prepares the next quest.',
-      nextStatus: 'completed',
+      message: 'The coordinate is proven. Return to the monk to complete the quest.',
+      nextStatus: 'ready-to-complete',
     }
   }
   const text = `No ${QUEST_TARGET_WORD} on that page. A confident heretic is still a heretic.`

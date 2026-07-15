@@ -14,6 +14,7 @@ import {
   type ShelfWall,
 } from './lib/library'
 import type { LibraryNpc } from './lib/npcs'
+import { shouldBookCapturePointer } from './lib/pointer'
 import {
   BOOK_INTERACTION_RADIUS,
   FLOOR_HEIGHT,
@@ -32,52 +33,56 @@ import {
 } from './lib/roomGeometry'
 
 type MovementCue = 'idle' | 'step' | 'turn-left' | 'turn-right'
-type HoldMovement = { forward: number; strafe: number; turnSlowdown: number }
-export type QuestMarkerState = 'available' | 'active' | null
+type HoldMovement = { forward: number; strafe: number }
+export type QuestMarkerState = 'available' | 'active' | 'complete' | null
 
 type ArenaViewportProps = {
   playerPose: PlayerPose
   selectedBook: BookAddress
   movementCue: MovementCue
+  cameraPitch: number
+  jumpOffset: number
   npc: LibraryNpc | null
   questMarker: QuestMarkerState
   canTalkToNpc: boolean
   onOpenBook: (address: BookAddress) => void
   onTalkToNpc: () => void
-  onLook: (deltaYaw: number) => void
-  onHoldForwardStart: () => void
-  onHoldMoveChange: (movement: HoldMovement) => void
+  onLook: (deltaYaw: number, deltaPitch: number) => void
+  onInteract: () => void
+  onJump: () => void
+  onTouchMoveChange: (movement: HoldMovement) => void
 }
 
 const ROOM_HEIGHT = 3.08
-const TOUCH_LOOK_SENSITIVITY = 0.0042
-const MOUSE_LOOK_SENSITIVITY = 0.0062
-const DRAG_TURN_DEADZONE_PX = 0.6
-const DRAG_TURN_RECOVERY_MS = 180
-const DRAG_TURN_SLOWDOWN_MAX_DELTA = 52
+const TOUCH_LOOK_SENSITIVITY = 0.006
+const MOUSE_LOOK_SENSITIVITY = 0.0048
+const CLICK_INTERACT_DEADZONE_PX = 8
 
 export function ArenaViewport({
   playerPose,
   selectedBook,
   movementCue,
+  cameraPitch,
+  jumpOffset,
   npc,
   questMarker,
   canTalkToNpc,
   onOpenBook,
   onTalkToNpc,
   onLook,
-  onHoldForwardStart,
-  onHoldMoveChange,
+  onInteract,
+  onJump,
+  onTouchMoveChange,
 }: ArenaViewportProps) {
   const canUseWebGL = useWebGLAvailable()
-  const dragRef = useRef<{ pointerId: number; lastX: number; isTouch: boolean } | null>(null)
-  const recoveryRef = useRef<number | null>(null)
+  const dragRef = useRef<{ pointerId: number; lastX: number; lastY: number; totalDistance: number; isTouch: boolean } | null>(null)
+  const onTouchMoveChangeRef = useRef(onTouchMoveChange)
   const hoveredBookRef = useRef<BookAddress | null>(null)
   const [hoveredBook, setHoveredBook] = useState<BookAddress | null>(null)
+  const [joystick, setJoystick] = useState({ active: false, x: 0, y: 0 })
 
-  useEffect(() => () => {
-    if (recoveryRef.current !== null) window.clearTimeout(recoveryRef.current)
-  }, [])
+  useEffect(() => { onTouchMoveChangeRef.current = onTouchMoveChange }, [onTouchMoveChange])
+  useEffect(() => () => onTouchMoveChangeRef.current({ forward: 0, strafe: 0 }), [])
 
   useEffect(() => setHoveredReachableBook(null), [playerPose.floor, playerPose.zone])
 
@@ -88,37 +93,47 @@ export function ArenaViewport({
 
   function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (!isPrimaryPointer(event) || isInteractiveTarget(event.target)) return
-    if (hoveredBookRef.current !== null) {
-      onHoldMoveChange({ forward: 0, strafe: 0, turnSlowdown: 0 })
-      return
-    }
     const isTouch = event.pointerType !== 'mouse'
-    dragRef.current = { pointerId: event.pointerId, lastX: event.clientX, isTouch }
+    dragRef.current = { pointerId: event.pointerId, lastX: event.clientX, lastY: event.clientY, totalDistance: 0, isTouch }
     event.currentTarget.setPointerCapture?.(event.pointerId)
-    onHoldMoveChange({ forward: 1, strafe: 0, turnSlowdown: 0 })
-    onHoldForwardStart()
   }
 
   function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
     const drag = dragRef.current
     if (!drag || drag.pointerId !== event.pointerId) return
     const deltaX = event.clientX - drag.lastX
-    dragRef.current = { ...drag, lastX: event.clientX }
-    onLook(deltaX * (drag.isTouch ? TOUCH_LOOK_SENSITIVITY : MOUSE_LOOK_SENSITIVITY))
-    if (Math.abs(deltaX) <= DRAG_TURN_DEADZONE_PX) return
-    if (recoveryRef.current !== null) window.clearTimeout(recoveryRef.current)
-    onHoldMoveChange({ forward: 1, strafe: 0, turnSlowdown: Math.min(1, Math.abs(deltaX) / DRAG_TURN_SLOWDOWN_MAX_DELTA) })
-    recoveryRef.current = window.setTimeout(() => {
-      if (dragRef.current?.pointerId === event.pointerId) onHoldMoveChange({ forward: 1, strafe: 0, turnSlowdown: 0 })
-    }, DRAG_TURN_RECOVERY_MS)
+    const deltaY = event.clientY - drag.lastY
+    const sensitivity = drag.isTouch ? TOUCH_LOOK_SENSITIVITY : MOUSE_LOOK_SENSITIVITY
+    dragRef.current = { ...drag, lastX: event.clientX, lastY: event.clientY, totalDistance: drag.totalDistance + Math.hypot(deltaX, deltaY) }
+    onLook(deltaX * sensitivity, -deltaY * sensitivity)
   }
 
   function handlePointerEnd(event: ReactPointerEvent<HTMLDivElement>) {
-    if (dragRef.current?.pointerId !== event.pointerId) return
+    const drag = dragRef.current
+    if (drag?.pointerId !== event.pointerId) return
     dragRef.current = null
-    if (recoveryRef.current !== null) window.clearTimeout(recoveryRef.current)
-    recoveryRef.current = null
-    onHoldMoveChange({ forward: 0, strafe: 0, turnSlowdown: 0 })
+    if (drag.totalDistance <= CLICK_INTERACT_DEADZONE_PX) onInteract()
+  }
+
+  function updateJoystick(event: ReactPointerEvent<HTMLDivElement>) {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+    const radius = rect.width * 0.38
+    const rawX = event.clientX - centerX
+    const rawY = event.clientY - centerY
+    const distance = Math.hypot(rawX, rawY)
+    const scale = distance > radius ? radius / distance : 1
+    const x = rawX * scale
+    const y = rawY * scale
+    setJoystick({ active: true, x, y })
+    onTouchMoveChange({ forward: clampAxis(-y / radius), strafe: clampAxis(x / radius) })
+  }
+
+  function releaseJoystick(event: ReactPointerEvent<HTMLDivElement>) {
+    event.preventDefault(); event.stopPropagation()
+    setJoystick({ active: false, x: 0, y: 0 })
+    onTouchMoveChange({ forward: 0, strafe: 0 })
   }
 
   return (
@@ -141,6 +156,8 @@ export function ArenaViewport({
         >
           <LibraryScene
             playerPose={playerPose}
+            cameraPitch={cameraPitch}
+            jumpOffset={jumpOffset}
             selectedBook={selectedBook}
             hoveredBook={hoveredBook}
             movementCue={movementCue}
@@ -166,12 +183,32 @@ export function ArenaViewport({
         <button type="button" className="npc-talk-button" aria-label={`Talk to ${npc.name}`} onClick={onTalkToNpc}>Talk</button>
       ) : null}
       {npc && questMarker ? <div className={`npc-quest-marker ${questMarker}`} aria-hidden="true">{questMarker === 'available' ? '!' : '?'}</div> : null}
+      <div className="mobile-landscape-controls" aria-label="Touch controls">
+        <div
+          className="touch-joystick"
+          data-touch-control="true"
+          aria-label="Movement joystick"
+          onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); event.currentTarget.setPointerCapture?.(event.pointerId); updateJoystick(event) }}
+          onPointerMove={(event) => { if (joystick.active) updateJoystick(event) }}
+          onPointerUp={releaseJoystick}
+          onPointerCancel={releaseJoystick}
+        >
+          <div className="touch-joystick-knob" style={{ transform: `translate(${joystick.x}px, ${joystick.y}px)` }} />
+        </div>
+        <div className="touch-actions" data-touch-control="true">
+          <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={onInteract}>Use</button>
+          <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={onJump}>Jump</button>
+        </div>
+      </div>
+      <div className="portrait-lock" aria-label="Rotate device">Rotate to landscape</div>
     </div>
   )
 }
 
 function LibraryScene({
   playerPose,
+  cameraPitch,
+  jumpOffset,
   selectedBook,
   hoveredBook,
   movementCue,
@@ -182,6 +219,8 @@ function LibraryScene({
   onTalkToNpc,
 }: {
   playerPose: PlayerPose
+  cameraPitch: number
+  jumpOffset: number
   selectedBook: BookAddress
   hoveredBook: BookAddress | null
   movementCue: MovementCue
@@ -193,7 +232,7 @@ function LibraryScene({
 }) {
   return (
     <>
-      <PlayerCamera playerPose={playerPose} movementCue={movementCue} />
+      <PlayerCamera playerPose={playerPose} movementCue={movementCue} cameraPitch={cameraPitch} jumpOffset={jumpOffset} />
       <color attach="background" args={['#080706']} />
       <fog attach="fog" args={['#080706', 6.5, 18]} />
       <ambientLight intensity={0.34} color="#a89a80" />
@@ -394,13 +433,14 @@ function InstancedBooks({
       ref={meshRef}
       args={[undefined, undefined, count]}
       onPointerMove={(event) => {
+        if (!shouldBookCapturePointer(eventPointerType(event))) { onHoverBook(null); return }
         event.stopPropagation()
         const address = addressForEvent(event)
         onHoverBook(address && distanceToBook(playerPose, address) <= BOOK_INTERACTION_RADIUS ? address : null)
       }}
       onPointerOut={() => onHoverBook(null)}
       onClick={(event) => {
-        event.stopPropagation()
+        if (shouldBookCapturePointer(eventPointerType(event))) event.stopPropagation()
         const address = addressForEvent(event)
         if (address) onOpenBook(address)
       }}
@@ -472,13 +512,23 @@ function StairScene({ ascending }: { ascending: boolean }) {
   )
 }
 
-function PlayerCamera({ playerPose, movementCue }: { playerPose: PlayerPose; movementCue: MovementCue }) {
+function PlayerCamera({
+  playerPose,
+  movementCue,
+  cameraPitch,
+  jumpOffset,
+}: {
+  playerPose: PlayerPose
+  movementCue: MovementCue
+  cameraPitch: number
+  jumpOffset: number
+}) {
   useFrame(({ camera, clock }) => {
     const transform = stairCameraPose(playerPose)
     const idleBob = Math.sin(clock.elapsedTime * 2.4) * 0.007
     const stepBob = movementCue === 'step' ? Math.sin(clock.elapsedTime * 20) * 0.018 : 0
-    camera.position.set(transform.x, transform.y + PLAYER_EYE_HEIGHT + idleBob + stepBob, transform.z)
-    camera.rotation.set(0, cameraYawFromPlayerYaw(transform.yaw), 0)
+    camera.position.set(transform.x, transform.y + PLAYER_EYE_HEIGHT + jumpOffset + idleBob + stepBob, transform.z)
+    camera.rotation.set(cameraPitch, cameraYawFromPlayerYaw(transform.yaw), 0)
   })
   return null
 }
@@ -686,12 +736,20 @@ function vestibuleHelp(floor: number): string {
 }
 
 function isInteractiveTarget(target: EventTarget | null): boolean {
-  return target instanceof Element && Boolean(target.closest('button, input, textarea, select, a'))
+  return target instanceof Element && Boolean(target.closest('button, input, textarea, select, a, [data-touch-control="true"]'))
+}
+
+function clampAxis(value: number): number {
+  return Math.min(1, Math.max(-1, value))
 }
 
 function isPrimaryPointer(event: ReactPointerEvent<HTMLDivElement>): boolean {
   const pointerType = event.pointerType as string | undefined
   return event.button === 0 || pointerType !== 'mouse'
+}
+
+function eventPointerType(event: ThreeEvent<PointerEvent | MouseEvent>): string | undefined {
+  return 'pointerType' in event.nativeEvent ? event.nativeEvent.pointerType : undefined
 }
 
 function seeded(seed: number): number {

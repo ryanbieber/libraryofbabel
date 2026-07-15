@@ -24,7 +24,7 @@ export function SplashScreen({
           Walk the three accessible floors. Visit the sleeping closets and latrines between galleries.
           The barred passages are not the end of the Library—only the end of this map.
         </p>
-        <p className="splash-controls">Hold to walk. Drag to look. Tap nearby books and people.</p>
+        <p className="splash-controls">WASD to move. Mouse to look. Click to use. Space to jump. Touch controls appear in landscape.</p>
         <div className="splash-actions">
           {hasSave ? <button type="button" onClick={onContinue}>Continue</button> : null}
           <button type="button" className={hasSave ? 'secondary' : undefined} onClick={onNewJourney}>

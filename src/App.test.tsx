@@ -4,7 +4,10 @@ import '@testing-library/jest-dom/vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { BookReader } from './components/BookReader'
+import { NpcDialoguePanel } from './components/NpcDialoguePanel'
 import { defaultAddress, generatePage } from './lib/library'
+import type { LibraryNpc } from './lib/npcs'
+import { shouldBookCapturePointer } from './lib/pointer'
 
 describe('App interactions', () => {
   beforeEach(() => {
@@ -21,13 +24,13 @@ describe('App interactions', () => {
     render(<App />)
     expect(screen.getByLabelText('Start screen')).toBeInTheDocument()
     expect(screen.getByText(/endless procession of hexagonal galleries/i)).toBeInTheDocument()
-    expect(screen.getByText(/Hold to walk. Drag to look/i)).toBeInTheDocument()
+    expect(screen.getByText(/WASD to move. Mouse to look/i)).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
 
     expect(screen.queryByLabelText('Start screen')).not.toBeInTheDocument()
     expect(await screen.findByTestId('arena-viewport')).toHaveAttribute('data-zone', 'gallery')
-    expect(screen.getByText('gallery 0')).toBeInTheDocument()
+    expect(screen.getAllByText('gallery 0').length).toBeGreaterThanOrEqual(2)
     expect(screen.getByText(/four walls · two passages/i)).toBeInTheDocument()
   })
 
@@ -53,7 +56,7 @@ describe('App interactions', () => {
         onSpreadChange={() => undefined}
       />,
     )
-    expect(screen.getAllByText(/floor 0 \/ gallery 0 \/ wall A/i)).toHaveLength(2)
+    expect(screen.getAllByText(/floor 0 \/ gallery 0 \/ wall A/i)).toHaveLength(3)
     expect(screen.getByText('page 1')).toBeInTheDocument()
     expect(screen.getByText('page 2')).toBeInTheDocument()
   })
@@ -98,6 +101,54 @@ describe('App interactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Journey' }))
     expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'New Journey' })).toBeInTheDocument()
+  })
+
+  it('exposes keyboard, touch, jump, and direct-use controls', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
+    await screen.findByTestId('arena-viewport')
+    expect(screen.getByLabelText('Current position and controls')).toHaveTextContent('WASD move')
+    expect(screen.getByLabelText('Touch controls')).toBeInTheDocument()
+    expect(screen.getByLabelText('Movement joystick')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Use' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Jump' })).toBeInTheDocument()
+    fireEvent.keyDown(window, { key: ' ' })
+    expect(screen.getByText('You jump.')).toBeInTheDocument()
+  })
+
+  it('supports the quest turn-in state with canonical coordinates', () => {
+    const npc: LibraryNpc = {
+      id: 'monk:0:0',
+      floor: 0,
+      gallery: 0,
+      name: 'Hooded keeper of improbable words',
+      quest: 'significant-word',
+      dialogue: ['Reader, bring me a book that contains the word babel.'],
+      position: { x: 0, z: 0 },
+    }
+    const onComplete = vi.fn()
+    render(
+      <NpcDialoguePanel
+        npc={npc}
+        questStatus="ready-to-complete"
+        questFeedback={{ tone: 'success', text: 'Objective complete.' }}
+        onClose={() => undefined}
+        onAcceptSignificantWordQuest={() => undefined}
+        onSubmitSignificantWordQuest={() => undefined}
+        onCompleteSignificantWordQuest={onComplete}
+      />,
+    )
+    expect(screen.getByLabelText('Quest ready to complete')).toHaveTextContent('Quest Complete')
+    expect(screen.queryByLabelText('Submit book coordinates')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'complete quest' }))
+    expect(onComplete).toHaveBeenCalledOnce()
+  })
+
+  it('lets touch look gestures pass through book hit areas', () => {
+    expect(shouldBookCapturePointer('mouse')).toBe(true)
+    expect(shouldBookCapturePointer(undefined)).toBe(true)
+    expect(shouldBookCapturePointer('touch')).toBe(false)
+    expect(shouldBookCapturePointer('pen')).toBe(false)
   })
 })
 

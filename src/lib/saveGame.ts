@@ -65,5 +65,5 @@ function isValidBookAddress(value: unknown): value is BookAddress {
 }
 
 function isQuestStatus(value: unknown): value is WordQuestStatus {
-  return value === 'not-started' || value === 'accepted' || value === 'completed'
+  return value === 'not-started' || value === 'accepted' || value === 'ready-to-complete' || value === 'completed'
 }

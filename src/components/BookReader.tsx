@@ -1,4 +1,4 @@
-import { X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { BookAddress } from '../lib/library'
 import { addressLabel } from '../lib/library'
@@ -58,6 +58,10 @@ export function BookReader({
         <button type="button" className="close-reader" aria-label="Close book" onClick={onClose}>
           <X size={22} aria-hidden="true" />
         </button>
+        <header className="book-reader-header">
+          <span>Open Volume</span>
+          <strong>{addressLabel(selectedBook)}</strong>
+        </header>
         <div className="book-cover">
           <div className={spreadClassName}>
             <article className="book-page left">
@@ -74,6 +78,7 @@ export function BookReader({
         </div>
         <div className="reader-actions">
           <button type="button" onClick={() => requestSpread(spread - 1)}>
+            <ChevronLeft size={17} aria-hidden="true" />
             back
           </button>
           <label>
@@ -87,6 +92,7 @@ export function BookReader({
           </label>
           <button type="button" onClick={() => requestSpread(spread + 1)}>
             forward
+            <ChevronRight size={17} aria-hidden="true" />
           </button>
         </div>
       </div>

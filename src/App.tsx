@@ -3,19 +3,18 @@ import type { QuestMarkerState } from './ArenaViewport'
 import { BookReader } from './components/BookReader'
 import { NpcDialoguePanel } from './components/NpcDialoguePanel'
 import { SplashScreen } from './components/SplashScreen'
-import type { BookAddress } from './lib/library'
-import { generatePage, nearbyBookAddress } from './lib/library'
+import { SHELF_WALLS, generatePage, nearbyBookAddress, type BookAddress, type ShelfWall } from './lib/library'
 import { spreadToLeftPage, spreadToRightPage } from './lib/bookSpread'
 import { zoneLabel } from './lib/level'
 import { isNpcReachable, npcForGallery, type LibraryNpc } from './lib/npcs'
 import {
   BOOK_INTERACTION_RADIUS,
-  STEP_DISTANCE,
   WALK_SPEED,
   distanceToBook,
   isBookReachable,
   movePose,
   rotatePose,
+  wallNormal,
   type PlayerPose,
 } from './lib/roomGeometry'
 import { clearSavedGame, defaultSavedGame, readSavedGame, writeSavedGame, type SavedGameV1 } from './lib/saveGame'
@@ -25,22 +24,27 @@ import {
   type WordQuestFormValues,
   type WordQuestStatus,
 } from './lib/significantWordQuest'
+import { QUEST_TARGET_WORD } from './lib/quest'
 import './App.css'
 
 const LazyArenaViewport = lazy(() => import('./ArenaViewport').then((module) => ({ default: module.ArenaViewport })))
 
 type MovementCue = 'idle' | 'step' | 'turn-left' | 'turn-right'
-type HoldMovement = { forward: number; strafe: number; turnSlowdown: number }
+type HoldMovement = { forward: number; strafe: number }
 
-const HOLD_FORWARD_SPEED_SCALE = 0.62
-const HOLD_INITIAL_STEP_SCALE = 0.16
-const HOLD_ACCELERATION_PER_SECOND = 1.25
-const HOLD_DECELERATION_PER_SECOND = 4.2
+const KEYBOARD_MOVE_SPEED_SCALE = 0.82
+const TOUCH_MOVE_SPEED_SCALE = 0.68
+const JUMP_START_VELOCITY = 3.2
+const JUMP_GRAVITY = 9.2
+const MIN_CAMERA_PITCH = -0.82
+const MAX_CAMERA_PITCH = 0.72
 
 function App() {
   const initialSave = useRef<SavedGameV1 | null>(readSavedGame())
   const initialGame = initialSave.current ?? defaultSavedGame()
   const [playerPose, setPlayerPoseState] = useState<PlayerPose>(initialGame.pose)
+  const [cameraPitch, setCameraPitch] = useState(0)
+  const [jumpOffset, setJumpOffset] = useState(0)
   const [selectedBook, setSelectedBook] = useState<BookAddress>(initialGame.selectedBook)
   const [wordQuestStatus, setWordQuestStatus] = useState<WordQuestStatus>(initialGame.questStatus)
   const [readerOpen, setReaderOpen] = useState(false)
@@ -52,9 +56,12 @@ function App() {
   const [spread, setSpread] = useState(1)
   const [message, setMessage] = useState('The lamps wait above the central shaft.')
   const playerPoseRef = useRef<PlayerPose>(initialGame.pose)
+  const cameraPitchRef = useRef(0)
   const modalOpenRef = useRef(true)
-  const holdMovementRef = useRef<HoldMovement>({ forward: 0, strafe: 0, turnSlowdown: 0 })
-  const holdForwardRampRef = useRef(0)
+  const touchMovementRef = useRef<HoldMovement>({ forward: 0, strafe: 0 })
+  const pressedKeysRef = useRef<Set<string>>(new Set())
+  const jumpVelocityRef = useRef(0)
+  const jumpOffsetRef = useRef(0)
   const cueTimeout = useRef<number | null>(null)
 
   const leftPageNumber = spreadToLeftPage(spread)
@@ -71,8 +78,8 @@ function App() {
   useEffect(() => {
     modalOpenRef.current = readerOpen || splashOpen || dialogueNpc !== null
     if (modalOpenRef.current) {
-      holdMovementRef.current = { forward: 0, strafe: 0, turnSlowdown: 0 }
-      holdForwardRampRef.current = 0
+      touchMovementRef.current = { forward: 0, strafe: 0 }
+      pressedKeysRef.current.clear()
     }
   }, [readerOpen, splashOpen, dialogueNpc])
 
@@ -93,21 +100,44 @@ function App() {
       const deltaSeconds = Math.min(0.05, (now - lastFrame) / 1000)
       lastFrame = now
       if (!modalOpenRef.current) {
-        const hold = holdMovementRef.current
-        const target = hold.forward * (1 - hold.turnSlowdown) * HOLD_FORWARD_SPEED_SCALE
-        holdForwardRampRef.current = moveToward(
-          holdForwardRampRef.current,
-          target,
-          (target > holdForwardRampRef.current ? HOLD_ACCELERATION_PER_SECOND : HOLD_DECELERATION_PER_SECOND) * deltaSeconds,
-        )
-        const forward = clampAxis(holdForwardRampRef.current)
-        const strafe = clampAxis(hold.strafe * HOLD_FORWARD_SPEED_SCALE)
-        if (forward !== 0 || strafe !== 0) movePlayer(forward, strafe, WALK_SPEED * deltaSeconds, false)
+        const keyboardMovement = movementFromPressedKeys(pressedKeysRef.current)
+        const touchMovement = touchMovementRef.current
+        const forward = clampAxis(keyboardMovement.forward + touchMovement.forward * TOUCH_MOVE_SPEED_SCALE)
+        const strafe = clampAxis(keyboardMovement.strafe + touchMovement.strafe * TOUCH_MOVE_SPEED_SCALE)
+        if (forward !== 0 || strafe !== 0) movePlayer(forward, strafe, WALK_SPEED * KEYBOARD_MOVE_SPEED_SCALE * deltaSeconds, false)
+
+        if (jumpVelocityRef.current !== 0 || jumpOffsetRef.current > 0) {
+          const nextVelocity = jumpVelocityRef.current - JUMP_GRAVITY * deltaSeconds
+          const nextOffset = Math.max(0, jumpOffsetRef.current + nextVelocity * deltaSeconds)
+          jumpVelocityRef.current = nextOffset === 0 ? 0 : nextVelocity
+          jumpOffsetRef.current = nextOffset
+          setJumpOffset(nextOffset)
+        }
       }
       animationFrame = window.requestAnimationFrame(tick)
     }
     animationFrame = window.requestAnimationFrame(tick)
     return () => window.cancelAnimationFrame(animationFrame)
+  }, [])
+
+  useEffect(() => {
+    const movementKeys = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'q', 'e', ' '])
+    function handleKeyDown(event: KeyboardEvent) {
+      const key = event.key.toLowerCase()
+      if (modalOpenRef.current || !movementKeys.has(key)) return
+      event.preventDefault()
+      if (key === ' ') { startJump(); return }
+      pressedKeysRef.current.add(key)
+    }
+    function handleKeyUp(event: KeyboardEvent) {
+      pressedKeysRef.current.delete(event.key.toLowerCase())
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
   }, [])
 
   useEffect(() => () => {
@@ -117,6 +147,12 @@ function App() {
   function setPlayerPose(nextPose: PlayerPose) {
     playerPoseRef.current = nextPose
     setPlayerPoseState(nextPose)
+  }
+
+  function setCameraPitchClamped(nextPitch: number) {
+    const clampedPitch = Math.min(MAX_CAMERA_PITCH, Math.max(MIN_CAMERA_PITCH, nextPitch))
+    cameraPitchRef.current = clampedPitch
+    setCameraPitch(clampedPitch)
   }
 
   function triggerCue(cue: MovementCue) {
@@ -146,6 +182,37 @@ function App() {
 
   function rotatePlayer(deltaYaw: number) {
     setPlayerPose(rotatePose(playerPoseRef.current, deltaYaw))
+  }
+
+  function lookPlayer(deltaYaw: number, deltaPitch: number) {
+    rotatePlayer(deltaYaw)
+    if (deltaPitch !== 0) setCameraPitchClamped(cameraPitchRef.current + deltaPitch)
+  }
+
+  function startJump() {
+    if (jumpOffsetRef.current > 0 || jumpVelocityRef.current !== 0) return
+    jumpVelocityRef.current = JUMP_START_VELOCITY
+    setMessage('You jump.')
+  }
+
+  function interact() {
+    if (readerOpen || splashOpen || dialogueNpc !== null) return
+    if (currentNpc && isNpcReachable(playerPoseRef.current, currentNpc)) {
+      talkToNpc()
+      return
+    }
+    const pose = playerPoseRef.current
+    if (pose.zone.kind !== 'gallery') {
+      setMessage('Only dust answers here.')
+      return
+    }
+    openBook(nearbyBookAddress(
+      pose.floor,
+      pose.zone.gallery,
+      nearestShelfWall(pose),
+      selectedBook.shelf,
+      selectedBook.book,
+    ))
   }
 
   function openBook(address: BookAddress) {
@@ -180,6 +247,10 @@ function App() {
     setWordQuestFeedback(null)
     setDialogueNpc(null)
     setReaderOpen(false)
+    setCameraPitchClamped(0)
+    jumpVelocityRef.current = 0
+    jumpOffsetRef.current = 0
+    setJumpOffset(0)
     setHasStarted(true)
     setSplashOpen(false)
     initialSave.current = null
@@ -205,9 +276,15 @@ function App() {
     setMessage(result.message)
   }
 
+  function completeSignificantWordQuest() {
+    setWordQuestStatus('completed')
+    setWordQuestFeedback({ tone: 'success', text: 'Quest complete. The keeper marks the coordinate into the impossible ledger.' })
+    setMessage(`Quest complete: Find "${QUEST_TARGET_WORD}".`)
+  }
+
   return (
     <main className="arena-shell">
-      <section className="game-frame" aria-label="Library game viewport">
+      <section className={`game-frame ${readerOpen || splashOpen || dialogueNpc !== null ? 'ui-modal-open' : ''}`} aria-label="Library game viewport">
         <div className={`scene scene-library movement-${movementCue}`}>
           {hasStarted ? (
             <Suspense fallback={<div className="scene-loading">Lighting the gallery…</div>}>
@@ -215,20 +292,37 @@ function App() {
                 playerPose={playerPose}
                 selectedBook={selectedBook}
                 movementCue={movementCue}
+                cameraPitch={cameraPitch}
+                jumpOffset={jumpOffset}
                 npc={currentNpc}
                 questMarker={questMarker}
                 canTalkToNpc={canTalkToNpc && dialogueNpc === null}
                 onOpenBook={openBook}
                 onTalkToNpc={talkToNpc}
-                onLook={rotatePlayer}
-                onHoldForwardStart={() => movePlayer(1, 0, STEP_DISTANCE * HOLD_INITIAL_STEP_SCALE)}
-                onHoldMoveChange={(movement) => { holdMovementRef.current = movement }}
+                onLook={lookPlayer}
+                onInteract={interact}
+                onJump={startJump}
+                onTouchMoveChange={(movement) => { touchMovementRef.current = movement }}
               />
             </Suspense>
           ) : <div className="scene-loading atmospheric" aria-hidden="true" />}
         </div>
         {hasStarted ? <button type="button" className="journey-menu" onClick={() => setSplashOpen(true)}>Journey</button> : null}
         <div className="message-bar" role="status">{message}</div>
+        {wordQuestStatus === 'accepted' || wordQuestStatus === 'ready-to-complete' ? (
+          <aside className={`quest-tracker ${wordQuestStatus}`} aria-label="Quest tracker">
+            <span>{wordQuestStatus === 'ready-to-complete' ? 'Ready to turn in' : 'Quest accepted'}</span>
+            <strong>Find "{QUEST_TARGET_WORD}"</strong>
+            <p>{wordQuestStatus === 'ready-to-complete' ? 'Return to the hooded keeper.' : 'Find a page containing the word and report its coordinates.'}</p>
+          </aside>
+        ) : null}
+        {hasStarted ? (
+          <div className="control-readout" aria-label="Current position and controls">
+            <strong>{zoneLabel(playerPose.zone)}</strong>
+            <span>{`floor ${signed(playerPose.floor)}`}</span>
+            <span>WASD move. Mouse or swipe looks. Click, tap, or touch to interact. Space jumps.</span>
+          </div>
+        ) : null}
       </section>
 
       {splashOpen ? (
@@ -260,6 +354,7 @@ function App() {
           onClose={() => setDialogueNpc(null)}
           onAcceptSignificantWordQuest={acceptSignificantWordQuest}
           onSubmitSignificantWordQuest={submitSignificantWordQuest}
+          onCompleteSignificantWordQuest={completeSignificantWordQuest}
         />
       ) : null}
     </main>
@@ -277,14 +372,28 @@ function clampAxis(value: number): number {
   return Math.min(1, Math.max(-1, value))
 }
 
-function moveToward(current: number, target: number, maxDelta: number): number {
-  if (Math.abs(target - current) <= maxDelta) return target
-  return current + Math.sign(target - current) * maxDelta
+function movementFromPressedKeys(keys: Set<string>): HoldMovement {
+  return {
+    forward: clampAxis(Number(keys.has('w') || keys.has('arrowup')) - Number(keys.has('s') || keys.has('arrowdown'))),
+    strafe: clampAxis(Number(keys.has('d') || keys.has('arrowright') || keys.has('e')) - Number(keys.has('a') || keys.has('arrowleft') || keys.has('q'))),
+  }
 }
 
 function questMarkerForNpc(npc: LibraryNpc | null, status: WordQuestStatus): QuestMarkerState {
   if (npc?.quest !== 'significant-word' || status === 'completed') return null
+  if (status === 'ready-to-complete') return 'complete'
   return status === 'not-started' ? 'available' : 'active'
+}
+
+function nearestShelfWall(pose: PlayerPose): ShelfWall {
+  let best: ShelfWall = SHELF_WALLS[0]
+  let bestScore = Number.NEGATIVE_INFINITY
+  for (const wall of SHELF_WALLS) {
+    const normal = wallNormal(wall)
+    const score = pose.x * normal[0] + pose.z * normal[1]
+    if (score > bestScore) { best = wall; bestScore = score }
+  }
+  return best
 }
 
 function signed(value: number): string {

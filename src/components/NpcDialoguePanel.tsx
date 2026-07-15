@@ -13,6 +13,7 @@ export function NpcDialoguePanel({
   onClose,
   onAcceptSignificantWordQuest,
   onSubmitSignificantWordQuest,
+  onCompleteSignificantWordQuest,
 }: {
   npc: LibraryNpc
   questStatus: WordQuestStatus
@@ -20,6 +21,7 @@ export function NpcDialoguePanel({
   onClose: () => void
   onAcceptSignificantWordQuest: () => void
   onSubmitSignificantWordQuest: (values: WordQuestFormValues) => void
+  onCompleteSignificantWordQuest: () => void
 }) {
   const [formValues, setFormValues] = useState<WordQuestFormValues>({
     floor: '',
@@ -42,8 +44,10 @@ export function NpcDialoguePanel({
         <button type="button" className="close-reader" aria-label="Close monk dialogue" onClick={onClose}>
           <X size={22} aria-hidden="true" />
         </button>
-        <p className="splash-kicker">{npcQuestKicker(npc.quest)}</p>
-        <h2>{npc.name}</h2>
+        <header className="npc-dialogue-header">
+          <p className="splash-kicker">{npcQuestKicker(npc.quest)}</p>
+          <h2>{npc.name}</h2>
+        </header>
         <div className="npc-dialogue-lines">
           {npc.dialogue.map((line) => (
             <p key={line}>{line}</p>
@@ -55,8 +59,11 @@ export function NpcDialoguePanel({
                 book, roughly 1 in {formatWhole(significantWordOdds.oneInBooks)} books. A single page is roughly 1 in{' '}
                 {formatWhole(significantWordOdds.oneInPages)}.
               </p>
+              {questStatus === 'ready-to-complete' ? (
+                <p>The page has been proven. The keeper waits for you to finish the work.</p>
+              ) : null}
               {questStatus === 'completed' ? (
-                <p>The coordinate is accepted. The next quest can begin when the stacks stop laughing.</p>
+                <p>The coordinate is accepted. The stacks fall quiet around the finished quest.</p>
               ) : null}
             </>
           ) : null}
@@ -68,8 +75,23 @@ export function NpcDialoguePanel({
             </button>
           </div>
         ) : null}
-        {isSignificantWordQuest && questStatus !== 'not-started' ? (
+        {isSignificantWordQuest && questStatus === 'ready-to-complete' ? (
+          <div className="quest-complete-card" aria-label="Quest ready to complete">
+            <div>
+              <span>Quest Complete</span>
+              <strong>Find "{QUEST_TARGET_WORD}"</strong>
+            </div>
+            <button type="button" onClick={onCompleteSignificantWordQuest}>
+              complete quest
+            </button>
+          </div>
+        ) : null}
+        {isSignificantWordQuest && questStatus === 'accepted' ? (
           <div className="quest-ledger" aria-label="Quest address book">
+            <div className="quest-ledger-title">
+              <span>Quest Ledger</span>
+              <strong>Find "{QUEST_TARGET_WORD}"</strong>
+            </div>
             <form className="quest-form" aria-label="Submit book coordinates" onSubmit={handleSubmit}>
               <label>
                 floor
