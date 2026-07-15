@@ -40,6 +40,7 @@ const JUMP_START_VELOCITY = 3.2
 const JUMP_GRAVITY = 9.2
 const MIN_CAMERA_PITCH = -0.82
 const MAX_CAMERA_PITCH = 0.72
+const BOOK_PRESENTATION_DELAY_MS = 700
 
 function App() {
   const initialSave = useRef<SavedGameV1 | null>(readSavedGame())
@@ -49,6 +50,7 @@ function App() {
   const [jumpOffset, setJumpOffset] = useState(0)
   const [selectedBook, setSelectedBook] = useState<BookAddress>(initialGame.selectedBook)
   const [wordFinding, setWordFinding] = useState<WordFinding | null>(initialGame.wordFinding)
+  const [presentedBook, setPresentedBook] = useState<BookAddress | null>(null)
   const [wordQuestStatus, setWordQuestStatus] = useState<WordQuestStatus>(initialGame.questStatus)
   const [readerOpen, setReaderOpen] = useState(false)
   const [dialogueNpc, setDialogueNpc] = useState<LibraryNpc | null>(null)
@@ -68,6 +70,7 @@ function App() {
   const jumpVelocityRef = useRef(0)
   const jumpOffsetRef = useRef(0)
   const cueTimeout = useRef<number | null>(null)
+  const bookPresentationTimeout = useRef<number | null>(null)
 
   const leftPageNumber = spreadToLeftPage(spread)
   const rightPageNumber = spreadToRightPage(spread)
@@ -85,12 +88,12 @@ function App() {
   })), [currentNpcs, wordQuestStatus])
 
   useEffect(() => {
-    modalOpenRef.current = readerOpen || splashOpen || dialogueNpc !== null
+    modalOpenRef.current = readerOpen || presentedBook !== null || splashOpen || dialogueNpc !== null
     if (modalOpenRef.current) {
       touchMovementRef.current = { forward: 0, strafe: 0 }
       pressedKeysRef.current.clear()
     }
-  }, [readerOpen, splashOpen, dialogueNpc])
+  }, [readerOpen, presentedBook, splashOpen, dialogueNpc])
 
   useEffect(() => setDialogueNpc(null), [playerPose.floor, playerPose.zone])
 
@@ -151,6 +154,7 @@ function App() {
 
   useEffect(() => () => {
     if (cueTimeout.current !== null) window.clearTimeout(cueTimeout.current)
+    if (bookPresentationTimeout.current !== null) window.clearTimeout(bookPresentationTimeout.current)
   }, [])
 
   function setPlayerPose(nextPose: PlayerPose) {
@@ -205,7 +209,7 @@ function App() {
   }
 
   function interact() {
-    if (readerOpen || splashOpen || dialogueNpc !== null) return
+    if (readerOpen || presentedBook !== null || splashOpen || dialogueNpc !== null) return
     if (talkableNpc) {
       talkToNpc(talkableNpc)
       return
@@ -225,17 +229,38 @@ function App() {
   }
 
   function openBook(address: BookAddress) {
+    if (bookPresentationTimeout.current !== null) {
+      window.clearTimeout(bookPresentationTimeout.current)
+      bookPresentationTimeout.current = null
+    }
     setSelectedBook(address)
     setDialogueNpc(null)
     if (!isBookReachable(playerPoseRef.current, address)) {
       setReaderOpen(false)
+      setPresentedBook(null)
       setMessage(`That volume is ${distanceToBook(playerPoseRef.current, address) > BOOK_INTERACTION_RADIUS ? 'too far away' : 'out of reach'}.`)
       return
     }
     const findingPage = wordFinding && addressKey(wordFinding.address) === addressKey(address) ? wordFinding.address.page : 1
     setSpread(Math.ceil(findingPage / 2))
-    setReaderOpen(true)
-    setMessage('The volume opens like dry leather.')
+    setReaderOpen(false)
+    setPresentedBook(address)
+    setMessage('The leather-bound volume eases out from the shelf.')
+    bookPresentationTimeout.current = window.setTimeout(() => {
+      setReaderOpen(true)
+      setMessage('The volume opens like dry leather.')
+      bookPresentationTimeout.current = null
+    }, BOOK_PRESENTATION_DELAY_MS)
+  }
+
+  function closeBook() {
+    if (bookPresentationTimeout.current !== null) {
+      window.clearTimeout(bookPresentationTimeout.current)
+      bookPresentationTimeout.current = null
+    }
+    setReaderOpen(false)
+    setPresentedBook(null)
+    setMessage('The volume closes and settles back into the shelf.')
   }
 
   function talkToNpc(npc: LibraryNpc | null = talkableNpc) {
@@ -244,6 +269,7 @@ function App() {
       return
     }
     setReaderOpen(false)
+    setPresentedBook(null)
     setDialogueNpc(npc)
     if (npc.quest === 'significant-word') {
       const questMessage = wordQuestStatus === 'ready-to-complete'
@@ -272,6 +298,7 @@ function App() {
     setQuestLogMinimized(false)
     setDialogueNpc(null)
     setReaderOpen(false)
+    setPresentedBook(null)
     setCameraPitchClamped(0)
     jumpVelocityRef.current = 0
     jumpOffsetRef.current = 0
@@ -326,13 +353,13 @@ function App() {
 
   return (
     <main className="arena-shell">
-      <section className={`game-frame ${readerOpen || splashOpen || dialogueNpc !== null ? 'ui-modal-open' : ''}`} aria-label="Library game viewport">
+      <section className={`game-frame ${readerOpen || presentedBook !== null || splashOpen || dialogueNpc !== null ? 'ui-modal-open' : ''}`} aria-label="Library game viewport">
         <div className={`scene scene-library movement-${movementCue}`}>
           {hasStarted ? (
             <Suspense fallback={<div className="scene-loading">Lighting the gallery…</div>}>
               <LazyArenaViewport
                 playerPose={playerPose}
-                selectedBook={selectedBook}
+                presentedBook={presentedBook}
                 movementCue={movementCue}
                 cameraPitch={cameraPitch}
                 jumpOffset={jumpOffset}
@@ -385,7 +412,7 @@ function App() {
           leftPage={leftPage}
           rightPage={rightPage}
           highlightWord={wordFinding && addressKey(selectedBook) === addressKey(wordFinding.address) ? wordFinding.word : undefined}
-          onClose={() => setReaderOpen(false)}
+          onClose={closeBook}
           onSpreadChange={setSpread}
         />
       ) : null}

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
@@ -9,6 +9,7 @@ import { QuestLog } from './components/QuestLog'
 import { defaultAddress, generatePage } from './lib/library'
 import type { LibraryNpc } from './lib/npcs'
 import { shouldBookCapturePointer } from './lib/pointer'
+import { poseNearBook } from './lib/roomGeometry'
 import { defaultSavedGame, writeSavedGame } from './lib/saveGame'
 
 describe('App interactions', () => {
@@ -18,6 +19,7 @@ describe('App interactions', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     cleanup()
     vi.restoreAllMocks()
   })
@@ -149,6 +151,31 @@ describe('App interactions', () => {
     fireEvent.pointerDown(viewport, { button: 0, clientX: 200, clientY: 200, pointerId: 1, pointerType: 'touch' })
     fireEvent.pointerUp(viewport, { button: 0, clientX: 200, clientY: 200, pointerId: 1, pointerType: 'touch' })
     expect(screen.getByLabelText('Monk dialogue')).toBeInTheDocument()
+  })
+
+  it('presents a leather-bound volume before opening it and shelves it when closed', async () => {
+    const game = defaultSavedGame()
+    game.pose = poseNearBook(defaultAddress)
+    writeSavedGame(game)
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    const viewport = await screen.findByTestId('arena-viewport')
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+
+    fireEvent.pointerDown(viewport, { button: 0, clientX: 200, clientY: 200, pointerId: 1, pointerType: 'mouse' })
+    fireEvent.pointerUp(viewport, { button: 0, clientX: 200, clientY: 200, pointerId: 1, pointerType: 'mouse' })
+
+    expect(viewport).toHaveAttribute('data-book-presented', '0:0:A:1:7')
+    expect(screen.getByText('The leather-bound volume eases out from the shelf.')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Open book reader')).not.toBeInTheDocument()
+
+    await act(() => vi.advanceTimersByTimeAsync(700))
+    expect(screen.getByLabelText('Open book reader')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close book' }))
+    expect(viewport).toHaveAttribute('data-book-presented', '')
+    expect(screen.queryByLabelText('Open book reader')).not.toBeInTheDocument()
+    expect(screen.getByText('The volume closes and settles back into the shelf.')).toBeInTheDocument()
   })
 
   it('supports the quest turn-in state with canonical coordinates', () => {
