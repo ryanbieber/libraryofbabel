@@ -1,8 +1,7 @@
 import { X } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
 import type { LibraryNpc } from '../lib/npcs'
 import { QUEST_TARGET_WORD, targetWordOdds } from '../lib/quest'
-import type { WordQuestFeedback, WordQuestFormValues, WordQuestStatus } from '../lib/significantWordQuest'
+import type { WordQuestFeedback, WordQuestStatus } from '../lib/significantWordQuest'
 
 const significantWordOdds = targetWordOdds(QUEST_TARGET_WORD)
 
@@ -12,7 +11,6 @@ export function NpcDialoguePanel({
   questFeedback,
   onClose,
   onAcceptSignificantWordQuest,
-  onSubmitSignificantWordQuest,
   onCompleteSignificantWordQuest,
 }: {
   npc: LibraryNpc
@@ -20,23 +18,9 @@ export function NpcDialoguePanel({
   questFeedback: WordQuestFeedback | null
   onClose: () => void
   onAcceptSignificantWordQuest: () => void
-  onSubmitSignificantWordQuest: (values: WordQuestFormValues) => void
   onCompleteSignificantWordQuest: () => void
 }) {
-  const [formValues, setFormValues] = useState<WordQuestFormValues>({
-    floor: '',
-    gallery: '',
-    wall: '',
-    shelf: '',
-    volume: '',
-    page: '',
-  })
   const isSignificantWordQuest = npc.quest === 'significant-word'
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    onSubmitSignificantWordQuest(formValues)
-  }
 
   return (
     <section className="npc-dialogue" aria-label="Monk dialogue">
@@ -60,7 +44,10 @@ export function NpcDialoguePanel({
                 {formatWhole(significantWordOdds.oneInPages)}.
               </p>
               {questStatus === 'ready-to-complete' ? (
-                <p>The page has been proven. The keeper waits for you to finish the work.</p>
+                <p>You have returned with a proven page. Complete the quest with the keeper.</p>
+              ) : null}
+              {questStatus === 'accepted' ? (
+                <p>Your active objective and coordinate ledger are recorded in the Quest Log.</p>
               ) : null}
               {questStatus === 'completed' ? (
                 <p>The coordinate is accepted. The stacks fall quiet around the finished quest.</p>
@@ -86,77 +73,7 @@ export function NpcDialoguePanel({
             </button>
           </div>
         ) : null}
-        {isSignificantWordQuest && questStatus === 'accepted' ? (
-          <div className="quest-ledger" aria-label="Quest address book">
-            <div className="quest-ledger-title">
-              <span>Quest Ledger</span>
-              <strong>Find "{QUEST_TARGET_WORD}"</strong>
-            </div>
-            <form className="quest-form" aria-label="Submit book coordinates" onSubmit={handleSubmit}>
-              <label>
-                floor
-                <input
-                  value={formValues.floor}
-                  aria-label="Quest floor"
-                  inputMode="numeric"
-                  placeholder="0"
-                  onChange={(event) => setFormValues((current) => ({ ...current, floor: event.target.value }))}
-                />
-              </label>
-              <label>
-                gallery
-                <input
-                  value={formValues.gallery}
-                  aria-label="Quest gallery"
-                  inputMode="numeric"
-                  placeholder="0"
-                  onChange={(event) => setFormValues((current) => ({ ...current, gallery: event.target.value }))}
-                />
-              </label>
-              <label>
-                wall
-                <input
-                  value={formValues.wall}
-                  aria-label="Quest wall"
-                  placeholder="A"
-                  onChange={(event) => setFormValues((current) => ({ ...current, wall: event.target.value }))}
-                />
-              </label>
-              <label>
-                shelf
-                <input
-                  value={formValues.shelf}
-                  aria-label="Quest shelf"
-                  inputMode="numeric"
-                  placeholder="1"
-                  onChange={(event) => setFormValues((current) => ({ ...current, shelf: event.target.value }))}
-                />
-              </label>
-              <label>
-                volume
-                <input
-                  value={formValues.volume}
-                  aria-label="Quest volume"
-                  inputMode="numeric"
-                  placeholder="1"
-                  onChange={(event) => setFormValues((current) => ({ ...current, volume: event.target.value }))}
-                />
-              </label>
-              <label>
-                page
-                <input
-                  value={formValues.page}
-                  aria-label="Quest page"
-                  inputMode="numeric"
-                  placeholder="1"
-                  onChange={(event) => setFormValues((current) => ({ ...current, page: event.target.value }))}
-                />
-              </label>
-              <button type="submit">test page</button>
-            </form>
-          </div>
-        ) : null}
-        {isSignificantWordQuest && questFeedback ? (
+        {isSignificantWordQuest && questFeedback && questStatus !== 'accepted' ? (
           <p className={`quest-feedback ${questFeedback.tone}`} role="status">
             {questFeedback.text}
           </p>

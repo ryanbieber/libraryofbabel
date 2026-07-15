@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { BookReader } from './components/BookReader'
 import { NpcDialoguePanel } from './components/NpcDialoguePanel'
+import { QuestLog } from './components/QuestLog'
 import { defaultAddress, generatePage } from './lib/library'
 import type { LibraryNpc } from './lib/npcs'
 import { shouldBookCapturePointer } from './lib/pointer'
@@ -70,10 +71,18 @@ describe('App interactions', () => {
     fireEvent.click(screen.getByRole('button', { name: /Talk to Hooded keeper of improbable words/ }))
     fireEvent.click(screen.getByRole('button', { name: 'accept quest' }))
 
+    expect(screen.queryByLabelText('Monk dialogue')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Quest log')).toBeInTheDocument()
     expect(screen.getByLabelText('Quest floor')).toBeInTheDocument()
     expect(screen.getByLabelText('Quest gallery')).toBeInTheDocument()
     expect(screen.getByLabelText('Quest wall')).toHaveAttribute('placeholder', 'A')
-    expect(container.querySelector('.npc-quest-marker.active')?.textContent).toBe('?')
+    expect(container.querySelector('.npc-quest-marker')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Minimize quest log' }))
+    expect(screen.queryByLabelText('Quest floor')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Expand quest log' })).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(screen.getByRole('button', { name: 'Expand quest log' }))
+    expect(screen.getByLabelText('Quest floor')).toBeInTheDocument()
   })
 
   it('validates the new quest coordinates', async () => {
@@ -134,7 +143,6 @@ describe('App interactions', () => {
         questFeedback={{ tone: 'success', text: 'Objective complete.' }}
         onClose={() => undefined}
         onAcceptSignificantWordQuest={() => undefined}
-        onSubmitSignificantWordQuest={() => undefined}
         onCompleteSignificantWordQuest={onComplete}
       />,
     )
@@ -142,6 +150,22 @@ describe('App interactions', () => {
     expect(screen.queryByLabelText('Submit book coordinates')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'complete quest' }))
     expect(onComplete).toHaveBeenCalledOnce()
+  })
+
+  it('directs a player with a proven page back to the monk', () => {
+    render(
+      <QuestLog
+        status="ready-to-complete"
+        feedback={{ tone: 'success', text: 'The word is there.' }}
+        minimized={false}
+        onToggleMinimized={() => undefined}
+        onSubmit={() => undefined}
+      />,
+    )
+
+    expect(screen.getByLabelText('Quest log')).toHaveTextContent('Return to the hooded keeper')
+    expect(screen.getByText(/floor 0, gallery 0/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText('Submit book coordinates')).not.toBeInTheDocument()
   })
 
   it('lets touch look gestures pass through book hit areas', () => {
