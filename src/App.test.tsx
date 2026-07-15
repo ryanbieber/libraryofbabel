@@ -157,6 +157,7 @@ describe('App interactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
 
     expect(screen.queryByLabelText('Movement controls')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Room door status').querySelectorAll('button')).toHaveLength(0)
     expect(screen.getByLabelText('Current position and controls')).toHaveTextContent('WASD move')
     expect(screen.getByLabelText('Touch controls')).toBeInTheDocument()
     expect(screen.getByLabelText('Movement joystick')).toBeInTheDocument()

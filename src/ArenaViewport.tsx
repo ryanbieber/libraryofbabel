@@ -238,24 +238,18 @@ export function ArenaViewport({
         <strong>{roomName}</strong>
         <span>{`room ${currentRoom.q},${currentRoom.r} / ${facingLabel} view`}</span>
       </div>
-      <div className="door-strip" aria-label="Room doors">
+      <div className="door-strip" aria-label="Room door status">
         {cardinalDirections.map((direction, index) => {
           const doorIndex = index as DirectionIndex
           const isAvailable = doors.includes(doorIndex)
           const className = ['door-chip', isAvailable ? 'available' : 'sealed', index === facing ? 'facing' : ''].join(' ')
 
-          return isAvailable ? (
-            <button
-              type="button"
+          return (
+            <span
               key={direction.label}
               className={className}
-              aria-label={`Open ${direction.label} door`}
-              onClick={() => onOpenDoor(doorIndex)}
+              aria-label={`${direction.label} door ${isAvailable ? 'available' : 'sealed'}`}
             >
-              {direction.shortLabel}
-            </button>
-          ) : (
-            <span key={direction.label} className={className} aria-label={`${direction.label} door sealed`}>
               {direction.shortLabel}
             </span>
           )
