@@ -15,6 +15,7 @@ import {
 } from './lib/library'
 import type { LibraryNpc } from './lib/npcs'
 import { shouldBookCapturePointer } from './lib/pointer'
+import { visibleScenesForPose } from './lib/sceneVisibility'
 import {
   BOOK_INTERACTION_RADIUS,
   FLOOR_HEIGHT,
@@ -230,6 +231,7 @@ function LibraryScene({
   onHoverBook: (address: BookAddress | null) => void
   onTalkToNpc: () => void
 }) {
+  const visibleScenes = visibleScenesForPose(playerPose)
   return (
     <>
       <PlayerCamera playerPose={playerPose} movementCue={movementCue} cameraPitch={cameraPitch} jumpOffset={jumpOffset} />
@@ -239,42 +241,52 @@ function LibraryScene({
       <hemisphereLight color="#f2d9a3" groundColor="#241a12" intensity={0.7} />
       <directionalLight color="#ffe2aa" intensity={0.78} position={[4, 7, 3]} />
       <pointLight color="#ffc76f" intensity={30} position={[0, 2.55, 0]} distance={12} decay={1.8} />
-      {playerPose.zone.kind === 'gallery' ? (
-        <GalleryScene
-          playerPose={playerPose}
-          gallery={playerPose.zone.gallery}
-          selectedBook={selectedBook}
-          hoveredBook={hoveredBook}
-          npc={npc}
-          questMarker={questMarker}
-          onOpenBook={onOpenBook}
-          onHoverBook={onHoverBook}
-          onTalkToNpc={onTalkToNpc}
-        />
-      ) : null}
-      {playerPose.zone.kind === 'vestibule' ? <VestibuleScene connector={playerPose.zone.connector} /> : null}
-      {playerPose.zone.kind === 'service' ? <ServiceRoomScene room={playerPose.zone.room} /> : null}
-      {playerPose.zone.kind === 'stair' ? <StairScene ascending={playerPose.zone.to > playerPose.zone.from} /> : null}
+      {visibleScenes.map((scene) => (
+        <group key={scene.id} position={scene.position}>
+          {scene.zone.kind === 'gallery' ? (
+            <GalleryScene
+              floor={scene.floor}
+              playerPose={playerPose}
+              gallery={scene.zone.gallery}
+              selectedBook={selectedBook}
+              hoveredBook={scene.isCurrent ? hoveredBook : null}
+              interactive={scene.isCurrent}
+              npc={scene.isCurrent ? npc : null}
+              questMarker={scene.isCurrent ? questMarker : null}
+              onOpenBook={onOpenBook}
+              onHoverBook={onHoverBook}
+              onTalkToNpc={onTalkToNpc}
+            />
+          ) : null}
+          {scene.zone.kind === 'vestibule' ? <VestibuleScene connector={scene.zone.connector} /> : null}
+          {scene.zone.kind === 'service' ? <ServiceRoomScene room={scene.zone.room} /> : null}
+          {scene.zone.kind === 'stair' ? <StairScene ascending={scene.zone.to > scene.zone.from} /> : null}
+        </group>
+      ))}
       <DustMotes zone={playerPose.zone.kind} />
     </>
   )
 }
 
 function GalleryScene({
+  floor,
   playerPose,
   gallery,
   selectedBook,
   hoveredBook,
+  interactive,
   npc,
   questMarker,
   onOpenBook,
   onHoverBook,
   onTalkToNpc,
 }: {
+  floor: BookAddress['floor']
   playerPose: PlayerPose
   gallery: BookAddress['gallery']
   selectedBook: BookAddress
   hoveredBook: BookAddress | null
+  interactive: boolean
   npc: LibraryNpc | null
   questMarker: QuestMarkerState
   onOpenBook: (address: BookAddress) => void
@@ -302,12 +314,13 @@ function GalleryScene({
       {SHELF_WALLS.map((wall) => (
         <ShelfWall
           key={wall}
-          floor={playerPose.floor}
+          floor={floor}
           gallery={gallery}
           wall={wall}
           playerPose={playerPose}
           selectedBook={selectedBook}
           hoveredBook={hoveredBook}
+          interactive={interactive}
           onOpenBook={onOpenBook}
           onHoverBook={onHoverBook}
         />
@@ -327,6 +340,7 @@ function ShelfWall({
   playerPose,
   selectedBook,
   hoveredBook,
+  interactive,
   onOpenBook,
   onHoverBook,
 }: {
@@ -336,6 +350,7 @@ function ShelfWall({
   playerPose: PlayerPose
   selectedBook: BookAddress
   hoveredBook: BookAddress | null
+  interactive: boolean
   onOpenBook: (address: BookAddress) => void
   onHoverBook: (address: BookAddress | null) => void
 }) {
@@ -364,6 +379,7 @@ function ShelfWall({
         playerPose={playerPose}
         selectedBook={selectedBook}
         hoveredBook={hoveredBook}
+        interactive={interactive}
         onOpenBook={onOpenBook}
         onHoverBook={onHoverBook}
       />
@@ -378,6 +394,7 @@ function InstancedBooks({
   playerPose,
   selectedBook,
   hoveredBook,
+  interactive,
   onOpenBook,
   onHoverBook,
 }: {
@@ -387,6 +404,7 @@ function InstancedBooks({
   playerPose: PlayerPose
   selectedBook: BookAddress
   hoveredBook: BookAddress | null
+  interactive: boolean
   onOpenBook: (address: BookAddress) => void
   onHoverBook: (address: BookAddress | null) => void
 }) {
@@ -433,18 +451,18 @@ function InstancedBooks({
     <instancedMesh
       ref={meshRef}
       args={[undefined, undefined, count]}
-      onPointerMove={(event) => {
+      onPointerMove={interactive ? (event) => {
         if (!shouldBookCapturePointer(eventPointerType(event))) { onHoverBook(null); return }
         event.stopPropagation()
         const address = addressForEvent(event)
         onHoverBook(address && distanceToBook(playerPose, address) <= BOOK_INTERACTION_RADIUS ? address : null)
-      }}
-      onPointerOut={() => onHoverBook(null)}
-      onClick={(event) => {
+      } : undefined}
+      onPointerOut={interactive ? () => onHoverBook(null) : undefined}
+      onClick={interactive ? (event) => {
         if (shouldBookCapturePointer(eventPointerType(event))) event.stopPropagation()
         const address = addressForEvent(event)
         if (address) onOpenBook(address)
-      }}
+      } : undefined}
     >
       <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial roughness={0.88} />
@@ -456,7 +474,7 @@ function VestibuleScene({ connector }: { connector: number }) {
   const neighbors = galleriesForConnector(connector as Parameters<typeof galleriesForConnector>[0])
   return (
     <>
-      <BoxRoom width={VESTIBULE_HALF_WIDTH * 2} depth={VESTIBULE_HALF_DEPTH * 2} color="#403933" openWest openEast />
+      <BoxRoom width={VESTIBULE_HALF_WIDTH * 2} depth={VESTIBULE_HALF_DEPTH * 2} color="#403933" openNorth openSouth openWest openEast />
       <CorridorEnd z={-VESTIBULE_HALF_DEPTH} gated={neighbors.north === null} />
       <CorridorEnd z={VESTIBULE_HALF_DEPTH} gated={neighbors.south === null} rotationY={Math.PI} />
       <SidePortal side="west" z={-0.72} labelColor="#897151" />
@@ -594,13 +612,29 @@ function SidePortal({ side, z, labelColor, wide = false }: { side: 'east' | 'wes
   )
 }
 
-function BoxRoom({ width, depth, color, openWest = false, openEast = false }: { width: number; depth: number; color: string; openWest?: boolean; openEast?: boolean }) {
+function BoxRoom({
+  width,
+  depth,
+  color,
+  openNorth = false,
+  openSouth = false,
+  openWest = false,
+  openEast = false,
+}: {
+  width: number
+  depth: number
+  color: string
+  openNorth?: boolean
+  openSouth?: boolean
+  openWest?: boolean
+  openEast?: boolean
+}) {
   return (
     <>
       <mesh rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[width, depth]} /><meshStandardMaterial color="#4a443e" roughness={1} /></mesh>
       <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, ROOM_HEIGHT, 0]}><planeGeometry args={[width, depth]} /><meshStandardMaterial color="#292622" roughness={1} side={THREE.DoubleSide} /></mesh>
-      <mesh position={[0, ROOM_HEIGHT / 2, -depth / 2]}><planeGeometry args={[width, ROOM_HEIGHT]} /><meshStandardMaterial color={color} side={THREE.DoubleSide} /></mesh>
-      <mesh position={[0, ROOM_HEIGHT / 2, depth / 2]} rotation={[0, Math.PI, 0]}><planeGeometry args={[width, ROOM_HEIGHT]} /><meshStandardMaterial color={color} side={THREE.DoubleSide} /></mesh>
+      {!openNorth ? <mesh position={[0, ROOM_HEIGHT / 2, -depth / 2]}><planeGeometry args={[width, ROOM_HEIGHT]} /><meshStandardMaterial color={color} side={THREE.DoubleSide} /></mesh> : null}
+      {!openSouth ? <mesh position={[0, ROOM_HEIGHT / 2, depth / 2]} rotation={[0, Math.PI, 0]}><planeGeometry args={[width, ROOM_HEIGHT]} /><meshStandardMaterial color={color} side={THREE.DoubleSide} /></mesh> : null}
       {!openWest ? <mesh position={[-width / 2, ROOM_HEIGHT / 2, 0]} rotation={[0, Math.PI / 2, 0]}><planeGeometry args={[depth, ROOM_HEIGHT]} /><meshStandardMaterial color={color} side={THREE.DoubleSide} /></mesh> : null}
       {!openEast ? <mesh position={[width / 2, ROOM_HEIGHT / 2, 0]} rotation={[0, -Math.PI / 2, 0]}><planeGeometry args={[depth, ROOM_HEIGHT]} /><meshStandardMaterial color={color} side={THREE.DoubleSide} /></mesh> : null}
     </>
