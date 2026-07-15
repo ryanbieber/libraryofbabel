@@ -733,16 +733,270 @@ function SeatedMonk({ npc, questMarker, onTalk }: { npc: LibraryNpc; questMarker
   return (
     <group position={[npc.position.x, 0.55, npc.position.z - 0.42]} rotation={[0, Math.PI, 0]} onClick={(event) => { event.stopPropagation(); onTalk() }}>
       <group ref={groupRef}>
-        <mesh><coneGeometry args={[0.42, 1.12, 7]} /><meshStandardMaterial color="#1b1416" roughness={1} /></mesh>
-        <mesh position={[0, 0.54, -0.03]}><sphereGeometry args={[0.17, 10, 8]} /><meshStandardMaterial color="#755b40" roughness={0.95} /></mesh>
-        <mesh position={[0, 0.7, -0.08]}><coneGeometry args={[0.29, 0.46, 7]} /><meshStandardMaterial color="#09080a" /></mesh>
-        {questMarker ? <QuestMarker state={questMarker} /> : null}
+        {npc.quest === 'significant-word' ? (
+          <GreyQuestKeeper questMarker={questMarker} />
+        ) : npc.quest === 'word-finder' ? (
+          <MonasticIndexer questMarker={questMarker} />
+        ) : (
+          <HoodedMonk questMarker={questMarker} />
+        )}
       </group>
     </group>
   )
 }
 
-function QuestMarker({ state }: { state: Exclude<QuestMarkerState, null> }) {
+function GreyQuestKeeper({ questMarker }: { questMarker: QuestMarkerState }) {
+  return (
+    <>
+      <mesh position={[0, -0.04, 0.02]}>
+        <coneGeometry args={[0.44, 1.02, 12]} />
+        <meshStandardMaterial color="#625f59" roughness={1} />
+      </mesh>
+      <mesh position={[0, 0.25, -0.01]} scale={[1, 0.8, 0.72]}>
+        <sphereGeometry args={[0.31, 14, 10]} />
+        <meshStandardMaterial color="#77736c" roughness={0.96} />
+      </mesh>
+
+      <CylinderBetween start={[-0.19, 0.31, -0.02]} end={[-0.3, 0.02, -0.2]} radius={0.105} color="#706c65" />
+      <CylinderBetween start={[0.19, 0.31, -0.02]} end={[0.32, 0.43, -0.2]} radius={0.105} color="#706c65" />
+      <mesh position={[-0.31, 0.01, -0.21]}><sphereGeometry args={[0.09, 10, 8]} /><meshStandardMaterial color="#9f7455" roughness={0.9} /></mesh>
+      <mesh position={[0.32, 0.43, -0.21]}><sphereGeometry args={[0.085, 10, 8]} /><meshStandardMaterial color="#9f7455" roughness={0.9} /></mesh>
+
+      <mesh position={[0, 0.57, -0.08]}>
+        <sphereGeometry args={[0.18, 16, 12]} />
+        <meshStandardMaterial color="#9a7356" roughness={0.92} />
+      </mesh>
+      <mesh position={[-0.066, 0.625, -0.235]} scale={[1, 0.62, 0.45]}>
+        <sphereGeometry args={[0.024, 8, 6]} />
+        <meshStandardMaterial color="#181513" roughness={0.8} />
+      </mesh>
+      <mesh position={[0.066, 0.625, -0.235]} scale={[1, 0.62, 0.45]}>
+        <sphereGeometry args={[0.024, 8, 6]} />
+        <meshStandardMaterial color="#181513" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, 0.57, -0.255]} scale={[0.72, 1, 0.8]}>
+        <sphereGeometry args={[0.045, 10, 8]} />
+        <meshStandardMaterial color="#a98163" roughness={0.9} />
+      </mesh>
+
+      <mesh position={[0, 0.38, -0.205]} rotation={[0, 0, Math.PI]} scale={[1, 1, 0.58]}>
+        <coneGeometry args={[0.18, 0.46, 12]} />
+        <meshStandardMaterial color="#c5c0b6" roughness={1} />
+      </mesh>
+      <mesh position={[-0.095, 0.535, -0.245]} rotation={[0, 0, -0.25]} scale={[1, 0.42, 0.45]}>
+        <sphereGeometry args={[0.095, 10, 8]} />
+        <meshStandardMaterial color="#d0cbc1" roughness={1} />
+      </mesh>
+      <mesh position={[0.095, 0.535, -0.245]} rotation={[0, 0, 0.25]} scale={[1, 0.42, 0.45]}>
+        <sphereGeometry args={[0.095, 10, 8]} />
+        <meshStandardMaterial color="#d0cbc1" roughness={1} />
+      </mesh>
+      <mesh position={[-0.145, 0.48, -0.12]} scale={[0.45, 1.2, 0.45]}>
+        <sphereGeometry args={[0.13, 10, 8]} />
+        <meshStandardMaterial color="#aaa69e" roughness={1} />
+      </mesh>
+      <mesh position={[0.145, 0.48, -0.12]} scale={[0.45, 1.2, 0.45]}>
+        <sphereGeometry args={[0.13, 10, 8]} />
+        <meshStandardMaterial color="#aaa69e" roughness={1} />
+      </mesh>
+
+      <mesh position={[0, 0.79, -0.025]} scale={[1, 0.14, 0.9]}>
+        <cylinderGeometry args={[0.34, 0.34, 0.2, 18]} />
+        <meshStandardMaterial color="#686966" roughness={1} side={THREE.DoubleSide} />
+      </mesh>
+      <group rotation={[0, 0, -0.09]}>
+        <mesh position={[0.025, 1.04, 0]}>
+          <coneGeometry args={[0.225, 0.55, 14]} />
+          <meshStandardMaterial color="#747570" roughness={1} />
+        </mesh>
+      </group>
+      <mesh position={[0, 0.815, -0.02]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.205, 0.018, 6, 18]} />
+        <meshStandardMaterial color="#3a3632" roughness={0.94} />
+      </mesh>
+
+      <LongPipe />
+      {questMarker ? <QuestMarker state={questMarker} positionY={1.58} /> : null}
+    </>
+  )
+}
+
+function HoodedMonk({ questMarker }: { questMarker: QuestMarkerState }) {
+  return (
+    <>
+      <mesh><coneGeometry args={[0.42, 1.12, 7]} /><meshStandardMaterial color="#1b1416" roughness={1} /></mesh>
+      <mesh position={[0, 0.54, -0.03]}><sphereGeometry args={[0.17, 10, 8]} /><meshStandardMaterial color="#755b40" roughness={0.95} /></mesh>
+      <mesh position={[0, 0.7, -0.08]}><coneGeometry args={[0.29, 0.46, 7]} /><meshStandardMaterial color="#09080a" /></mesh>
+      {questMarker ? <QuestMarker state={questMarker} /> : null}
+    </>
+  )
+}
+
+function MonasticIndexer({ questMarker }: { questMarker: QuestMarkerState }) {
+  const prayerBeads = [
+    [-0.23, 0.12, -0.28],
+    [-0.19, 0.07, -0.3],
+    [-0.14, 0.035, -0.31],
+    [-0.085, 0.015, -0.315],
+    [-0.03, 0.005, -0.318],
+  ] as const
+  return (
+    <>
+      <mesh position={[0, -0.04, 0.025]}>
+        <coneGeometry args={[0.43, 1.04, 12]} />
+        <meshStandardMaterial color="#4c281d" roughness={1} />
+      </mesh>
+      <mesh position={[0, 0.22, -0.005]} scale={[1, 0.72, 0.75]}>
+        <sphereGeometry args={[0.32, 14, 10]} />
+        <meshStandardMaterial color="#603527" roughness={1} />
+      </mesh>
+      <mesh position={[0, 0.12, -0.286]}>
+        <boxGeometry args={[0.24, 0.72, 0.035]} />
+        <meshStandardMaterial color="#704735" roughness={0.98} />
+      </mesh>
+      <mesh position={[0, 0.13, -0.03]} rotation={[Math.PI / 2, 0, 0]} scale={[1, 0.9, 0.9]}>
+        <torusGeometry args={[0.27, 0.035, 7, 16]} />
+        <meshStandardMaterial color="#b49a6a" roughness={1} />
+      </mesh>
+      <CylinderBetween start={[-0.055, 0.12, -0.27]} end={[-0.085, -0.25, -0.315]} radius={0.014} color="#bca573" />
+      <CylinderBetween start={[0.01, 0.12, -0.27]} end={[-0.015, -0.18, -0.32]} radius={0.014} color="#bca573" />
+      <mesh position={[-0.087, -0.26, -0.315]}><sphereGeometry args={[0.032, 8, 6]} /><meshStandardMaterial color="#a88b55" roughness={1} /></mesh>
+      <mesh position={[-0.015, -0.19, -0.32]}><sphereGeometry args={[0.03, 8, 6]} /><meshStandardMaterial color="#a88b55" roughness={1} /></mesh>
+
+      <mesh position={[0, 0.59, 0.005]} scale={[1.25, 1.18, 0.85]}>
+        <sphereGeometry args={[0.205, 14, 10]} />
+        <meshStandardMaterial color="#432319" roughness={1} />
+      </mesh>
+      <mesh position={[0, 0.59, -0.095]}>
+        <sphereGeometry args={[0.175, 16, 12]} />
+        <meshStandardMaterial color="#9b6f50" roughness={0.94} />
+      </mesh>
+      <mesh position={[0, 0.705, -0.065]} rotation={[Math.PI / 2, 0, 0]} scale={[1, 1, 0.7]}>
+        <torusGeometry args={[0.13, 0.045, 7, 16]} />
+        <meshStandardMaterial color="#493025" roughness={1} />
+      </mesh>
+      <mesh position={[-0.062, 0.625, -0.25]} scale={[1, 0.62, 0.45]}>
+        <sphereGeometry args={[0.023, 8, 6]} />
+        <meshStandardMaterial color="#171311" roughness={0.85} />
+      </mesh>
+      <mesh position={[0.062, 0.625, -0.25]} scale={[1, 0.62, 0.45]}>
+        <sphereGeometry args={[0.023, 8, 6]} />
+        <meshStandardMaterial color="#171311" roughness={0.85} />
+      </mesh>
+      <mesh position={[0, 0.57, -0.27]} scale={[0.7, 1, 0.8]}>
+        <sphereGeometry args={[0.043, 9, 7]} />
+        <meshStandardMaterial color="#a77c5d" roughness={0.94} />
+      </mesh>
+      <mesh position={[0, 0.51, -0.255]} scale={[1, 0.36, 0.5]}>
+        <sphereGeometry args={[0.085, 10, 7]} />
+        <meshStandardMaterial color="#604333" roughness={1} />
+      </mesh>
+
+      <mesh position={[0, 0.43, -0.035]} rotation={[Math.PI / 2, 0, 0]} scale={[1.25, 1, 0.8]}>
+        <torusGeometry args={[0.215, 0.085, 8, 18]} />
+        <meshStandardMaterial color="#583125" roughness={1} />
+      </mesh>
+      <CylinderBetween start={[-0.2, 0.35, -0.08]} end={[0.15, 0.2, -0.3]} radius={0.095} color="#5a3023" />
+      <CylinderBetween start={[0.2, 0.35, -0.08]} end={[-0.12, 0.18, -0.32]} radius={0.095} color="#673a2b" />
+      <mesh position={[0.155, 0.195, -0.31]}><sphereGeometry args={[0.085, 10, 8]} /><meshStandardMaterial color="#9b6f50" roughness={0.94} /></mesh>
+      <mesh position={[-0.125, 0.175, -0.33]}><sphereGeometry args={[0.082, 10, 8]} /><meshStandardMaterial color="#9b6f50" roughness={0.94} /></mesh>
+
+      {prayerBeads.map((position, index) => (
+        <mesh key={index} position={position}>
+          <sphereGeometry args={[0.024, 7, 6]} />
+          <meshStandardMaterial color="#2c1814" roughness={1} />
+        </mesh>
+      ))}
+      <mesh position={[0.005, -0.045, -0.32]} rotation={[0, 0, Math.PI / 4]}>
+        <boxGeometry args={[0.05, 0.13, 0.025]} />
+        <meshStandardMaterial color="#2c1814" roughness={1} />
+      </mesh>
+
+      {questMarker ? <QuestMarker state={questMarker} positionY={1.22} /> : null}
+    </>
+  )
+}
+
+function LongPipe() {
+  return (
+    <group>
+      <CylinderBetween start={[0.075, 0.555, -0.278]} end={[0.55, 0.39, -0.35]} radius={0.018} color="#714329" />
+      <mesh position={[0.57, 0.485, -0.35]}>
+        <cylinderGeometry args={[0.075, 0.095, 0.2, 12]} />
+        <meshStandardMaterial color="#6a3a22" roughness={0.9} />
+      </mesh>
+      <mesh position={[0.57, 0.59, -0.35]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.068, 0.014, 6, 12]} />
+        <meshStandardMaterial color="#3c2117" roughness={1} />
+      </mesh>
+      <mesh position={[0.57, 0.588, -0.35]} scale={[1, 0.22, 1]}>
+        <sphereGeometry args={[0.057, 10, 6]} />
+        <meshStandardMaterial color="#402217" emissive="#8a2f12" emissiveIntensity={0.55} roughness={1} />
+      </mesh>
+      <PipeSmoke origin={[0.57, 0.62, -0.35]} />
+    </group>
+  )
+}
+
+const SMOKE_PHASES = [0, 0.24, 0.49, 0.74] as const
+
+function PipeSmoke({ origin }: { origin: [number, number, number] }) {
+  const puffRefs = useRef<Array<THREE.Mesh | null>>([])
+  useFrame(({ clock }) => {
+    SMOKE_PHASES.forEach((phase, index) => {
+      const puff = puffRefs.current[index]
+      if (!puff) return
+      const progress = (clock.elapsedTime * 0.19 + phase) % 1
+      const curl = Math.sin(progress * Math.PI * 4 + phase * 8) * (0.025 + progress * 0.075)
+      puff.position.set(origin[0] + curl, origin[1] + progress * 0.68, origin[2] - progress * 0.035)
+      const size = 0.65 + progress * 1.85
+      puff.scale.setScalar(size)
+      const material = puff.material as THREE.MeshBasicMaterial
+      material.opacity = Math.sin(progress * Math.PI) * 0.24
+    })
+  })
+  return (
+    <>
+      {SMOKE_PHASES.map((phase, index) => (
+        <mesh key={phase} ref={(mesh) => { puffRefs.current[index] = mesh }}>
+          <sphereGeometry args={[0.052, 10, 8]} />
+          <meshBasicMaterial color="#c9c4bb" transparent opacity={0} depthWrite={false} />
+        </mesh>
+      ))}
+    </>
+  )
+}
+
+function CylinderBetween({
+  start,
+  end,
+  radius,
+  color,
+}: {
+  start: [number, number, number]
+  end: [number, number, number]
+  radius: number
+  color: string
+}) {
+  const transform = useMemo(() => {
+    const startVector = new THREE.Vector3(...start)
+    const endVector = new THREE.Vector3(...end)
+    const direction = endVector.clone().sub(startVector)
+    return {
+      length: direction.length(),
+      midpoint: startVector.add(endVector).multiplyScalar(0.5),
+      quaternion: new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize()),
+    }
+  }, [start, end])
+  return (
+    <mesh position={transform.midpoint} quaternion={transform.quaternion}>
+      <cylinderGeometry args={[radius, radius, transform.length, 8]} />
+      <meshStandardMaterial color={color} roughness={0.9} />
+    </mesh>
+  )
+}
+
+function QuestMarker({ state, positionY = 1.3 }: { state: Exclude<QuestMarkerState, null>; positionY?: number }) {
   const texture = useMemo(() => {
     const canvas = document.createElement('canvas')
     canvas.width = 96; canvas.height = 96
@@ -755,7 +1009,7 @@ function QuestMarker({ state }: { state: Exclude<QuestMarkerState, null> }) {
     return new THREE.CanvasTexture(canvas)
   }, [state])
   useEffect(() => () => texture.dispose(), [texture])
-  return <sprite position={[0, 1.3, 0]} scale={[0.4, 0.4, 1]}><spriteMaterial map={texture} transparent depthTest={false} /></sprite>
+  return <sprite position={[0, positionY, 0]} scale={[0.4, 0.4, 1]}><spriteMaterial map={texture} transparent depthTest={false} /></sprite>
 }
 
 function SleepingCloset() {
