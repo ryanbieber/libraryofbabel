@@ -486,51 +486,6 @@
   .control-readout {
     display: none;
   }
-
-  .touch-joystick {
-    bottom: 74px;
-    left: 24px;
-    width: 104px;
-    height: 104px;
-  }
-
-  .touch-joystick-knob {
-    top: calc(50% - 21px);
-    left: calc(50% - 21px);
-    width: 42px;
-    height: 42px;
-  }
-
-  .touch-actions {
-    right: 24px;
-    bottom: 76px;
-    gap: 12px;
-  }
-
-  .touch-actions button {
-    width: 68px;
-    height: 68px;
-    font-size: 0.72rem;
-  }
-
-  .npc-talk-button {
-    top: 82px;
-    right: 18px;
-    bottom: auto;
-    left: auto;
-    min-width: 108px;
-    min-height: 48px;
-  }
-
-  .npc-quest-marker {
-    top: 14px;
-    right: 148px;
-    bottom: auto;
-    left: auto;
-    width: 38px;
-    height: 38px;
-    font-size: 1.82rem;
-  }
 }
 
 @media (max-width: 620px) and (orientation: portrait) {
