@@ -2,6 +2,7 @@ import { defaultAddress, SHELF_WALLS, type BookAddress } from './library'
 import { isFloorIndex, isGalleryIndex } from './level'
 import { isValidPlayerPose, STARTING_PLAYER_POSE, type PlayerPose } from './roomGeometry'
 import type { WordQuestStatus } from './significantWordQuest'
+import { isValidWordFinding, type WordFinding } from './wordFinder'
 
 export const SAVE_KEY = 'library-of-babel:save:v1'
 
@@ -10,6 +11,7 @@ export type SavedGameV1 = {
   pose: PlayerPose
   selectedBook: BookAddress
   questStatus: WordQuestStatus
+  wordFinding: WordFinding | null
 }
 
 export const defaultSavedGame = (): SavedGameV1 => ({
@@ -17,6 +19,7 @@ export const defaultSavedGame = (): SavedGameV1 => ({
   pose: { ...STARTING_PLAYER_POSE, zone: { ...STARTING_PLAYER_POSE.zone } },
   selectedBook: { ...defaultAddress },
   questStatus: 'not-started',
+  wordFinding: null,
 })
 
 export function parseSavedGame(raw: string | null): SavedGameV1 | null {
@@ -24,7 +27,8 @@ export function parseSavedGame(raw: string | null): SavedGameV1 | null {
   try {
     const value = JSON.parse(raw) as Partial<SavedGameV1>
     if (value.version !== 1 || !isValidPlayerPose(value.pose) || !isValidBookAddress(value.selectedBook) || !isQuestStatus(value.questStatus)) return null
-    return value as SavedGameV1
+    if (value.wordFinding !== undefined && value.wordFinding !== null && !isValidWordFinding(value.wordFinding)) return null
+    return { ...value, wordFinding: value.wordFinding ?? null } as SavedGameV1
   } catch {
     return null
   }

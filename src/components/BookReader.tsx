@@ -14,6 +14,7 @@ export function BookReader({
   rightPageNumber,
   leftPage,
   rightPage,
+  highlightWord,
   onClose,
   onSpreadChange,
 }: {
@@ -23,6 +24,7 @@ export function BookReader({
   rightPageNumber: number
   leftPage: string[]
   rightPage: string[]
+  highlightWord?: string
   onClose: () => void
   onSpreadChange: (spread: number) => void
 }) {
@@ -67,12 +69,12 @@ export function BookReader({
             <article className="book-page left">
               <span>{addressLabel(selectedBook)}</span>
               <h2>page {leftPageNumber}</h2>
-              <HighlightedPage lines={leftPage} />
+              <HighlightedPage lines={leftPage} highlightWord={highlightWord} />
             </article>
             <article className="book-page right">
               <span>{addressLabel(selectedBook)}</span>
               <h2>page {rightPageNumber}</h2>
-              <HighlightedPage lines={rightPage} />
+              <HighlightedPage lines={rightPage} highlightWord={highlightWord} />
             </article>
           </div>
         </div>
@@ -100,8 +102,8 @@ export function BookReader({
   )
 }
 
-function HighlightedPage({ lines }: { lines: string[] }) {
-  const highlightedLines = useMemo(() => highlightPage(lines), [lines])
+function HighlightedPage({ lines, highlightWord }: { lines: string[]; highlightWord?: string }) {
+  const highlightedLines = useMemo(() => highlightPage(lines, highlightWord), [highlightWord, lines])
 
   return <pre>{highlightedLines.map((line, lineIndex) => (
     <Fragment key={`${lineIndex}:${line.length}`}>

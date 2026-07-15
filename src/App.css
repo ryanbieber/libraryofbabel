@@ -309,6 +309,13 @@
     inset 0 0 16px rgb(255 241 172 / 18%);
 }
 
+.npc-quest-marker.inquiry {
+  color: #62b7ff;
+  box-shadow:
+    0 0 22px rgb(78 168 255 / 54%),
+    inset 0 0 16px rgb(78 168 255 / 16%);
+}
+
 .quest-log {
   position: absolute;
   top: 49px;
@@ -773,6 +780,99 @@
   color: #ffd0c2;
 }
 
+.word-finder-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-top: 18px;
+}
+
+.word-finder-form label {
+  display: grid;
+  gap: 5px;
+  color: #8ec9ff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.word-finder-form input {
+  min-width: 0;
+  height: 40px;
+  box-sizing: border-box;
+  border: 2px solid rgb(98 183 255 / 48%);
+  background: rgb(3 14 28 / 64%);
+  color: #d9efff;
+  font: inherit;
+  padding: 0 12px;
+}
+
+.word-finder-form input:focus {
+  border-color: #8ec9ff;
+  outline: 0;
+  box-shadow: 0 0 0 2px rgb(98 183 255 / 12%);
+}
+
+.word-finder-form button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 2px solid #3879ad;
+  background: linear-gradient(#172b3e, #09131f);
+  color: #a9d8ff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.word-finder-form button:hover,
+.word-finder-form button:focus-visible {
+  border-color: #8ec9ff;
+  color: #e5f5ff;
+  outline: 0;
+}
+
+.word-finder-result {
+  margin-top: 14px;
+  padding: 13px 14px;
+  border: 2px solid rgb(98 183 255 / 62%);
+  background: linear-gradient(180deg, rgb(17 48 76 / 66%), rgb(5 15 27 / 84%));
+  box-shadow: inset 0 0 20px rgb(98 183 255 / 8%);
+  color: #d9efff;
+}
+
+.word-finder-result span,
+.word-finder-result strong {
+  display: block;
+}
+
+.word-finder-result span {
+  color: #8ec9ff;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.word-finder-result strong {
+  margin-top: 3px;
+  color: #e5f5ff;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.15rem;
+}
+
+.word-finder-result p {
+  margin: 9px 0 3px;
+  color: #b9ddf8;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.word-finder-result small {
+  color: #8fb4d1;
+}
+
 .quest-offer {
   display: flex;
   justify-content: flex-end;
@@ -1205,6 +1305,14 @@
 
   .quest-log .quest-form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .word-finder-form {
+    grid-template-columns: 1fr;
+  }
+
+  .word-finder-form button {
+    width: 100%;
   }
 
   .npc-dialogue {

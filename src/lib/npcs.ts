@@ -1,7 +1,7 @@
 import type { FloorIndex, GalleryIndex } from './level'
 import { INTERACTION_RADIUS, type PlayerPose } from './roomGeometry'
 
-export type NpcQuest = 'messiah' | 'crimson-book' | 'significant-word'
+export type NpcQuest = 'messiah' | 'crimson-book' | 'significant-word' | 'word-finder'
 
 export type LibraryNpc = {
   id: string
@@ -14,6 +14,7 @@ export type LibraryNpc = {
 }
 
 const NPC_POSITION = { x: -2.35, z: 0.65 } as const
+const WORD_FINDER_POSITION = { x: 2.35, z: -0.65 } as const
 const SPAWN_BUCKETS = 5
 
 const messiahLines = [
@@ -60,6 +61,41 @@ export function npcForGallery(floor: FloorIndex, gallery: GalleryIndex): Library
     dialogue: sourceLines.map((_, index) => sourceLines[(start + index) % sourceLines.length]),
     position: NPC_POSITION,
   }
+}
+
+export function npcsForGallery(floor: FloorIndex, gallery: GalleryIndex): LibraryNpc[] {
+  const resident = npcForGallery(floor, gallery)
+  if (floor !== 0 || gallery !== 0) return resident ? [resident] : []
+
+  return [
+    ...(resident ? [resident] : []),
+    {
+      id: 'word-finder:0:0',
+      floor,
+      gallery,
+      name: 'Hooded indexer of lost words',
+      quest: 'word-finder',
+      dialogue: [
+        'Reader, if you would look for a word, I have found many in my long attendance here.',
+        'Give me one word. I will tell you the floor, gallery, wall, shelf, volume, and page where it waits.',
+        'No word is lost in the Library. Some are merely very far from the question that summoned them.',
+      ],
+      position: WORD_FINDER_POSITION,
+    },
+  ]
+}
+
+export function nearestNpc(pose: PlayerPose, npcs: LibraryNpc[]): LibraryNpc | null {
+  let nearest: LibraryNpc | null = null
+  let nearestDistance = Number.POSITIVE_INFINITY
+  for (const npc of npcs) {
+    const distance = distanceToNpc(pose, npc)
+    if (distance < nearestDistance) {
+      nearest = npc
+      nearestDistance = distance
+    }
+  }
+  return nearest
 }
 
 export function distanceToNpc(pose: PlayerPose, npc: LibraryNpc | null): number {

@@ -35,7 +35,8 @@ import {
 
 type MovementCue = 'idle' | 'step' | 'turn-left' | 'turn-right'
 type HoldMovement = { forward: number; strafe: number }
-export type QuestMarkerState = 'available' | 'complete' | null
+export type QuestMarkerState = 'available' | 'complete' | 'inquiry' | null
+export type SceneNpc = { npc: LibraryNpc; questMarker: QuestMarkerState }
 
 type ArenaViewportProps = {
   playerPose: PlayerPose
@@ -43,11 +44,10 @@ type ArenaViewportProps = {
   movementCue: MovementCue
   cameraPitch: number
   jumpOffset: number
-  npc: LibraryNpc | null
-  questMarker: QuestMarkerState
-  canTalkToNpc: boolean
+  npcStates: SceneNpc[]
+  talkableNpcId: string | null
   onOpenBook: (address: BookAddress) => void
-  onTalkToNpc: () => void
+  onTalkToNpc: (npc: LibraryNpc) => void
   onLook: (deltaYaw: number, deltaPitch: number) => void
   onInteract: () => void
   onJump: () => void
@@ -65,9 +65,8 @@ export function ArenaViewport({
   movementCue,
   cameraPitch,
   jumpOffset,
-  npc,
-  questMarker,
-  canTalkToNpc,
+  npcStates,
+  talkableNpcId,
   onOpenBook,
   onTalkToNpc,
   onLook,
@@ -76,6 +75,7 @@ export function ArenaViewport({
   onTouchMoveChange,
 }: ArenaViewportProps) {
   const canUseWebGL = useWebGLAvailable()
+  const talkableNpcState = npcStates.find(({ npc }) => npc.id === talkableNpcId) ?? null
   const dragRef = useRef<{ pointerId: number; lastX: number; lastY: number; totalDistance: number; isTouch: boolean } | null>(null)
   const onTouchMoveChangeRef = useRef(onTouchMoveChange)
   const hoveredBookRef = useRef<BookAddress | null>(null)
@@ -162,8 +162,7 @@ export function ArenaViewport({
             selectedBook={selectedBook}
             hoveredBook={hoveredBook}
             movementCue={movementCue}
-            npc={npc}
-            questMarker={questMarker}
+            npcStates={npcStates}
             onOpenBook={onOpenBook}
             onHoverBook={setHoveredReachableBook}
             onTalkToNpc={onTalkToNpc}
@@ -179,10 +178,12 @@ export function ArenaViewport({
       {playerPose.zone.kind === 'vestibule' ? (
         <div className="zone-help" aria-hidden="true">{vestibuleHelp(playerPose.floor)}</div>
       ) : null}
-      {npc && canTalkToNpc ? (
-        <button type="button" className="npc-talk-button" aria-label={`Talk to ${npc.name}`} onClick={onTalkToNpc}>Talk</button>
+      {talkableNpcState ? (
+        <button type="button" className="npc-talk-button" aria-label={`Talk to ${talkableNpcState.npc.name}`} onClick={() => onTalkToNpc(talkableNpcState.npc)}>Talk</button>
       ) : null}
-      {npc && questMarker ? <div className={`npc-quest-marker ${questMarker}`} aria-hidden="true">{questMarker === 'available' ? '!' : '?'}</div> : null}
+      {talkableNpcState?.questMarker ? (
+        <div className={`npc-quest-marker ${talkableNpcState.questMarker}`} aria-hidden="true">{talkableNpcState.questMarker === 'available' ? '!' : '?'}</div>
+      ) : null}
       <div className="mobile-landscape-controls" aria-label="Touch controls">
         <div
           className="touch-joystick"
@@ -211,8 +212,7 @@ function LibraryScene({
   selectedBook,
   hoveredBook,
   movementCue,
-  npc,
-  questMarker,
+  npcStates,
   onOpenBook,
   onHoverBook,
   onTalkToNpc,
@@ -223,11 +223,10 @@ function LibraryScene({
   selectedBook: BookAddress
   hoveredBook: BookAddress | null
   movementCue: MovementCue
-  npc: LibraryNpc | null
-  questMarker: QuestMarkerState
+  npcStates: SceneNpc[]
   onOpenBook: (address: BookAddress) => void
   onHoverBook: (address: BookAddress | null) => void
-  onTalkToNpc: () => void
+  onTalkToNpc: (npc: LibraryNpc) => void
 }) {
   const visibleScenes = visibleScenesForPose(playerPose)
   return (
@@ -249,8 +248,7 @@ function LibraryScene({
               selectedBook={selectedBook}
               hoveredBook={scene.isCurrent ? hoveredBook : null}
               interactive={scene.isCurrent}
-              npc={scene.isCurrent ? npc : null}
-              questMarker={scene.isCurrent ? questMarker : null}
+              npcStates={scene.isCurrent ? npcStates : []}
               onOpenBook={onOpenBook}
               onHoverBook={onHoverBook}
               onTalkToNpc={onTalkToNpc}
@@ -273,8 +271,7 @@ function GalleryScene({
   selectedBook,
   hoveredBook,
   interactive,
-  npc,
-  questMarker,
+  npcStates,
   onOpenBook,
   onHoverBook,
   onTalkToNpc,
@@ -285,11 +282,10 @@ function GalleryScene({
   selectedBook: BookAddress
   hoveredBook: BookAddress | null
   interactive: boolean
-  npc: LibraryNpc | null
-  questMarker: QuestMarkerState
+  npcStates: SceneNpc[]
   onOpenBook: (address: BookAddress) => void
   onHoverBook: (address: BookAddress | null) => void
-  onTalkToNpc: () => void
+  onTalkToNpc: (npc: LibraryNpc) => void
 }) {
   const floorShape = useMemo(() => makeGalleryShape(), [])
   return (
@@ -323,8 +319,11 @@ function GalleryScene({
           onHoverBook={onHoverBook}
         />
       ))}
-      <ReadingTable />
-      {npc ? <SeatedMonk npc={npc} questMarker={questMarker} onTalk={onTalkToNpc} /> : null}
+      <ReadingTable position={[-2.35, 0, 0.65]} />
+      {npcStates.some(({ npc }) => npc.quest === 'word-finder') ? <ReadingTable position={[2.35, 0, -0.65]} /> : null}
+      {npcStates.map(({ npc, questMarker }) => (
+        <SeatedMonk key={npc.id} npc={npc} questMarker={questMarker} onTalk={() => onTalkToNpc(npc)} />
+      ))}
       <WarmLamp position={[2.7, 0, -2.2]} />
       <WarmLamp position={[-2.7, 0, 2.2]} />
     </>
@@ -639,9 +638,9 @@ function BoxRoom({
   )
 }
 
-function ReadingTable() {
+function ReadingTable({ position }: { position: [number, number, number] }) {
   return (
-    <group position={[-2.35, 0, 0.65]}>
+    <group position={position}>
       <mesh position={[0, 0.72, 0]}><boxGeometry args={[1.35, 0.14, 0.72]} /><meshStandardMaterial color="#59402b" roughness={0.92} /></mesh>
       {[-0.5, 0.5].flatMap((x) => [-0.23, 0.23].map((z) => <mesh key={`${x}:${z}`} position={[x, 0.35, z]}><boxGeometry args={[0.11, 0.7, 0.11]} /><meshStandardMaterial color="#3d2a1e" /></mesh>))}
       <mesh position={[0, 0.82, 0]} rotation={[-0.08, 0, 0]}><boxGeometry args={[0.55, 0.03, 0.38]} /><meshStandardMaterial color="#d1b776" emissive="#3a2500" emissiveIntensity={0.25} /></mesh>
@@ -670,7 +669,7 @@ function QuestMarker({ state }: { state: Exclude<QuestMarkerState, null> }) {
     canvas.width = 96; canvas.height = 96
     const context = canvas.getContext('2d')
     if (context) {
-      context.fillStyle = state === 'available' ? '#f1c84b' : '#d8dce4'
+      context.fillStyle = state === 'available' ? '#f1c84b' : state === 'inquiry' ? '#62b7ff' : '#d8dce4'
       context.font = '900 82px Georgia'; context.textAlign = 'center'; context.textBaseline = 'middle'
       context.fillText(state === 'available' ? '!' : '?', 48, 46)
     }
