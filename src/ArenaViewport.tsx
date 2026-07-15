@@ -172,10 +172,9 @@ export function ArenaViewport({
       ) : <div className="arena-canvas-unavailable" aria-label="WebGL unavailable" />}
 
       <div className="arena-crosshair" aria-hidden="true" />
-      <div className="arena-plaque" aria-hidden="true"><strong>Floor {signedLabel(playerPose.floor)}</strong></div>
-      <div className="room-label">
+      <div className="room-label" aria-label="Current location">
         <strong>{zoneLabel(playerPose.zone)}</strong>
-        <span>{locationDetail(playerPose)}</span>
+        <span>Floor {signedLabel(playerPose.floor)}</span>
       </div>
       {playerPose.zone.kind === 'vestibule' ? (
         <div className="zone-help" aria-hidden="true">{vestibuleHelp(playerPose.floor)}</div>
@@ -756,13 +755,6 @@ function addressFromInstance(
   instance: number,
 ): BookAddress {
   return nearbyBookAddress(floor, gallery, wall, Math.floor(instance / BOOKS_PER_SHELF), instance % BOOKS_PER_SHELF)
-}
-
-function locationDetail(pose: PlayerPose): string {
-  if (pose.zone.kind === 'gallery') return `gallery ${signedLabel(pose.zone.gallery)} · four walls · two passages`
-  if (pose.zone.kind === 'stair') return `${Math.round(pose.zone.progress * 100)}% to floor ${signedLabel(pose.zone.to)}`
-  if (pose.zone.kind === 'service') return `vestibule ${signedLabel(pose.zone.connector)}`
-  return `between galleries ${signedLabel(pose.zone.connector)} and ${signedLabel(pose.zone.connector + 1)}`
 }
 
 function vestibuleHelp(floor: number): string {
