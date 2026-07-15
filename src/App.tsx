@@ -36,6 +36,7 @@ import {
   type WordQuestFormValues,
   type WordQuestStatus,
 } from './lib/significantWordQuest'
+import { QUEST_TARGET_WORD } from './lib/quest'
 import './App.css'
 
 type MovementCue = 'idle' | 'step' | 'turn-left' | 'turn-right'
@@ -339,6 +340,15 @@ function App() {
     setMessage(result.message)
   }
 
+  function completeSignificantWordQuest() {
+    setWordQuestStatus('completed')
+    setWordQuestFeedback({
+      tone: 'success',
+      text: 'Quest complete. The keeper marks the coordinate into the impossible ledger.',
+    })
+    setMessage('Quest complete: Find "babel".')
+  }
+
   return (
     <main className="arena-shell">
       <section className={`game-frame ${modalOpen ? 'ui-modal-open' : ''}`} aria-label="Library game viewport">
@@ -372,6 +382,17 @@ function App() {
         <div className="message-bar" role="status">
           {message}
         </div>
+        {wordQuestStatus === 'accepted' || wordQuestStatus === 'ready-to-complete' ? (
+          <aside className={`quest-tracker ${wordQuestStatus}`} aria-label="Quest tracker">
+            <span>{wordQuestStatus === 'ready-to-complete' ? 'Ready to turn in' : 'Quest accepted'}</span>
+            <strong>Find "{QUEST_TARGET_WORD}"</strong>
+            <p>
+              {wordQuestStatus === 'ready-to-complete'
+                ? 'Return to the hooded keeper.'
+                : 'Find a page containing the word and report its coordinates.'}
+            </p>
+          </aside>
+        ) : null}
         <div className="control-readout" aria-label="Current position and controls">
           <strong>{room.name}</strong>
           <span>{`room ${currentRoom.q},${currentRoom.r} / ${facingLabel} view`}</span>
@@ -402,6 +423,7 @@ function App() {
           onClose={() => setDialogueNpc(null)}
           onAcceptSignificantWordQuest={acceptSignificantWordQuest}
           onSubmitSignificantWordQuest={submitSignificantWordQuest}
+          onCompleteSignificantWordQuest={completeSignificantWordQuest}
         />
       ) : null}
     </main>
@@ -424,6 +446,7 @@ function movementFromPressedKeys(keys: Set<string>): HoldMovement {
 
 function questMarkerForNpc(npc: LibraryNpc | null, status: WordQuestStatus): QuestMarkerState {
   if (npc?.quest !== 'significant-word' || status === 'completed') return null
+  if (status === 'ready-to-complete') return 'complete'
   return status === 'not-started' ? 'available' : 'active'
 }
 

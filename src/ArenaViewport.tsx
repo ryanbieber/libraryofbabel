@@ -38,7 +38,7 @@ type HoldMovement = {
   strafe: number
 }
 
-export type QuestMarkerState = 'available' | 'active' | null
+export type QuestMarkerState = 'available' | 'active' | 'complete' | null
 
 type ArenaViewportProps = {
   playerPose: PlayerPose

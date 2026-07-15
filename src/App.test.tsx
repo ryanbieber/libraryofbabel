@@ -4,7 +4,9 @@ import '@testing-library/jest-dom/vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { BookReader } from './components/BookReader'
+import { NpcDialoguePanel } from './components/NpcDialoguePanel'
 import { defaultAddress, generatePage } from './lib/library'
+import type { LibraryNpc } from './lib/npcs'
 
 describe('App interactions', () => {
   beforeEach(() => {
@@ -98,12 +100,46 @@ describe('App interactions', () => {
     expect(screen.getByLabelText('Quest address book')).toBeInTheDocument()
     expect(screen.getByLabelText('Submit book coordinates')).toBeInTheDocument()
     expect(container.querySelector('.npc-quest-marker.active')?.textContent).toBe('?')
+    expect(screen.getByLabelText('Quest tracker')).toHaveTextContent('Quest accepted')
+    expect(screen.getByLabelText('Quest tracker')).toHaveTextContent('Find "babel"')
 
     fireEvent.click(screen.getByRole('button', { name: 'Close monk dialogue' }))
 
     expect(screen.queryByLabelText('Monk dialogue')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Talk to Hooded keeper of improbable words/ })).toBeInTheDocument()
     expect(container.querySelector('.npc-quest-marker.active')?.textContent).toBe('?')
+  })
+
+  it('shows a WoW-style quest turn-in card before completing the monk quest', () => {
+    const npc: LibraryNpc = {
+      id: 'monk:test',
+      floor: 0,
+      room: { q: 0, r: 0 },
+      name: 'Hooded keeper of improbable words',
+      quest: 'significant-word',
+      dialogue: ['Reader, bring me a book that contains the word babel.'],
+      position: { x: 0, z: 0 },
+    }
+    const onComplete = vi.fn()
+
+    render(
+      <NpcDialoguePanel
+        npc={npc}
+        questStatus="ready-to-complete"
+        questFeedback={{ tone: 'success', text: 'Objective complete.' }}
+        onClose={() => undefined}
+        onAcceptSignificantWordQuest={() => undefined}
+        onSubmitSignificantWordQuest={() => undefined}
+        onCompleteSignificantWordQuest={onComplete}
+      />,
+    )
+
+    expect(screen.getByLabelText('Quest ready to complete')).toHaveTextContent('Quest Complete')
+    expect(screen.queryByLabelText('Submit book coordinates')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'complete quest' }))
+
+    expect(onComplete).toHaveBeenCalledTimes(1)
   })
 
   it('validates the starting monk quest submission and rejects false coordinates', () => {

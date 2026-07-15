@@ -2,7 +2,7 @@ import { cardinalDirections, type DirectionIndex } from './level'
 import { BOOKS_PER_SHELF, PAGES_PER_BOOK, SHELVES_PER_WALL, generatePage } from './library'
 import { QUEST_TARGET_WORD, pageContainsWord, type SignificantWordSubmission } from './quest'
 
-export type WordQuestStatus = 'not-started' | 'accepted' | 'completed'
+export type WordQuestStatus = 'not-started' | 'accepted' | 'ready-to-complete' | 'completed'
 
 export type WordQuestFeedback = {
   tone: 'success' | 'error'
@@ -40,11 +40,11 @@ export function resolveSignificantWordQuestSubmission(
   const page = generatePage(result.submission)
   if (pageContainsWord(page, QUEST_TARGET_WORD)) {
     const location = `room ${result.display.room}, wall ${result.display.wall}, shelf ${result.display.shelf}, volume ${result.display.volume}, page ${result.display.page}`
-    const text = `At last, a coordinate instead of a sermon: ${location}. The word is there. Bring your patience back for the next quest.`
+    const text = `Objective complete: ${location}. Return this proof to the hooded keeper.`
     return {
       feedback: { tone: 'success', text },
-      message: 'The monk accepts the book coordinates and prepares the next quest.',
-      nextStatus: 'completed',
+      message: 'Quest objective complete. Speak to the hooded keeper to finish it.',
+      nextStatus: 'ready-to-complete',
     }
   }
 
