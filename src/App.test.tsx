@@ -24,8 +24,8 @@ describe('App interactions', () => {
     expect(screen.getByText(/universe is imagined as an endless library/)).toBeInTheDocument()
     expect(screen.getByText(/This app turns that impossible premise into a place you can walk through/)).toBeInTheDocument()
     expect(screen.getByText(/An homage to Borges/)).toBeInTheDocument()
-    expect(screen.getByText(/Hold to walk, drag to look/)).toBeInTheDocument()
-    expect(screen.queryByText(/Move with WASD/)).not.toBeInTheDocument()
+    expect(screen.getByText(/WASD to move/)).toBeInTheDocument()
+    expect(screen.queryByText(/Hold to walk/)).not.toBeInTheDocument()
     expect(container.querySelector('.command-bar')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))

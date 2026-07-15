@@ -1,4 +1,14 @@
 .arena-shell {
+  --ui-gold: #f6d67a;
+  --ui-gold-bright: #fff1ac;
+  --ui-gold-muted: #d8c795;
+  --ui-bronze: #8c5b1a;
+  --ui-red: #7b1116;
+  --ui-void: #07070c;
+  --ui-panel: rgb(7 7 12 / 90%);
+  --ui-panel-soft: rgb(7 7 12 / 76%);
+  --ui-border: rgb(207 169 76 / 76%);
+  --ui-shadow: 0 20px 70px rgb(0 0 0 / 58%);
   position: relative;
   display: grid;
   min-height: 100vh;
@@ -117,8 +127,10 @@
 .arena-crosshair::before,
 .arena-crosshair::after {
   position: absolute;
-  background: #f2efe4;
-  box-shadow: 0 0 4px #7b1116;
+  background: var(--ui-gold-bright);
+  box-shadow:
+    0 0 4px var(--ui-red),
+    0 0 10px rgb(246 214 122 / 42%);
   content: '';
 }
 
@@ -144,9 +156,13 @@
   display: grid;
   min-width: 132px;
   padding: 4px 10px;
-  border: 2px solid #cfa94c;
-  background: #d8d6c2;
-  color: #2c2830;
+  border: 2px solid var(--ui-border);
+  background:
+    linear-gradient(180deg, rgb(255 241 172 / 94%), rgb(164 112 42 / 92%));
+  box-shadow:
+    inset 0 0 0 1px rgb(23 18 10 / 52%),
+    0 4px 18px rgb(0 0 0 / 40%);
+  color: #1d1410;
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 0.72rem;
   line-height: 1.1;
@@ -167,9 +183,13 @@
   display: grid;
   min-width: 190px;
   padding: 5px 12px;
-  border: 2px solid rgb(207 169 76 / 80%);
-  background: rgb(7 7 12 / 88%);
-  color: #f6d67a;
+  border: 2px solid var(--ui-border);
+  background:
+    linear-gradient(180deg, rgb(20 18 24 / 92%), var(--ui-panel));
+  box-shadow:
+    inset 0 0 0 1px rgb(255 241 172 / 8%),
+    0 10px 28px rgb(0 0 0 / 38%);
+  color: var(--ui-gold);
   font-size: 0.72rem;
   line-height: 1.18;
   text-align: center;
@@ -178,7 +198,7 @@
 }
 
 .room-label span {
-  color: #d8c795;
+  color: var(--ui-gold-muted);
 }
 
 .door-strip {
@@ -197,7 +217,7 @@
   place-items: center;
   padding: 0;
   border: 2px solid #3a3326;
-  background: rgb(7 7 12 / 86%);
+  background: var(--ui-panel);
   color: #6e6550;
   font: inherit;
   font-size: 0.7rem;
@@ -210,13 +230,14 @@ button.door-chip {
 }
 
 .door-chip.available {
-  border-color: #8c5b1a;
-  color: #f6d67a;
+  border-color: var(--ui-bronze);
+  color: var(--ui-gold);
 }
 
 button.door-chip.available:hover,
 button.door-chip.available:focus-visible {
-  border-color: #fff1ac;
+  border-color: var(--ui-gold-bright);
+  box-shadow: 0 0 12px rgb(255 241 172 / 28%);
   outline: 0;
 }
 
@@ -226,9 +247,9 @@ button.door-chip.available:focus-visible {
 }
 
 .door-chip.sealed.facing {
-  border-color: #7b1116;
+  border-color: var(--ui-red);
   background: rgb(55 9 13 / 78%);
-  color: #d8c795;
+  color: var(--ui-gold-muted);
 }
 
 .book-hotspot-grid {
@@ -269,8 +290,12 @@ button.door-chip.available:focus-visible {
   min-height: 40px;
   padding: 0 14px;
   border: 2px solid rgb(246 214 122 / 84%);
-  background: rgb(8 8 11 / 90%);
-  color: #f6d67a;
+  background:
+    linear-gradient(180deg, rgb(48 38 28 / 94%), rgb(8 8 11 / 94%));
+  box-shadow:
+    inset 0 0 0 1px rgb(255 241 172 / 10%),
+    0 8px 24px rgb(0 0 0 / 42%);
+  color: var(--ui-gold);
   cursor: pointer;
   font: inherit;
   font-weight: 900;
@@ -279,8 +304,9 @@ button.door-chip.available:focus-visible {
 
 .npc-talk-button:hover,
 .npc-talk-button:focus-visible {
-  border-color: #fff1ac;
+  border-color: var(--ui-gold-bright);
   background: rgb(58 46 34 / 94%);
+  color: var(--ui-gold-bright);
   outline: 0;
 }
 
@@ -320,9 +346,13 @@ button.door-chip.available:focus-visible {
 
 .reader-actions button,
 .splash-screen button {
-  border: 2px solid #8c5b1a;
-  background: linear-gradient(#25202a, #111018);
-  color: #f6d67a;
+  border: 2px solid var(--ui-bronze);
+  background:
+    linear-gradient(180deg, #3a2e22, #111018);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 241 172 / 8%),
+    0 8px 22px rgb(0 0 0 / 30%);
+  color: var(--ui-gold);
   cursor: pointer;
   font: inherit;
   font-weight: 800;
@@ -336,10 +366,12 @@ button.door-chip.available:focus-visible {
   left: 0;
   z-index: 10;
   min-height: 30px;
-  padding: 7px 12px;
-  border-top: 2px solid #c69632;
-  border-bottom: 2px solid #c69632;
-  background: rgb(7 7 12 / 96%);
+  padding: 7px 14px;
+  border-top: 2px solid var(--ui-border);
+  border-bottom: 2px solid rgb(23 18 10 / 90%);
+  background:
+    linear-gradient(180deg, rgb(21 18 24 / 98%), rgb(5 5 8 / 98%));
+  box-shadow: 0 -8px 28px rgb(0 0 0 / 36%);
   color: #f2dfaa;
   font-size: 0.9rem;
   pointer-events: none;
@@ -353,10 +385,14 @@ button.door-chip.available:focus-visible {
   display: grid;
   gap: 3px;
   max-width: min(520px, calc(100vw - 20px));
-  padding: 8px 10px;
-  border: 2px solid rgb(207 169 76 / 62%);
-  background: rgb(7 7 12 / 78%);
-  color: #d8c795;
+  padding: 9px 12px;
+  border: 2px solid var(--ui-border);
+  background:
+    linear-gradient(180deg, rgb(20 18 24 / 88%), rgb(7 7 12 / 82%));
+  box-shadow:
+    inset 0 0 0 1px rgb(255 241 172 / 8%),
+    0 12px 36px rgb(0 0 0 / 34%);
+  color: var(--ui-gold-muted);
   font-size: 0.74rem;
   line-height: 1.16;
   pointer-events: none;
@@ -364,7 +400,16 @@ button.door-chip.available:focus-visible {
 }
 
 .control-readout strong {
-  color: #f6d67a;
+  color: var(--ui-gold);
+}
+
+.game-frame.ui-modal-open .control-readout {
+  display: none;
+}
+
+.control-readout span:last-child {
+  color: rgb(216 199 149 / 78%);
+  font-size: 0.68rem;
 }
 
 .mobile-landscape-controls,
@@ -378,9 +423,11 @@ button.door-chip.available:focus-visible {
   left: 28px;
   width: 116px;
   height: 116px;
-  border: 2px solid rgb(246 214 122 / 48%);
+  border: 2px solid rgb(246 214 122 / 56%);
   border-radius: 999px;
-  background: rgb(7 7 12 / 44%);
+  background:
+    radial-gradient(circle, rgb(255 241 172 / 12%), transparent 58%),
+    rgb(7 7 12 / 54%);
   box-shadow:
     0 10px 38px rgb(0 0 0 / 36%),
     inset 0 0 24px rgb(246 214 122 / 8%);
@@ -393,9 +440,11 @@ button.door-chip.available:focus-visible {
   left: calc(50% - 24px);
   width: 48px;
   height: 48px;
-  border: 2px solid #fff1ac;
+  border: 2px solid var(--ui-gold-bright);
   border-radius: 999px;
-  background: rgb(246 214 122 / 22%);
+  background:
+    radial-gradient(circle, rgb(255 241 172 / 34%), rgb(246 214 122 / 12%));
+  box-shadow: 0 0 18px rgb(255 241 172 / 26%);
 }
 
 .touch-actions {
@@ -411,14 +460,24 @@ button.door-chip.available:focus-visible {
   height: 76px;
   border: 2px solid rgb(246 214 122 / 64%);
   border-radius: 999px;
-  background: rgb(7 7 12 / 62%);
-  color: #f6d67a;
+  background:
+    linear-gradient(180deg, rgb(55 42 28 / 72%), rgb(7 7 12 / 70%));
+  box-shadow:
+    inset 0 0 0 1px rgb(255 241 172 / 10%),
+    0 10px 30px rgb(0 0 0 / 36%);
+  color: var(--ui-gold);
   cursor: pointer;
   font: inherit;
   font-size: 0.8rem;
   font-weight: 900;
   text-transform: uppercase;
   touch-action: manipulation;
+}
+
+.touch-actions button:active {
+  border-color: var(--ui-gold-bright);
+  color: var(--ui-gold-bright);
+  transform: translateY(1px);
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
@@ -480,19 +539,26 @@ button.door-chip.available:focus-visible {
 .npc-dialogue-panel {
   position: relative;
   width: min(760px, calc(100vw - 32px));
-  max-height: min(52vh, 430px);
+  max-height: min(76vh, 620px);
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 22px 24px;
-  border: 3px solid #2a180c;
+  padding: 18px 20px 20px;
+  border: 3px solid var(--ui-border);
   background:
-    linear-gradient(90deg, rgb(25 10 4 / 64%), transparent 10%, transparent 90%, rgb(25 10 4 / 70%)),
-    #d8bd7d;
+    linear-gradient(180deg, rgb(38 31 36 / 98%), rgb(10 9 14 / 98%)),
+    var(--ui-void);
   box-shadow:
-    0 20px 70px rgb(0 0 0 / 56%),
-    inset 0 0 42px rgb(82 46 16 / 28%);
-  color: #241406;
+    var(--ui-shadow),
+    inset 0 0 0 1px rgb(255 241 172 / 10%),
+    inset 0 0 38px rgb(140 91 26 / 10%);
+  color: #f2dfaa;
   pointer-events: auto;
+}
+
+.npc-dialogue-header {
+  margin: 0 42px 14px 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgb(207 169 76 / 32%);
 }
 
 .npc-dialogue-panel h2 {
@@ -500,6 +566,8 @@ button.door-chip.available:focus-visible {
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 1.55rem;
   line-height: 1.05;
+  color: var(--ui-gold);
+  text-shadow: 0 2px 0 rgb(0 0 0 / 58%);
 }
 
 .npc-dialogue-lines {
@@ -509,21 +577,35 @@ button.door-chip.available:focus-visible {
 
 .npc-dialogue-lines p {
   margin: 0;
-  color: #2f1d0b;
+  color: #f0dba8;
   font-size: 1rem;
   line-height: 1.45;
 }
 
 .quest-ledger {
   margin-top: 18px;
-  padding: 14px 16px 16px;
-  border: 3px solid rgb(82 46 16 / 58%);
+  padding: 14px;
+  border: 2px solid rgb(207 169 76 / 52%);
   background:
-    linear-gradient(90deg, rgb(86 52 19 / 15%), transparent 48%, rgb(86 52 19 / 18%) 52%, transparent),
-    repeating-linear-gradient(0deg, rgb(86 52 19 / 8%) 0 2px, transparent 2px 12px),
-    #d9bd7b;
+    linear-gradient(180deg, rgb(24 20 22 / 96%), rgb(8 7 11 / 96%));
   box-shadow:
-    inset 0 0 32px rgb(82 46 16 / 24%);
+    inset 0 0 0 1px rgb(255 241 172 / 8%),
+    inset 0 0 26px rgb(140 91 26 / 10%);
+}
+
+.quest-ledger-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  color: var(--ui-gold-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.quest-ledger-title strong {
+  color: var(--ui-gold-bright);
 }
 
 .quest-form {
@@ -536,7 +618,7 @@ button.door-chip.available:focus-visible {
 .quest-form label {
   display: grid;
   gap: 5px;
-  color: #51300c;
+  color: var(--ui-gold-muted);
   font-size: 0.72rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -547,20 +629,26 @@ button.door-chip.available:focus-visible {
   min-width: 0;
   height: 38px;
   box-sizing: border-box;
-  border: 2px solid rgb(82 46 16 / 52%);
-  background: rgb(255 244 200 / 52%);
-  color: #241406;
+  border: 2px solid rgb(207 169 76 / 34%);
+  background: rgb(0 0 0 / 34%);
+  color: var(--ui-gold-bright);
   font: inherit;
   font-size: 0.95rem;
   text-align: center;
 }
 
+.quest-form input:focus {
+  border-color: var(--ui-gold-bright);
+  outline: 0;
+  box-shadow: 0 0 0 2px rgb(255 241 172 / 10%);
+}
+
 .quest-form button {
   min-height: 38px;
   padding: 0 12px;
-  border: 2px solid #8c5b1a;
+  border: 2px solid var(--ui-bronze);
   background: linear-gradient(#25202a, #111018);
-  color: #f6d67a;
+  color: var(--ui-gold);
   cursor: pointer;
   font: inherit;
   font-size: 0.78rem;
@@ -570,7 +658,7 @@ button.door-chip.available:focus-visible {
 
 .quest-form button:hover,
 .quest-form button:focus-visible {
-  border-color: #fff1ac;
+  border-color: var(--ui-gold-bright);
   color: #ffe39a;
   outline: 0;
 }
@@ -578,9 +666,9 @@ button.door-chip.available:focus-visible {
 .quest-feedback {
   margin: 14px 0 0;
   padding: 10px 12px;
-  border: 2px solid rgb(82 46 16 / 48%);
-  background: rgb(255 244 200 / 42%);
-  color: #2f1d0b;
+  border: 2px solid rgb(207 169 76 / 40%);
+  background: rgb(0 0 0 / 24%);
+  color: #f2dfaa;
   font-size: 0.95rem;
   line-height: 1.35;
 }
@@ -604,9 +692,9 @@ button.door-chip.available:focus-visible {
 .quest-offer button {
   min-height: 40px;
   padding: 0 16px;
-  border: 2px solid #8c5b1a;
+  border: 2px solid var(--ui-bronze);
   background: linear-gradient(#25202a, #111018);
-  color: #f6d67a;
+  color: var(--ui-gold);
   cursor: pointer;
   font: inherit;
   font-size: 0.82rem;
@@ -616,7 +704,7 @@ button.door-chip.available:focus-visible {
 
 .quest-offer button:hover,
 .quest-offer button:focus-visible {
-  border-color: #fff1ac;
+  border-color: var(--ui-gold-bright);
   color: #ffe39a;
   outline: 0;
 }
@@ -624,7 +712,8 @@ button.door-chip.available:focus-visible {
 .splash-screen {
   z-index: 30;
   background:
-    linear-gradient(90deg, rgb(0 0 0 / 72%), rgb(0 0 0 / 38%), rgb(0 0 0 / 72%)),
+    radial-gradient(circle at 50% 40%, rgb(140 91 26 / 16%), transparent 34%),
+    linear-gradient(90deg, rgb(0 0 0 / 78%), rgb(0 0 0 / 42%), rgb(0 0 0 / 78%)),
     rgb(5 4 3 / 82%);
 }
 
@@ -634,10 +723,12 @@ button.door-chip.available:focus-visible {
   max-height: calc(100vh - 48px);
   overflow-y: auto;
   padding: 28px;
-  border: 3px solid #2a180c;
-  background: #d8bd7d;
+  border: 3px solid var(--ui-border);
+  background:
+    linear-gradient(180deg, rgb(238 199 116 / 98%), rgb(172 126 62 / 98%));
   box-shadow:
-    0 28px 90px rgb(0 0 0 / 62%),
+    var(--ui-shadow),
+    inset 0 0 0 2px rgb(44 24 8 / 28%),
     inset 0 0 50px rgb(82 46 16 / 32%);
   color: #241406;
 }
@@ -699,8 +790,37 @@ button.door-chip.available:focus-visible {
 .book-shell {
   position: relative;
   width: min(1180px, calc(100vw - 56px));
+  padding: 14px;
+  border: 3px solid var(--ui-border);
+  background:
+    linear-gradient(180deg, rgb(28 23 29 / 96%), rgb(8 7 11 / 98%));
+  box-shadow:
+    var(--ui-shadow),
+    inset 0 0 0 1px rgb(255 241 172 / 10%),
+    inset 0 0 42px rgb(140 91 26 / 10%);
   animation: book-open 420ms steps(6, end);
   transform-origin: center bottom;
+}
+
+.book-reader-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 34px 12px 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgb(207 169 76 / 32%);
+  color: var(--ui-gold-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.book-reader-header strong {
+  overflow: hidden;
+  color: var(--ui-gold-bright);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .close-reader {
@@ -716,8 +836,15 @@ button.door-chip.available:focus-visible {
   border: 2px solid #8c5b1a;
   border-radius: 999px;
   background: #17120a;
-  color: #f6d67a;
+  color: var(--ui-gold);
   cursor: pointer;
+}
+
+.close-reader:hover,
+.close-reader:focus-visible {
+  border-color: var(--ui-gold-bright);
+  color: var(--ui-gold-bright);
+  outline: 0;
 }
 
 .book-cover {
@@ -801,10 +928,14 @@ button.door-chip.available:focus-visible {
   display: flex;
   justify-content: center;
   gap: 14px;
-  margin-top: 14px;
+  margin-top: 12px;
 }
 
 .reader-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-width: 112px;
   min-height: 40px;
 }
@@ -813,18 +944,24 @@ button.door-chip.available:focus-visible {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #f7edd3;
+  color: var(--ui-gold-muted);
   font-weight: 800;
+  text-transform: uppercase;
 }
 
 .reader-actions input {
   width: 72px;
   height: 40px;
-  border: 3px solid rgb(246 226 167 / 32%);
+  border: 2px solid rgb(246 226 167 / 34%);
   background: rgb(8 8 7 / 80%);
-  color: #fff7dc;
+  color: var(--ui-gold-bright);
   text-align: center;
   font: inherit;
+}
+
+.reader-actions input:focus {
+  border-color: var(--ui-gold-bright);
+  outline: 0;
 }
 
 @media (max-width: 860px) {
@@ -883,7 +1020,7 @@ button.door-chip.available:focus-visible {
 
   .npc-dialogue-panel {
     width: min(352px, calc(100vw - 28px));
-    max-height: 50vh;
+    max-height: 72vh;
     padding: 18px;
   }
 

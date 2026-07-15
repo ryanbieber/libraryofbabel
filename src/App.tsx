@@ -89,14 +89,15 @@ function App() {
   )
   const canTalkToNpc = isNpcReachable(playerPose, currentNpc)
   const questMarker = questMarkerForNpc(currentNpc, wordQuestStatus)
+  const modalOpen = readerOpen || splashOpen || dialogueNpc !== null
 
   useEffect(() => {
-    modalOpenRef.current = readerOpen || splashOpen || dialogueNpc !== null
+    modalOpenRef.current = modalOpen
     if (modalOpenRef.current) {
       touchMovementRef.current = { forward: 0, strafe: 0 }
       pressedKeysRef.current.clear()
     }
-  }, [readerOpen, splashOpen, dialogueNpc])
+  }, [modalOpen])
 
   useEffect(() => {
     setDialogueNpc(null)
@@ -340,7 +341,7 @@ function App() {
 
   return (
     <main className="arena-shell">
-      <section className="game-frame" aria-label="Library game viewport">
+      <section className={`game-frame ${modalOpen ? 'ui-modal-open' : ''}`} aria-label="Library game viewport">
         <div className={`scene scene-library movement-${movementCue}`}>
           <ArenaViewport
             playerPose={playerPose}

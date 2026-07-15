@@ -41,8 +41,10 @@ export function NpcDialoguePanel({
         <button type="button" className="close-reader" aria-label="Close monk dialogue" onClick={onClose}>
           <X size={22} aria-hidden="true" />
         </button>
-        <p className="splash-kicker">{npcQuestKicker(npc.quest)}</p>
-        <h2>{npc.name}</h2>
+        <header className="npc-dialogue-header">
+          <p className="splash-kicker">{npcQuestKicker(npc.quest)}</p>
+          <h2>{npc.name}</h2>
+        </header>
         <div className="npc-dialogue-lines">
           {npc.dialogue.map((line) => (
             <p key={line}>{line}</p>
@@ -69,6 +71,10 @@ export function NpcDialoguePanel({
         ) : null}
         {isSignificantWordQuest && questStatus !== 'not-started' ? (
           <div className="quest-ledger" aria-label="Quest address book">
+            <div className="quest-ledger-title">
+              <span>Quest Ledger</span>
+              <strong>Find "{QUEST_TARGET_WORD}"</strong>
+            </div>
             <form className="quest-form" aria-label="Submit book coordinates" onSubmit={handleSubmit}>
               <label>
                 room

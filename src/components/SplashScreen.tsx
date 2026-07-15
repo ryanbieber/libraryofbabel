@@ -19,7 +19,7 @@ export function SplashScreen({ onStart }: { onStart: () => void }) {
           reality as traps disguised as ideas.
         </p>
         <p className="splash-controls">
-          Hold to walk, drag to look, click nearby books and doors.
+          WASD to move. Mouse to look. Left click to use. Space to jump.
         </p>
         <button type="button" onClick={onStart}>
           Enter Library
