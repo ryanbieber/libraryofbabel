@@ -30,6 +30,7 @@ import {
   doorwayLocalY,
 } from './lib/sceneScale'
 import { roomVisualProfile, type RoomVisualProfile } from './lib/roomVisuals'
+import { shouldBookCapturePointer } from './lib/pointer'
 
 type MovementCue = 'idle' | 'step' | 'turn-left' | 'turn-right'
 
@@ -810,6 +811,11 @@ function BookHoverPanel({
   }
 
   function updateHover(event: ThreeEvent<PointerEvent>) {
+    if (!shouldBookCapturePointer(eventPointerType(event))) {
+      onHoverBook(null)
+      return
+    }
+
     const address = addressFromEvent(event)
     if (!address) {
       onHoverBook(null)
@@ -822,7 +828,9 @@ function BookHoverPanel({
   function openHoveredBook(event: ThreeEvent<PointerEvent | MouseEvent>) {
     const address = addressFromEvent(event)
     if (!address) return
-    stopBookPointerEvent(event)
+    if (shouldBookCapturePointer(eventPointerType(event))) {
+      stopBookPointerEvent(event)
+    }
     onHoverBook(address)
     onOpenBook(address)
   }
@@ -833,14 +841,18 @@ function BookHoverPanel({
       onPointerMove={updateHover}
       onPointerOver={updateHover}
       onPointerOut={(event) => {
-        stopBookPointerEvent(event)
+        if (shouldBookCapturePointer(eventPointerType(event))) {
+          stopBookPointerEvent(event)
+        }
         onHoverBook(null)
       }}
       onPointerDown={(event) => {
         const address = addressFromEvent(event)
         if (!address) return
-        stopBookPointerEvent(event)
-        onHoverBook(address)
+        if (shouldBookCapturePointer(eventPointerType(event))) {
+          stopBookPointerEvent(event)
+          onHoverBook(address)
+        }
       }}
       onClick={openHoveredBook}
     >
@@ -910,21 +922,28 @@ function BookSpine({
       position={[-shelfWidth / 2 + bookSpacing * (book + 0.5), -0.01, z]}
       onPointerOver={(event) => {
         if (!isReachable) return
+        if (!shouldBookCapturePointer(eventPointerType(event))) return
         stopBookPointerEvent(event)
         onHoverBook(address)
       }}
       onPointerOut={(event) => {
         if (!isReachable) return
-        stopBookPointerEvent(event)
+        if (shouldBookCapturePointer(eventPointerType(event))) {
+          stopBookPointerEvent(event)
+        }
         onHoverBook(null)
       }}
       onPointerDown={(event) => {
         if (!isReachable) return
-        stopBookPointerEvent(event)
+        if (shouldBookCapturePointer(eventPointerType(event))) {
+          stopBookPointerEvent(event)
+        }
       }}
       onClick={(event) => {
         if (!isReachable) return
-        stopBookPointerEvent(event)
+        if (shouldBookCapturePointer(eventPointerType(event))) {
+          stopBookPointerEvent(event)
+        }
         onOpenBook(address)
       }}
     >
@@ -942,6 +961,10 @@ function BookSpine({
 function stopBookPointerEvent(event: ThreeEvent<PointerEvent | MouseEvent>) {
   event.stopPropagation()
   event.nativeEvent.stopPropagation()
+}
+
+function eventPointerType(event: ThreeEvent<PointerEvent | MouseEvent>): string | undefined {
+  return 'pointerType' in event.nativeEvent ? event.nativeEvent.pointerType : undefined
 }
 
 function bookXPosition(book: number): number {

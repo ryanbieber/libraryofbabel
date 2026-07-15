@@ -7,6 +7,7 @@ import { BookReader } from './components/BookReader'
 import { NpcDialoguePanel } from './components/NpcDialoguePanel'
 import { defaultAddress, generatePage } from './lib/library'
 import type { LibraryNpc } from './lib/npcs'
+import { shouldBookCapturePointer } from './lib/pointer'
 
 describe('App interactions', () => {
   beforeEach(() => {
@@ -202,6 +203,13 @@ describe('App interactions', () => {
 
     fireEvent.keyDown(window, { key: ' ' })
     expect(screen.getByText('You jump.')).toBeInTheDocument()
+  })
+
+  it('lets touch look gestures pass through reachable book hit areas', () => {
+    expect(shouldBookCapturePointer('mouse')).toBe(true)
+    expect(shouldBookCapturePointer(undefined)).toBe(true)
+    expect(shouldBookCapturePointer('touch')).toBe(false)
+    expect(shouldBookCapturePointer('pen')).toBe(false)
   })
 })
 
