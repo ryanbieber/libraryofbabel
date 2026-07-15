@@ -1,3 +1,5 @@
+import { GALLERY_INDICES, type FloorIndex, type GalleryIndex } from './level'
+
 export const LETTER_SYMBOLS = 'abcdefghijklmnopqrstuv'
 export const ALPHABET = `${LETTER_SYMBOLS} ,.` as const
 export const ALPHABET_SIZE = ALPHABET.length
@@ -10,34 +12,33 @@ export const WALL_COUNT = 4
 export const SHELVES_PER_WALL = 5
 export const BOOKS_PER_SHELF = 32
 
-const wallLabels = ['north', 'east', 'south', 'west'] as const
+export const SHELF_WALLS = ['A', 'B', 'C', 'D'] as const
+export type ShelfWall = (typeof SHELF_WALLS)[number]
 
 export type BookAddress = {
-  roomQ: number
-  roomR: number
-  wall: number
+  floor: FloorIndex
+  gallery: GalleryIndex
+  wall: ShelfWall
   shelf: number
   book: number
 }
 
-export type PageAddress = BookAddress & {
-  page: number
-}
+export type PageAddress = BookAddress & { page: number }
 
 export const defaultAddress: BookAddress = {
-  roomQ: 0,
-  roomR: 0,
-  wall: 0,
+  floor: 0,
+  gallery: 0,
+  wall: 'A',
   shelf: 1,
   book: 7,
 }
 
 export function addressKey(address: BookAddress): string {
-  return `${address.roomQ}:${address.roomR}:${address.wall}:${address.shelf}:${address.book}`
+  return `${address.floor}:${address.gallery}:${address.wall}:${address.shelf}:${address.book}`
 }
 
 export function addressLabel(address: BookAddress): string {
-  return `room ${address.roomQ},${address.roomR} / ${wallLabels[positiveModulo(address.wall, WALL_COUNT)]} wall / shelf ${address.shelf + 1} / volume ${address.book + 1}`
+  return `floor ${signedLabel(address.floor)} / gallery ${signedLabel(address.gallery)} / wall ${address.wall} / shelf ${address.shelf + 1} / volume ${address.book + 1}`
 }
 
 export function clampPage(page: number): number {
@@ -55,16 +56,13 @@ export function normalizeLibraryText(value: string): string {
 
 export function generatePage(address: PageAddress): string[] {
   const page = clampPage(address.page)
-  return Array.from({ length: LINES_PER_PAGE }, (_, lineIndex) =>
-    generateLine({ ...address, page }, lineIndex),
-  )
+  return Array.from({ length: LINES_PER_PAGE }, (_, lineIndex) => generateLine({ ...address, page }, lineIndex))
 }
 
 export function generateLine(address: PageAddress, lineIndex: number): string {
   const page = clampPage(address.page)
   const safeLine = Math.min(LINES_PER_PAGE - 1, Math.max(0, Math.round(lineIndex)))
   const baseOffset = (page - 1) * SYMBOLS_PER_PAGE + safeLine * SYMBOLS_PER_LINE
-
   return Array.from({ length: SYMBOLS_PER_LINE }, (_, charIndex) => {
     const value = hashToIndex(`${addressKey(address)}:${page}:${baseOffset + charIndex}`)
     return ALPHABET[value]
@@ -72,25 +70,32 @@ export function generateLine(address: PageAddress, lineIndex: number): string {
 }
 
 export function nearbyBookAddress(
-  roomQ: number,
-  roomR: number,
-  wall: number,
+  floor: FloorIndex,
+  gallery: GalleryIndex,
+  wall: number | ShelfWall,
   shelf: number,
   book: number,
 ): BookAddress {
+  const wallIndex = typeof wall === 'number' ? wall : SHELF_WALLS.indexOf(wall)
   return {
-    roomQ,
-    roomR,
-    wall: positiveModulo(wall, WALL_COUNT),
+    floor,
+    gallery,
+    wall: SHELF_WALLS[positiveModulo(wallIndex, WALL_COUNT)],
     shelf: positiveModulo(shelf, SHELVES_PER_WALL),
     book: positiveModulo(book, BOOKS_PER_SHELF),
   }
 }
 
 export function deterministicJump(seed: string): BookAddress {
-  const q = signedHash(`${seed}:q`, 4800)
-  const r = signedHash(`${seed}:r`, 4800)
-  return nearbyBookAddress(q, r, hashToIndex(`${seed}:wall`) % WALL_COUNT, hashToIndex(`${seed}:shelf`) % SHELVES_PER_WALL, hashToIndex(`${seed}:book`) % BOOKS_PER_SHELF)
+  const floor = ([-1, 0, 1] as const)[hashToIndex(`${seed}:floor`) % 3]
+  const gallery = GALLERY_INDICES[hashToIndex(`${seed}:gallery`) % GALLERY_INDICES.length]
+  return nearbyBookAddress(
+    floor,
+    gallery,
+    hashToIndex(`${seed}:wall`) % WALL_COUNT,
+    hashToIndex(`${seed}:shelf`) % SHELVES_PER_WALL,
+    hashToIndex(`${seed}:book`) % BOOKS_PER_SHELF,
+  )
 }
 
 export function sequenceOdds(value: string): {
@@ -101,15 +106,12 @@ export function sequenceOdds(value: string): {
 } {
   const clean = normalizeLibraryText(value)
   const isValid = value.length > 0 && clean.length === value.toLowerCase().length
-
   if (clean.length === 0) {
     return { clean, isValid: false, log10Books: 0, oneInLabel: 'enter symbols from the 25-symbol alphabet' }
   }
-
   const windows = Math.max(1, SYMBOLS_PER_BOOK - clean.length + 1)
   const log10Books = clean.length * Math.log10(ALPHABET_SIZE) - Math.log10(windows)
   const exponent = Math.max(0, Math.ceil(log10Books))
-
   return {
     clean,
     isValid,
@@ -122,12 +124,12 @@ export function possibleBooksExponent(): number {
   return SYMBOLS_PER_BOOK * Math.log10(ALPHABET_SIZE)
 }
 
-function hashToIndex(input: string): number {
-  return fnv1a(input) % ALPHABET_SIZE
+function signedLabel(value: number): string {
+  return value > 0 ? `+${value}` : String(value)
 }
 
-function signedHash(input: string, spread: number): number {
-  return (fnv1a(input) % (spread * 2 + 1)) - spread
+function hashToIndex(input: string): number {
+  return fnv1a(input) % ALPHABET_SIZE
 }
 
 function positiveModulo(value: number, modulo: number): number {

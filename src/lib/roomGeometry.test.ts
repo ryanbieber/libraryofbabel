@@ -2,72 +2,68 @@ import { describe, expect, it } from 'vitest'
 import { defaultAddress } from './library'
 import {
   BOOK_INTERACTION_RADIUS,
-  DOOR_HALF_WIDTH,
-  INTERACTION_RADIUS,
-  PLAYER_RADIUS,
-  ROOM_HALF_SIZE,
+  GALLERY_APOTHEM,
+  LIGHTWELL_RADIUS,
   STARTING_PLAYER_POSE,
   bookWorldPosition,
   distanceToBook,
-  distanceToDoor,
-  enterDoor,
   isBookReachable,
-  isDoorReachable,
   movePose,
   poseNearBook,
   rotatePose,
-  yawToDirection,
+  stairCameraPose,
 } from './roomGeometry'
 
-describe('first-person room geometry', () => {
-  it('stops at an available doorway until the door is opened', () => {
-    const result = movePose({ ...STARTING_PLAYER_POSE, z: -ROOM_HALF_SIZE + PLAYER_RADIUS + 0.02 }, 1, 0, 0.2)
-
-    expect(result.crossed).toBeUndefined()
-    expect(result.blocked).toBe(0)
-    expect(result.door).toBe(0)
-    expect(result.pose.roomQ).toBe(0)
-    expect(result.pose.roomR).toBe(0)
-    expect(result.pose.z).toBe(-ROOM_HALF_SIZE + PLAYER_RADIUS)
+describe('hexagonal first-person geometry', () => {
+  it('walks continuously from a gallery into its north vestibule', () => {
+    const pose = { ...STARTING_PLAYER_POSE, x: 0, z: -GALLERY_APOTHEM + 0.05, yaw: 0 }
+    const result = movePose(pose, 1, 0, 0.25)
+    expect(result.transition).toBe('vestibule')
+    expect(result.pose.zone).toEqual({ kind: 'vestibule', connector: -1 })
   })
 
-  it('opens a nearby available door and enters the neighboring room', () => {
-    const pose = { ...STARTING_PLAYER_POSE, z: -ROOM_HALF_SIZE + PLAYER_RADIUS + 0.02 }
-    const result = enterDoor(pose, 0)
-
-    expect(distanceToDoor(pose, 0)).toBeLessThan(INTERACTION_RADIUS)
-    expect(isDoorReachable(pose, 0)).toBe(true)
-    expect(result.crossed).toBe(0)
-    expect(result.pose.roomQ).toBe(0)
-    expect(result.pose.roomR).toBe(-1)
-    expect(result.pose.z).toBeGreaterThan(0)
+  it('keeps the player behind the lightwell railing', () => {
+    const pose = { ...STARTING_PLAYER_POSE, x: LIGHTWELL_RADIUS + 0.25, z: 0, yaw: -Math.PI / 2 }
+    const result = movePose(pose, 1, 0, 0.2)
+    expect(result.blocked).toBe('lightwell')
+    expect(result.pose).toEqual(pose)
   })
 
-  it('blocks movement into a wall away from the doorway', () => {
-    const result = movePose(
-      { ...STARTING_PLAYER_POSE, x: DOOR_HALF_WIDTH + 0.6, z: -ROOM_HALF_SIZE + PLAYER_RADIUS + 0.02 },
-      1,
-      0,
-      0.2,
-    )
-
-    expect(result.blocked).toBe(0)
-    expect(result.door).toBeUndefined()
-    expect(result.pose.roomR).toBe(0)
-    expect(result.pose.z).toBe(-ROOM_HALF_SIZE + PLAYER_RADIUS)
+  it('enters both atmospheric service rooms from a vestibule', () => {
+    const vestibule = { ...STARTING_PLAYER_POSE, zone: { kind: 'vestibule' as const, connector: -1 as const }, x: -2.55, z: -0.6, yaw: -Math.PI / 2 }
+    const result = movePose(vestibule, 1, 0, 0.3)
+    expect(result.pose.zone).toEqual({ kind: 'service', connector: -1, room: 'sleeping' })
+    const latrine = movePose({ ...vestibule, z: 0.6 }, 1, 0, 0.3)
+    expect(latrine.pose.zone).toEqual({ kind: 'service', connector: -1, room: 'latrine' })
   })
 
-  it('rotates freely but maps yaw back to the nearest cardinal direction', () => {
-    expect(yawToDirection(rotatePose(STARTING_PLAYER_POSE, Math.PI / 2).yaw)).toBe(1)
-    expect(yawToDirection(rotatePose(STARTING_PLAYER_POSE, Math.PI * 1.9).yaw)).toBe(0)
+  it('walks a full guided spiral flight and changes floor', () => {
+    const vestibule = { ...STARTING_PLAYER_POSE, zone: { kind: 'vestibule' as const, connector: -1 as const }, x: 2.55, z: -0.4, yaw: Math.PI / 2 }
+    const entered = movePose(vestibule, 1, 0, 0.3)
+    expect(entered.pose.zone.kind).toBe('stair')
+    const finished = movePose(entered.pose, 1, 0, 8)
+    expect(finished.transition).toBe('floor')
+    expect(finished.pose.floor).toBe(1)
+    expect(finished.pose.zone).toEqual({ kind: 'vestibule', connector: -1 })
+  })
+
+  it('descends from the top floor and blocks stairs beyond an authored landing', () => {
+    const top = { ...STARTING_PLAYER_POSE, floor: 1 as const, zone: { kind: 'vestibule' as const, connector: 0 as const }, x: 2.55, z: 0.4, yaw: Math.PI / 2 }
+    const entered = movePose(top, 1, 0, 0.3)
+    expect(entered.pose.zone.kind).toBe('stair')
+    if (entered.pose.zone.kind === 'stair') expect(entered.pose.zone.to).toBe(0)
+  })
+
+  it('provides a continuous helical camera path', () => {
+    const pose = { ...STARTING_PLAYER_POSE, zone: { kind: 'stair' as const, connector: 0 as const, from: 0 as const, to: 1 as const, progress: 0.5 } }
+    expect(stairCameraPose(pose).y).toBeCloseTo(1.7)
   })
 
   it('places a player close enough to interact with a selected book', () => {
     const pose = poseNearBook(defaultAddress)
-    const bookPosition = bookWorldPosition(defaultAddress)
-
     expect(distanceToBook(pose, defaultAddress)).toBeLessThan(BOOK_INTERACTION_RADIUS)
-    expect(Math.abs(bookPosition.z)).toBeGreaterThan(ROOM_HALF_SIZE - 0.3)
+    expect(Math.hypot(bookWorldPosition(defaultAddress).x, bookWorldPosition(defaultAddress).z)).toBeGreaterThan(4)
     expect(isBookReachable(pose, defaultAddress)).toBe(true)
+    expect(rotatePose(pose, Math.PI / 2).yaw).not.toBe(pose.yaw)
   })
 })

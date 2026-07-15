@@ -1,59 +1,28 @@
 import { describe, expect, it } from 'vitest'
+import { GALLERY_INDICES, FLOOR_INDICES } from './level'
 import { INTERACTION_RADIUS, STARTING_PLAYER_POSE } from './roomGeometry'
-import { distanceToNpc, isNpcReachable, npcForRoom } from './npcs'
+import { distanceToNpc, isNpcReachable, npcForGallery } from './npcs'
 
 describe('library monk NPCs', () => {
-  it('spawns deterministically with at most one monk per floor and room', () => {
-    const room = { q: 0, r: 0 }
-    const first = npcForRoom(0, room)
-    const second = npcForRoom(0, room)
-
-    expect(first).not.toBeNull()
-    expect(second).toEqual(first)
-    expect(first?.id).toBe('monk:0:0:0')
+  it('always places the significant-word monk in the starting gallery', () => {
+    const npc = npcForGallery(0, 0)
+    expect(npc?.id).toBe('monk:0:0')
+    expect(npc?.quest).toBe('significant-word')
+    expect(npc?.dialogue.join(' ')).toMatch(/floor, gallery, wall, shelf, volume, and page/i)
   })
 
-  it('keeps the spawn rate uncommon across the mapped floor plan', () => {
-    const rooms = [
-      { q: 0, r: -2 },
-      { q: -1, r: -1 },
-      { q: 0, r: -1 },
-      { q: 1, r: -1 },
-      { q: -2, r: 0 },
-      { q: -1, r: 0 },
-      { q: 0, r: 0 },
-      { q: 1, r: 0 },
-      { q: 2, r: 0 },
-      { q: -1, r: 1 },
-      { q: 0, r: 1 },
-      { q: 1, r: 1 },
-      { q: 0, r: 2 },
-    ]
-
-    const spawned = rooms.map((room) => npcForRoom(0, room)).filter(Boolean)
-
-    expect(spawned).toHaveLength(3)
+  it('spawns other monks deterministically and uncommonly', () => {
+    const spawned = FLOOR_INDICES.flatMap((floor) => GALLERY_INDICES.map((gallery) => npcForGallery(floor, gallery))).filter(Boolean)
+    expect(spawned.length).toBeGreaterThan(1)
+    expect(spawned.length).toBeLessThan(8)
+    expect(npcForGallery(1, 2)).toEqual(npcForGallery(1, 2))
   })
 
-  it('assigns quests and dialogue deterministically', () => {
-    const startingRoomNpc = npcForRoom(0, { q: 0, r: 0 })
-    const otherFloorNpc = npcForRoom(1, { q: 1, r: 1 })
-
-    expect(startingRoomNpc?.quest).toBe('significant-word')
-    expect(startingRoomNpc?.dialogue).toEqual(npcForRoom(0, { q: 0, r: 0 })?.dialogue)
-    expect(startingRoomNpc?.dialogue.join(' ')).toMatch(/room, wall, shelf, volume, and page/i)
-    expect(otherFloorNpc?.quest).toBe('messiah')
-    expect(otherFloorNpc?.dialogue.join(' ')).toMatch(/Man of the Book|page has learned to walk/i)
-  })
-
-  it('measures interaction distance in the same room only', () => {
-    const npc = npcForRoom(0, { q: 0, r: 0 })
-    const farPose = { ...STARTING_PLAYER_POSE, x: INTERACTION_RADIUS + 0.7, z: INTERACTION_RADIUS + 0.7 }
-    const otherRoomPose = { ...STARTING_PLAYER_POSE, roomQ: 1 }
-
+  it('measures interaction distance only in the same gallery', () => {
+    const npc = npcForGallery(0, 0)
+    const otherGallery = { ...STARTING_PLAYER_POSE, zone: { kind: 'gallery' as const, gallery: 1 as const } }
     expect(distanceToNpc(STARTING_PLAYER_POSE, npc)).toBeLessThan(INTERACTION_RADIUS)
     expect(isNpcReachable(STARTING_PLAYER_POSE, npc)).toBe(true)
-    expect(isNpcReachable(farPose, npc)).toBe(false)
-    expect(distanceToNpc(otherRoomPose, npc)).toBe(Number.POSITIVE_INFINITY)
+    expect(distanceToNpc(otherGallery, npc)).toBe(Number.POSITIVE_INFINITY)
   })
 })

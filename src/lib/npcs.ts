@@ -1,22 +1,19 @@
-import type { RoomPosition } from './level'
+import type { FloorIndex, GalleryIndex } from './level'
 import { INTERACTION_RADIUS, type PlayerPose } from './roomGeometry'
 
 export type NpcQuest = 'messiah' | 'crimson-book' | 'significant-word'
 
 export type LibraryNpc = {
   id: string
-  floor: number
-  room: RoomPosition
+  floor: FloorIndex
+  gallery: GalleryIndex
   name: string
   quest: NpcQuest
   dialogue: string[]
-  position: {
-    x: number
-    z: number
-  }
+  position: { x: number; z: number }
 }
 
-const NPC_POSITION = { x: -0.46, z: -1.12 } as const
+const NPC_POSITION = { x: -2.35, z: 0.65 } as const
 const SPAWN_BUCKETS = 5
 
 const messiahLines = [
@@ -31,49 +28,44 @@ const crimsonBookLines = [
   'Indexed one, the crimson book is only a sect rumor, unless it opens for you. Then all rumors will ask your permission.',
 ]
 
-export function npcForRoom(floor: number, room: RoomPosition): LibraryNpc | null {
-  if (floor === 0 && room.q === 0 && room.r === 0) {
+export function npcForGallery(floor: FloorIndex, gallery: GalleryIndex): LibraryNpc | null {
+  if (floor === 0 && gallery === 0) {
     return {
-      id: 'monk:0:0:0',
+      id: 'monk:0:0',
       floor,
-      room,
+      gallery,
       name: 'Hooded keeper of improbable words',
       quest: 'significant-word',
       dialogue: [
         'Reader, bring me a book that contains the word babel.',
-        'Do not wave a pretty binding at me. Tell me the room, wall, shelf, volume, and page, and I will test the page myself.',
+        'Tell me the floor, gallery, wall, shelf, volume, and page, and I will test the page myself.',
         'Most pilgrims return with arithmetic and call it faith. I prefer coordinates.',
       ],
       position: NPC_POSITION,
     }
   }
 
-  const spawnHash = stableHash(`library-monk:${floor}:${room.q}:${room.r}`)
-  if ((spawnHash + 1) % SPAWN_BUCKETS !== 0) {
-    return null
-  }
+  const spawnHash = stableHash(`library-monk:${floor}:${gallery}`)
+  if ((spawnHash + 1) % SPAWN_BUCKETS !== 0) return null
 
-  const quest: NpcQuest = stableHash(`library-monk-quest:${floor}:${room.q}:${room.r}`) % 2 === 0 ? 'messiah' : 'crimson-book'
+  const quest: NpcQuest = stableHash(`library-monk-quest:${floor}:${gallery}`) % 2 === 0 ? 'messiah' : 'crimson-book'
   const sourceLines = quest === 'messiah' ? messiahLines : crimsonBookLines
-  const start = stableHash(`library-monk-dialogue:${floor}:${room.q}:${room.r}`) % sourceLines.length
-  const dialogue = sourceLines.map((_, index) => sourceLines[(start + index) % sourceLines.length])
-
+  const start = stableHash(`library-monk-dialogue:${floor}:${gallery}`) % sourceLines.length
   return {
-    id: `monk:${floor}:${room.q}:${room.r}`,
+    id: `monk:${floor}:${gallery}`,
     floor,
-    room,
+    gallery,
     name: quest === 'messiah' ? 'Hooded devotee of the index' : 'Hooded keeper of the red rumor',
     quest,
-    dialogue,
+    dialogue: sourceLines.map((_, index) => sourceLines[(start + index) % sourceLines.length]),
     position: NPC_POSITION,
   }
 }
 
 export function distanceToNpc(pose: PlayerPose, npc: LibraryNpc | null): number {
-  if (!npc || pose.roomQ !== npc.room.q || pose.roomR !== npc.room.r) {
+  if (!npc || pose.floor !== npc.floor || pose.zone.kind !== 'gallery' || pose.zone.gallery !== npc.gallery) {
     return Number.POSITIVE_INFINITY
   }
-
   return Math.hypot(pose.x - npc.position.x, pose.z - npc.position.z)
 }
 
