@@ -22,7 +22,8 @@ export function NpcDialoguePanel({
   onSubmitSignificantWordQuest: (values: WordQuestFormValues) => void
 }) {
   const [formValues, setFormValues] = useState<WordQuestFormValues>({
-    room: '',
+    floor: '',
+    gallery: '',
     wall: '',
     shelf: '',
     volume: '',
@@ -71,12 +72,23 @@ export function NpcDialoguePanel({
           <div className="quest-ledger" aria-label="Quest address book">
             <form className="quest-form" aria-label="Submit book coordinates" onSubmit={handleSubmit}>
               <label>
-                room
+                floor
                 <input
-                  value={formValues.room}
-                  aria-label="Quest room"
-                  placeholder="0,0"
-                  onChange={(event) => setFormValues((current) => ({ ...current, room: event.target.value }))}
+                  value={formValues.floor}
+                  aria-label="Quest floor"
+                  inputMode="numeric"
+                  placeholder="0"
+                  onChange={(event) => setFormValues((current) => ({ ...current, floor: event.target.value }))}
+                />
+              </label>
+              <label>
+                gallery
+                <input
+                  value={formValues.gallery}
+                  aria-label="Quest gallery"
+                  inputMode="numeric"
+                  placeholder="0"
+                  onChange={(event) => setFormValues((current) => ({ ...current, gallery: event.target.value }))}
                 />
               </label>
               <label>
@@ -84,7 +96,7 @@ export function NpcDialoguePanel({
                 <input
                   value={formValues.wall}
                   aria-label="Quest wall"
-                  placeholder="north"
+                  placeholder="A"
                   onChange={(event) => setFormValues((current) => ({ ...current, wall: event.target.value }))}
                 />
               </label>

@@ -30,16 +30,16 @@ describe('library constants', () => {
 
   it('wraps wall shelf and volume addresses into the Borges shelf shape', () => {
     expect(nearbyBookAddress(0, 0, -1, -1, -1)).toEqual({
-      roomQ: 0,
-      roomR: 0,
-      wall: 3,
+      floor: 0,
+      gallery: 0,
+      wall: 'D',
       shelf: 4,
       book: 31,
     })
     expect(nearbyBookAddress(0, 0, 4, 5, 32)).toEqual({
-      roomQ: 0,
-      roomR: 0,
-      wall: 0,
+      floor: 0,
+      gallery: 0,
+      wall: 'A',
       shelf: 0,
       book: 0,
     })
@@ -61,6 +61,12 @@ describe('page generation', () => {
     const second = generatePage({ ...defaultAddress, page: 2 })
 
     expect(first).not.toEqual(second)
+  })
+
+  it('changes output across floors and galleries', () => {
+    const first = generatePage({ ...defaultAddress, page: 1 })
+    expect(generatePage({ ...defaultAddress, floor: 1, page: 1 })).not.toEqual(first)
+    expect(generatePage({ ...defaultAddress, gallery: 1, page: 1 })).not.toEqual(first)
   })
 })
 

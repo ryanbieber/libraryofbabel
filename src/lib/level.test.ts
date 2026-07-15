@@ -1,68 +1,59 @@
 import { describe, expect, it } from 'vitest'
-import { canMove, cardinalDirections, levelRooms, nextRoom, roomDoors, roomHasFeature, roomKey, startingRoom } from './level'
+import {
+  CONNECTOR_INDICES,
+  FLOOR_INDICES,
+  GALLERY_INDICES,
+  adjacentFloor,
+  galleriesForConnector,
+  northConnector,
+  southConnector,
+  worldKey,
+} from './level'
 
-describe('library level', () => {
-  it('uses cardinal doors only', () => {
-    expect(cardinalDirections.map((direction) => direction.label)).toEqual(['north', 'east', 'south', 'west'])
-    expect(roomDoors(startingRoom)).toEqual([0, 1, 2, 3])
+describe('hexagonal library topology', () => {
+  it('defines fifteen galleries across three floors', () => {
+    expect(FLOOR_INDICES).toEqual([-1, 0, 1])
+    expect(GALLERY_INDICES).toEqual([-2, -1, 0, 1, 2])
+    expect(FLOOR_INDICES.length * GALLERY_INDICES.length).toBe(15)
   })
 
-  it('blocks movement where the map has no neighboring room', () => {
-    expect(canMove({ q: 2, r: 0 }, 1, 1)).toBe(false)
-    expect(canMove({ q: 2, r: 0 }, 3, 1)).toBe(true)
+  it('places six shared or terminal vestibules along each procession', () => {
+    expect(CONNECTOR_INDICES).toEqual([-3, -2, -1, 0, 1, 2])
+    expect(northConnector(0)).toBe(-1)
+    expect(southConnector(0)).toBe(0)
+    expect(galleriesForConnector(-1)).toEqual({ north: -1, south: 0 })
+    expect(galleriesForConnector(-3)).toEqual({ north: null, south: -2 })
+    expect(galleriesForConnector(2)).toEqual({ north: 2, south: null })
   })
 
-  it('keeps archive rooms as ordinary stack rooms without stairs', () => {
-    expect(roomHasFeature({ q: 2, r: 0 }, 'stacks')).toBe(true)
-    expect(roomHasFeature({ q: -2, r: 0 }, 'stacks')).toBe(true)
-    expect(levelRooms.find((room) => room.name === 'east archive')?.kind).toBe('archive')
-    expect(levelRooms.find((room) => room.name === 'west archive')?.kind).toBe('archive')
-    expect(levelRooms.flatMap((room) => room.features).some((feature) => feature.startsWith('stairs'))).toBe(false)
+  it('blocks floors beyond the authored three-level area', () => {
+    expect(adjacentFloor(-1, -1)).toBeNull()
+    expect(adjacentFloor(-1, 1)).toBe(0)
+    expect(adjacentFloor(0, 1)).toBe(1)
+    expect(adjacentFloor(1, 1)).toBeNull()
   })
 
-  it('adds visual room kinds without changing the core map coordinates', () => {
-    expect(levelRooms.map((room) => roomKey(room))).toEqual([
-      '0,-2',
-      '-1,-1',
-      '0,-1',
-      '1,-1',
-      '-2,0',
-      '-1,0',
-      '0,0',
-      '1,0',
-      '2,0',
-      '-1,1',
-      '0,1',
-      '1,1',
-      '0,2',
-    ])
-    expect(levelRooms.filter((room) => room.kind === 'archive').map((room) => room.name)).toEqual([
-      'west archive',
-      'east archive',
-    ])
-    expect(levelRooms.filter((room) => room.kind === 'gallery').map((room) => room.name)).toEqual([
-      'north gallery',
-      'central catalog',
-      'south gallery',
-    ])
+  it('uses stable keys for autosave and deterministic placement', () => {
+    expect(worldKey(0, { kind: 'gallery', gallery: 0 })).toBe('0:gallery:0')
+    expect(worldKey(-1, { kind: 'service', connector: -2, room: 'sleeping' })).toBe('-1:sleeping:-2')
   })
 
-  it('keeps the whole map reachable from the starting room', () => {
-    const seen = new Set<string>([roomKey(startingRoom)])
-    const queue = [startingRoom]
-
-    while (queue.length > 0) {
-      const current = queue.shift()!
-      for (const direction of roomDoors(current)) {
-        const destination = nextRoom(current, direction, 1)
-        const key = roomKey(destination)
-        if (!seen.has(key)) {
-          seen.add(key)
-          queue.push(destination)
-        }
+  it('keeps all fifteen gallery coordinates connected by passages and stairs', () => {
+    const nodes = FLOOR_INDICES.flatMap((floor) => GALLERY_INDICES.map((gallery) => `${floor}:${gallery}`))
+    const seen = new Set<string>(['0:0'])
+    const queue = ['0:0']
+    while (queue.length) {
+      const [floor, gallery] = queue.shift()!.split(':').map(Number)
+      const neighbors = [
+        GALLERY_INDICES.includes((gallery - 1) as never) ? `${floor}:${gallery - 1}` : null,
+        GALLERY_INDICES.includes((gallery + 1) as never) ? `${floor}:${gallery + 1}` : null,
+        FLOOR_INDICES.includes((floor - 1) as never) ? `${floor - 1}:${gallery}` : null,
+        FLOOR_INDICES.includes((floor + 1) as never) ? `${floor + 1}:${gallery}` : null,
+      ].filter((value): value is string => value !== null)
+      for (const neighbor of neighbors) {
+        if (!seen.has(neighbor)) { seen.add(neighbor); queue.push(neighbor) }
       }
     }
-
-    expect(seen.size).toBe(levelRooms.length)
+    expect([...seen].sort()).toEqual(nodes.sort())
   })
 })

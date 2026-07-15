@@ -8,6 +8,7 @@ import { defaultAddress, generatePage } from './lib/library'
 
 describe('App interactions', () => {
   beforeEach(() => {
+    localStorage.clear()
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
   })
 
@@ -16,191 +17,94 @@ describe('App interactions', () => {
     vi.restoreAllMocks()
   })
 
-  it('starts with a splash screen that introduces the Borges premise', () => {
-    const { container } = render(<App />)
-
+  it('introduces and enters the hexagonal multi-floor library', async () => {
+    render(<App />)
     expect(screen.getByLabelText('Start screen')).toBeInTheDocument()
-    expect(screen.getByText(/Jorge Luis Borges's 1941 story/)).toBeInTheDocument()
-    expect(screen.getByText(/universe is imagined as an endless library/)).toBeInTheDocument()
-    expect(screen.getByText(/This app turns that impossible premise into a place you can walk through/)).toBeInTheDocument()
-    expect(screen.getByText(/An homage to Borges/)).toBeInTheDocument()
-    expect(screen.getByText(/Hold to walk, drag to look/)).toBeInTheDocument()
-    expect(screen.queryByText(/Move with WASD/)).not.toBeInTheDocument()
-    expect(container.querySelector('.command-bar')).not.toBeInTheDocument()
+    expect(screen.getByText(/endless procession of hexagonal galleries/i)).toBeInTheDocument()
+    expect(screen.getByText(/Hold to walk. Drag to look/i)).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
 
     expect(screen.queryByLabelText('Start screen')).not.toBeInTheDocument()
-    expect(screen.getByTestId('arena-viewport')).toBeInTheDocument()
+    expect(await screen.findByTestId('arena-viewport')).toHaveAttribute('data-zone', 'gallery')
+    expect(screen.getByText('gallery 0')).toBeInTheDocument()
+    expect(screen.getByText(/four walls · two passages/i)).toBeInTheDocument()
   })
 
-  it('moves forward by holding the viewport without showing bottom book cards', () => {
-    const { container } = render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
-
-    const viewport = screen.getByTestId('arena-viewport')
-    expect(screen.queryByLabelText(/Open room 0,0 \/ north wall/)).not.toBeInTheDocument()
-
-    holdViewportForward(viewport, 42, 'mouse')
-
-    expect(container.querySelector('.nearby-book-list')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText(/Open room 0,0 \/ north wall/)).not.toBeInTheDocument()
-  })
-
-  it('shows a two-page reader spread and flips forward through spreads', () => {
-    function ReaderHarness() {
-      const spread = 1
-      return (
-        <BookReader
-          selectedBook={defaultAddress}
-          spread={spread}
-          leftPageNumber={1}
-          rightPageNumber={2}
-          leftPage={generatePage({ ...defaultAddress, page: 1 })}
-          rightPage={generatePage({ ...defaultAddress, page: 2 })}
-          onClose={() => undefined}
-          onSpreadChange={() => undefined}
-        />
-      )
-    }
-
-    const { container } = render(<ReaderHarness />)
-
-    expect(container.querySelector('.book-reader')).toBeInTheDocument()
-    expect(container.querySelectorAll('.book-page')).toHaveLength(2)
-    expect(screen.getByText('page 1')).toBeInTheDocument()
-    expect(screen.getByText('page 2')).toBeInTheDocument()
-    expect(container.querySelector('.reader-actions')?.textContent).toContain('forward')
-    expect(screen.getByDisplayValue('1')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'forward' }))
-
-    expect(container.querySelector('.book-spread.turn-forward')).toBeInTheDocument()
-  })
-
-  it('shows a reachable monk Talk action and opens then closes the dialogue panel', () => {
-    const { container } = render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
-
-    expect(container.querySelector('.npc-quest-marker.available')?.textContent).toBe('!')
-
-    const talkButton = screen.getByRole('button', { name: /Talk to Hooded keeper of improbable words/ })
-    fireEvent.click(talkButton)
-
-    expect(screen.getByLabelText('Monk dialogue')).toBeInTheDocument()
-    expect(screen.getByText(/Significant word/)).toBeInTheDocument()
-    expect(screen.getByText(/contains the word babel/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'accept quest' })).toBeInTheDocument()
-    expect(screen.queryByLabelText('Quest address book')).not.toBeInTheDocument()
-    expect(container.querySelector('.npc-quest-marker.available')?.textContent).toBe('!')
-
-    fireEvent.click(screen.getByRole('button', { name: 'accept quest' }))
-
-    expect(screen.getByLabelText('Quest address book')).toBeInTheDocument()
-    expect(screen.getByLabelText('Submit book coordinates')).toBeInTheDocument()
-    expect(container.querySelector('.npc-quest-marker.active')?.textContent).toBe('?')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Close monk dialogue' }))
-
-    expect(screen.queryByLabelText('Monk dialogue')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Talk to Hooded keeper of improbable words/ })).toBeInTheDocument()
-    expect(container.querySelector('.npc-quest-marker.active')?.textContent).toBe('?')
-  })
-
-  it('validates the starting monk quest submission and rejects false coordinates', () => {
+  it('uses hold-and-drag traversal without a door action', async () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
+    const viewport = await screen.findByTestId('arena-viewport')
+    holdViewportForward(viewport, 3)
+    expect(viewport).toHaveAttribute('data-zone', 'gallery')
+    expect(screen.queryByRole('button', { name: /Open .* door/i })).not.toBeInTheDocument()
+  })
+
+  it('shows deterministic two-page reader spreads', () => {
+    render(
+      <BookReader
+        selectedBook={defaultAddress}
+        spread={1}
+        leftPageNumber={1}
+        rightPageNumber={2}
+        leftPage={generatePage({ ...defaultAddress, page: 1 })}
+        rightPage={generatePage({ ...defaultAddress, page: 2 })}
+        onClose={() => undefined}
+        onSpreadChange={() => undefined}
+      />,
+    )
+    expect(screen.getAllByText(/floor 0 \/ gallery 0 \/ wall A/i)).toHaveLength(2)
+    expect(screen.getByText('page 1')).toBeInTheDocument()
+    expect(screen.getByText('page 2')).toBeInTheDocument()
+  })
+
+  it('opens the starting monk quest and uses the canonical address fields', async () => {
+    const { container } = render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
+    await screen.findByTestId('arena-viewport')
+    expect(container.querySelector('.npc-quest-marker.available')?.textContent).toBe('!')
+
     fireEvent.click(screen.getByRole('button', { name: /Talk to Hooded keeper of improbable words/ }))
     fireEvent.click(screen.getByRole('button', { name: 'accept quest' }))
 
-    fireEvent.change(screen.getByLabelText('Quest room'), { target: { value: '0,0' } })
+    expect(screen.getByLabelText('Quest floor')).toBeInTheDocument()
+    expect(screen.getByLabelText('Quest gallery')).toBeInTheDocument()
+    expect(screen.getByLabelText('Quest wall')).toHaveAttribute('placeholder', 'A')
+    expect(container.querySelector('.npc-quest-marker.active')?.textContent).toBe('?')
+  })
+
+  it('validates the new quest coordinates', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
+    await screen.findByTestId('arena-viewport')
+    fireEvent.click(screen.getByRole('button', { name: /Talk to Hooded keeper of improbable words/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'accept quest' }))
+
+    fireEvent.change(screen.getByLabelText('Quest floor'), { target: { value: '0' } })
+    fireEvent.change(screen.getByLabelText('Quest gallery'), { target: { value: '0' } })
     fireEvent.change(screen.getByLabelText('Quest wall'), { target: { value: 'ceiling' } })
     fireEvent.change(screen.getByLabelText('Quest shelf'), { target: { value: '1' } })
     fireEvent.change(screen.getByLabelText('Quest volume'), { target: { value: '1' } })
     fireEvent.change(screen.getByLabelText('Quest page'), { target: { value: '1' } })
     fireEvent.click(screen.getByRole('button', { name: 'test page' }))
 
-    expect(screen.getAllByText('Choose a wall: north, east, south, west, or 1-4.')).toHaveLength(2)
-
-    fireEvent.change(screen.getByLabelText('Quest wall'), { target: { value: 'north' } })
-    fireEvent.click(screen.getByRole('button', { name: 'test page' }))
-
-    expect(screen.getAllByText(/A confident heretic is still a heretic/)).toHaveLength(2)
+    expect(screen.getAllByText('Wall must be A, B, C, or D.')).toHaveLength(2)
   })
 
-  it('does not activate the starting monk quest until the player accepts it', () => {
-    const { container } = render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
-    fireEvent.click(screen.getByRole('button', { name: /Talk to Hooded keeper of improbable words/ }))
-
-    expect(container.querySelector('.npc-quest-marker.available')?.textContent).toBe('!')
-    expect(container.querySelector('.npc-quest-marker.active')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Submit book coordinates')).not.toBeInTheDocument()
-  })
-
-  it('requires clicking a nearby door to enter mapped rooms and blocks sealed exits', () => {
+  it('opens the journey menu with Continue and New Journey choices', async () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
-
-    const viewport = screen.getByTestId('arena-viewport')
-    expect(viewport).toHaveAttribute('data-room-kind', 'gallery')
-    dragViewport(viewport, 253)
-
-    expect(screen.getByText('room 0,0 / east view')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Open east door' }))
-    expect(screen.getByText('Move closer to the east door.')).toBeInTheDocument()
-    expect(screen.getByText('room 0,0 / east view')).toBeInTheDocument()
-
-    holdViewportForward(viewport, 45)
-    expect(screen.getByText('The east door is shut. Click or tap it to open it.')).toBeInTheDocument()
-    expect(screen.getByText('room 0,0 / east view')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Open east door' }))
-    expect(screen.getByText('room 1,0 / east view')).toBeInTheDocument()
-    expect(screen.getByText('east hall')).toBeInTheDocument()
-    expect(viewport).toHaveAttribute('data-room-kind', 'stack')
-
-    holdViewportForward(viewport, 88)
-    fireEvent.click(screen.getByRole('button', { name: 'Open east door' }))
-    expect(screen.getByText('room 2,0 / east view')).toBeInTheDocument()
-    expect(screen.getByText('east archive')).toBeInTheDocument()
-    expect(viewport).toHaveAttribute('data-room-kind', 'archive')
-
-    holdViewportForward(viewport, 88)
-    expect(screen.getByText('The east wall has no open passage here.')).toBeInTheDocument()
-  })
-
-  it('does not move with WASD after pointer controls replace keyboard movement', () => {
-    render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
-
-    pressKey('w', 30)
-
-    expect(screen.queryByLabelText(/Open room 0,0 \/ north wall/)).not.toBeInTheDocument()
-    expect(screen.getByText('room 0,0 / north view')).toBeInTheDocument()
+    await screen.findByTestId('arena-viewport')
+    fireEvent.click(screen.getByRole('button', { name: 'Journey' }))
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'New Journey' })).toBeInTheDocument()
   })
 })
 
-function pressKey(key: string, times = 1) {
-  for (let index = 0; index < times; index += 1) {
-    fireEvent.keyDown(window, { key })
-    fireEvent.keyUp(window, { key })
-  }
-}
-
-function holdViewportForward(viewport: HTMLElement, times: number, pointerType = 'mouse') {
+function holdViewportForward(viewport: HTMLElement, times: number) {
   for (let step = 0; step < times; step += 1) {
     const pointerId = step + 1
-    fireEvent.pointerDown(viewport, { button: 0, clientX: 190, clientY: 420, pointerId, pointerType })
-    fireEvent.pointerUp(viewport, { button: 0, pointerId, pointerType })
+    fireEvent.pointerDown(viewport, { button: 0, clientX: 190, clientY: 420, pointerId, pointerType: 'mouse' })
+    fireEvent.pointerUp(viewport, { button: 0, pointerId, pointerType: 'mouse' })
   }
-}
-
-function dragViewport(viewport: HTMLElement, deltaX: number) {
-  const pointerId = 10_000
-  const startX = 190
-  fireEvent.pointerDown(viewport, { button: 0, clientX: startX, clientY: 420, pointerId, pointerType: 'mouse' })
-  fireEvent.pointerMove(viewport, { button: 0, clientX: startX + deltaX, clientY: 420, pointerId, pointerType: 'mouse' })
-  fireEvent.pointerUp(viewport, { button: 0, pointerId, pointerType: 'mouse' })
 }

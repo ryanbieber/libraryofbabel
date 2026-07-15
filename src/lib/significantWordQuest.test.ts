@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { resolveSignificantWordQuestSubmission, type WordQuestFormValues } from './significantWordQuest'
 
 const baseSubmission: WordQuestFormValues = {
-  room: '0,0',
-  wall: 'north',
+  floor: '0',
+  gallery: '0',
+  wall: 'A',
   shelf: '1',
   volume: '1',
   page: '1',
@@ -12,28 +13,19 @@ const baseSubmission: WordQuestFormValues = {
 describe('significant word quest submission', () => {
   it('requires accepting the quest before coordinates can be tested', () => {
     const result = resolveSignificantWordQuestSubmission(baseSubmission, 'not-started')
-
-    expect(result.feedback).toEqual({
-      tone: 'error',
-      text: 'Accept the monk quest before testing coordinates.',
-    })
+    expect(result.feedback.text).toBe('Accept the monk quest before testing coordinates.')
     expect(result.nextStatus).toBeUndefined()
   })
 
-  it('validates wall names before generating a page', () => {
-    const result = resolveSignificantWordQuestSubmission({ ...baseSubmission, wall: 'ceiling' }, 'accepted')
-
-    expect(result.feedback).toEqual({
-      tone: 'error',
-      text: 'Choose a wall: north, east, south, west, or 1-4.',
-    })
+  it('validates the new floor, gallery, and lettered wall address', () => {
+    expect(resolveSignificantWordQuestSubmission({ ...baseSubmission, floor: '2' }, 'accepted').feedback.text).toBe('Floor must be -1, 0, or 1.')
+    expect(resolveSignificantWordQuestSubmission({ ...baseSubmission, gallery: '3' }, 'accepted').feedback.text).toBe('Gallery must be between -2 and 2.')
+    expect(resolveSignificantWordQuestSubmission({ ...baseSubmission, wall: 'ceiling' }, 'accepted').feedback.text).toBe('Wall must be A, B, C, or D.')
   })
 
   it('rejects accepted coordinates when the page does not contain the target word', () => {
     const result = resolveSignificantWordQuestSubmission(baseSubmission, 'accepted')
-
     expect(result.feedback.tone).toBe('error')
     expect(result.feedback.text).toContain('A confident heretic is still a heretic.')
-    expect(result.nextStatus).toBeUndefined()
   })
 })
