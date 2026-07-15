@@ -196,7 +196,6 @@ export function ArenaViewport({
           <div className="touch-joystick-knob" style={{ transform: `translate(${joystick.x}px, ${joystick.y}px)` }} />
         </div>
         <div className="touch-actions" data-touch-control="true">
-          <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={onInteract}>Use</button>
           <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={onJump}>Jump</button>
         </div>
       </div>
@@ -708,9 +707,23 @@ function Mirror({ position, rotationY }: { position: [number, number, number]; r
 function WarmLamp({ position }: { position: [number, number, number] }) {
   return (
     <group position={position}>
-      <mesh position={[0, 1.9, 0]}><cylinderGeometry args={[0.04, 0.04, 1.25, 8]} /><meshStandardMaterial color="#6e4c25" /></mesh>
-      <mesh position={[0, 2.43, 0]}><sphereGeometry args={[0.16, 10, 8]} /><meshStandardMaterial color="#ffd277" emissive="#ff8a22" emissiveIntensity={2.2} /></mesh>
-      <pointLight color="#ffc166" intensity={11} distance={6} decay={1.8} position={[0, 2.34, 0]} />
+      <mesh position={[0, ROOM_HEIGHT - 0.045, 0]}>
+        <cylinderGeometry args={[0.16, 0.12, 0.09, 12]} />
+        <meshStandardMaterial color="#51351f" metalness={0.28} roughness={0.74} />
+      </mesh>
+      <mesh position={[0, 2.69, 0]}>
+        <cylinderGeometry args={[0.018, 0.018, 0.68, 8]} />
+        <meshStandardMaterial color="#2e2118" metalness={0.38} roughness={0.68} />
+      </mesh>
+      <mesh position={[0, 2.32, 0]} rotation={[Math.PI, 0, 0]}>
+        <coneGeometry args={[0.27, 0.24, 12, 1, true]} />
+        <meshStandardMaterial color="#76502c" metalness={0.18} roughness={0.8} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, 2.2, 0]}>
+        <sphereGeometry args={[0.14, 12, 8]} />
+        <meshStandardMaterial color="#ffd98b" emissive="#ff8a22" emissiveIntensity={2.4} />
+      </mesh>
+      <pointLight color="#ffc166" intensity={11} distance={6} decay={1.8} position={[0, 2.15, 0]} />
     </group>
   )
 }
