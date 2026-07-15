@@ -240,7 +240,7 @@ function App() {
 
   function talkToNpc(npc: LibraryNpc | null = talkableNpc) {
     if (!npc || !isNpcReachable(playerPoseRef.current, npc)) {
-      setMessage('Move closer to the hooded monk.')
+      setMessage('Move closer to the monk.')
       return
     }
     setReaderOpen(false)
