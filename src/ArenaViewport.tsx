@@ -2,7 +2,7 @@ import { Canvas, type ThreeEvent, useFrame } from '@react-three/fiber'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { cameraYawFromPlayerYaw } from './lib/camera'
+import { FIRST_PERSON_CAMERA_ORDER, cameraYawFromPlayerYaw } from './lib/camera'
 import { galleriesForConnector, signedLabel, zoneLabel } from './lib/level'
 import {
   BOOKS_PER_SHELF,
@@ -233,11 +233,12 @@ function LibraryScene({
   return (
     <>
       <PlayerCamera playerPose={playerPose} movementCue={movementCue} cameraPitch={cameraPitch} jumpOffset={jumpOffset} />
-      <color attach="background" args={['#080706']} />
-      <fog attach="fog" args={['#080706', 6.5, 18]} />
-      <ambientLight intensity={0.34} color="#a89a80" />
-      <hemisphereLight color="#d9c38f" groundColor="#17100b" intensity={0.42} />
-      <pointLight color="#ffb34d" intensity={18} position={[0, 2.45, 0]} distance={9} decay={2} />
+      <color attach="background" args={['#0d0b09']} />
+      <fog attach="fog" args={['#0d0b09', 8, 22]} />
+      <ambientLight intensity={0.58} color="#c7b99f" />
+      <hemisphereLight color="#f2d9a3" groundColor="#241a12" intensity={0.7} />
+      <directionalLight color="#ffe2aa" intensity={0.78} position={[4, 7, 3]} />
+      <pointLight color="#ffc76f" intensity={30} position={[0, 2.55, 0]} distance={12} decay={1.8} />
       {playerPose.zone.kind === 'gallery' ? (
         <GalleryScene
           playerPose={playerPose}
@@ -507,7 +508,7 @@ function StairScene({ ascending }: { ascending: boolean }) {
           </group>
         )
       })}
-      <pointLight color="#e59a3b" intensity={12} distance={7} position={[0, ascending ? FLOOR_HEIGHT * 0.7 : FLOOR_HEIGHT * 0.3, 0]} />
+      <pointLight color="#ffc05c" intensity={22} distance={9} decay={1.8} position={[0, ascending ? FLOOR_HEIGHT * 0.7 : FLOOR_HEIGHT * 0.3, 0]} />
     </>
   )
 }
@@ -528,7 +529,7 @@ function PlayerCamera({
     const idleBob = Math.sin(clock.elapsedTime * 2.4) * 0.007
     const stepBob = movementCue === 'step' ? Math.sin(clock.elapsedTime * 20) * 0.018 : 0
     camera.position.set(transform.x, transform.y + PLAYER_EYE_HEIGHT + jumpOffset + idleBob + stepBob, transform.z)
-    camera.rotation.set(cameraPitch, cameraYawFromPlayerYaw(transform.yaw), 0)
+    camera.rotation.set(cameraPitch, cameraYawFromPlayerYaw(transform.yaw), 0, FIRST_PERSON_CAMERA_ORDER)
   })
   return null
 }
@@ -676,7 +677,7 @@ function WarmLamp({ position }: { position: [number, number, number] }) {
     <group position={position}>
       <mesh position={[0, 1.9, 0]}><cylinderGeometry args={[0.04, 0.04, 1.25, 8]} /><meshStandardMaterial color="#6e4c25" /></mesh>
       <mesh position={[0, 2.43, 0]}><sphereGeometry args={[0.16, 10, 8]} /><meshStandardMaterial color="#ffd277" emissive="#ff8a22" emissiveIntensity={2.2} /></mesh>
-      <pointLight color="#ffad4c" intensity={5} distance={4.5} position={[0, 2.34, 0]} />
+      <pointLight color="#ffc166" intensity={11} distance={6} decay={1.8} position={[0, 2.34, 0]} />
     </group>
   )
 }
