@@ -47,13 +47,18 @@ const wordSet = new Set(
 const wordLengths = [...new Set([...wordSet].map((word) => word.length))].sort((a, b) => b - a)
 const letterSet = new Set([...LETTER_SYMBOLS])
 
-export function highlightEnglishWords(line: string): HighlightSegment[] {
+export function highlightEnglishWords(line: string, emphasizedWord?: string): HighlightSegment[] {
+  const emphasized = emphasizedWord?.trim().toLowerCase()
+  const activeWords = emphasized && /^[a-z]+$/.test(emphasized) ? new Set([...wordSet, emphasized]) : wordSet
+  const activeLengths = emphasized && !wordSet.has(emphasized)
+    ? [...new Set([...wordLengths, emphasized.length])].sort((a, b) => b - a)
+    : wordLengths
   const segments: HighlightSegment[] = []
   let plain = ''
   let index = 0
 
   while (index < line.length) {
-    const match = longestWordAt(line, index)
+    const match = longestWordAt(line, index, activeWords, activeLengths)
     if (match) {
       if (plain) {
         segments.push({ text: plain, highlight: false })
@@ -75,18 +80,18 @@ export function highlightEnglishWords(line: string): HighlightSegment[] {
   return segments
 }
 
-export function highlightPage(lines: string[]): HighlightSegment[][] {
-  return lines.map(highlightEnglishWords)
+export function highlightPage(lines: string[], emphasizedWord?: string): HighlightSegment[][] {
+  return lines.map((line) => highlightEnglishWords(line, emphasizedWord))
 }
 
-function longestWordAt(line: string, index: number): string | null {
-  if (!letterSet.has(line[index])) {
+function longestWordAt(line: string, index: number, words: Set<string>, lengths: number[]): string | null {
+  if (!letterSet.has(line[index]) && !/[a-z]/.test(line[index])) {
     return null
   }
 
-  for (const length of wordLengths) {
+  for (const length of lengths) {
     const candidate = line.slice(index, index + length)
-    if (candidate.length === length && wordSet.has(candidate)) {
+    if (candidate.length === length && words.has(candidate)) {
       return candidate
     }
   }

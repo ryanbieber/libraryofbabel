@@ -1,13 +1,13 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import type { QuestMarkerState } from './ArenaViewport'
+import type { QuestMarkerState, SceneNpc } from './ArenaViewport'
 import { BookReader } from './components/BookReader'
 import { NpcDialoguePanel } from './components/NpcDialoguePanel'
 import { QuestLog } from './components/QuestLog'
 import { SplashScreen } from './components/SplashScreen'
-import { SHELF_WALLS, generatePage, nearbyBookAddress, type BookAddress, type ShelfWall } from './lib/library'
+import { SHELF_WALLS, addressKey, nearbyBookAddress, type BookAddress, type ShelfWall } from './lib/library'
 import { spreadToLeftPage, spreadToRightPage } from './lib/bookSpread'
 import { zoneLabel } from './lib/level'
-import { isNpcReachable, npcForGallery, type LibraryNpc } from './lib/npcs'
+import { isNpcReachable, nearestNpc, npcsForGallery, type LibraryNpc } from './lib/npcs'
 import {
   BOOK_INTERACTION_RADIUS,
   WALK_SPEED,
@@ -26,6 +26,7 @@ import {
   type WordQuestStatus,
 } from './lib/significantWordQuest'
 import { QUEST_TARGET_WORD } from './lib/quest'
+import { findWord, generatePageWithFinding, wordFindingLabel, type WordFinding } from './lib/wordFinder'
 import './App.css'
 
 const LazyArenaViewport = lazy(() => import('./ArenaViewport').then((module) => ({ default: module.ArenaViewport })))
@@ -47,10 +48,12 @@ function App() {
   const [cameraPitch, setCameraPitch] = useState(0)
   const [jumpOffset, setJumpOffset] = useState(0)
   const [selectedBook, setSelectedBook] = useState<BookAddress>(initialGame.selectedBook)
+  const [wordFinding, setWordFinding] = useState<WordFinding | null>(initialGame.wordFinding)
   const [wordQuestStatus, setWordQuestStatus] = useState<WordQuestStatus>(initialGame.questStatus)
   const [readerOpen, setReaderOpen] = useState(false)
   const [dialogueNpc, setDialogueNpc] = useState<LibraryNpc | null>(null)
   const [wordQuestFeedback, setWordQuestFeedback] = useState<WordQuestFeedback | null>(null)
+  const [wordFinderFeedback, setWordFinderFeedback] = useState<string | null>(null)
   const [questLogMinimized, setQuestLogMinimized] = useState(false)
   const [splashOpen, setSplashOpen] = useState(true)
   const [hasStarted, setHasStarted] = useState(false)
@@ -68,14 +71,18 @@ function App() {
 
   const leftPageNumber = spreadToLeftPage(spread)
   const rightPageNumber = spreadToRightPage(spread)
-  const leftPage = useMemo(() => generatePage({ ...selectedBook, page: leftPageNumber }), [selectedBook, leftPageNumber])
-  const rightPage = useMemo(() => generatePage({ ...selectedBook, page: rightPageNumber }), [selectedBook, rightPageNumber])
-  const currentNpc = useMemo(() => {
-    if (playerPose.zone.kind !== 'gallery') return null
-    return npcForGallery(playerPose.floor, playerPose.zone.gallery)
+  const leftPage = useMemo(() => generatePageWithFinding({ ...selectedBook, page: leftPageNumber }, wordFinding), [selectedBook, leftPageNumber, wordFinding])
+  const rightPage = useMemo(() => generatePageWithFinding({ ...selectedBook, page: rightPageNumber }, wordFinding), [selectedBook, rightPageNumber, wordFinding])
+  const currentNpcs = useMemo(() => {
+    if (playerPose.zone.kind !== 'gallery') return []
+    return npcsForGallery(playerPose.floor, playerPose.zone.gallery)
   }, [playerPose.floor, playerPose.zone])
-  const canTalkToNpc = isNpcReachable(playerPose, currentNpc)
-  const questMarker = questMarkerForNpc(currentNpc, wordQuestStatus)
+  const closestNpc = nearestNpc(playerPose, currentNpcs)
+  const talkableNpc = isNpcReachable(playerPose, closestNpc) ? closestNpc : null
+  const npcStates = useMemo<SceneNpc[]>(() => currentNpcs.map((npc) => ({
+    npc,
+    questMarker: questMarkerForNpc(npc, wordQuestStatus),
+  })), [currentNpcs, wordQuestStatus])
 
   useEffect(() => {
     modalOpenRef.current = readerOpen || splashOpen || dialogueNpc !== null
@@ -90,10 +97,10 @@ function App() {
   useEffect(() => {
     if (!hasStarted) return
     const timeout = window.setTimeout(() => {
-      writeSavedGame({ version: 1, pose: playerPose, selectedBook, questStatus: wordQuestStatus })
+      writeSavedGame({ version: 1, pose: playerPose, selectedBook, questStatus: wordQuestStatus, wordFinding })
     }, 300)
     return () => window.clearTimeout(timeout)
-  }, [hasStarted, playerPose, selectedBook, wordQuestStatus])
+  }, [hasStarted, playerPose, selectedBook, wordFinding, wordQuestStatus])
 
   useEffect(() => {
     let animationFrame = 0
@@ -199,8 +206,8 @@ function App() {
 
   function interact() {
     if (readerOpen || splashOpen || dialogueNpc !== null) return
-    if (currentNpc && isNpcReachable(playerPoseRef.current, currentNpc)) {
-      talkToNpc()
+    if (talkableNpc) {
+      talkToNpc(talkableNpc)
       return
     }
     const pose = playerPoseRef.current
@@ -225,25 +232,29 @@ function App() {
       setMessage(`That volume is ${distanceToBook(playerPoseRef.current, address) > BOOK_INTERACTION_RADIUS ? 'too far away' : 'out of reach'}.`)
       return
     }
-    setSpread(1)
+    const findingPage = wordFinding && addressKey(wordFinding.address) === addressKey(address) ? wordFinding.address.page : 1
+    setSpread(Math.ceil(findingPage / 2))
     setReaderOpen(true)
     setMessage('The volume opens like dry leather.')
   }
 
-  function talkToNpc() {
-    if (!currentNpc || !isNpcReachable(playerPoseRef.current, currentNpc)) {
+  function talkToNpc(npc: LibraryNpc | null = talkableNpc) {
+    if (!npc || !isNpcReachable(playerPoseRef.current, npc)) {
       setMessage('Move closer to the hooded monk.')
       return
     }
     setReaderOpen(false)
-    setDialogueNpc(currentNpc)
-    if (currentNpc.quest === 'significant-word') {
+    setDialogueNpc(npc)
+    if (npc.quest === 'significant-word') {
       const questMessage = wordQuestStatus === 'ready-to-complete'
         ? 'You return to the monk with the proven coordinate.'
         : wordQuestStatus === 'accepted'
           ? 'The monk waits while the search continues in your Quest Log.'
           : 'The monk offers a quest from the open book.'
       setMessage(questMessage)
+    } else if (npc.quest === 'word-finder') {
+      setWordFinderFeedback(null)
+      setMessage(wordFinding ? `The indexer remembers “${wordFinding.word}”.` : 'The indexer waits for a word.')
     } else {
       setMessage('The monk raises two ink-stained fingers.')
     }
@@ -254,8 +265,10 @@ function App() {
     const game = defaultSavedGame()
     setPlayerPose(game.pose)
     setSelectedBook(game.selectedBook)
+    setWordFinding(game.wordFinding)
     setWordQuestStatus(game.questStatus)
     setWordQuestFeedback(null)
+    setWordFinderFeedback(null)
     setQuestLogMinimized(false)
     setDialogueNpc(null)
     setReaderOpen(false)
@@ -284,7 +297,7 @@ function App() {
   }
 
   function submitSignificantWordQuest(values: WordQuestFormValues) {
-    const result = resolveSignificantWordQuestSubmission(values, wordQuestStatus)
+    const result = resolveSignificantWordQuestSubmission(values, wordQuestStatus, wordFinding)
     if (result.nextStatus !== undefined) {
       setWordQuestStatus(result.nextStatus)
       if (result.nextStatus === 'ready-to-complete') setQuestLogMinimized(false)
@@ -299,6 +312,18 @@ function App() {
     setMessage(`Quest complete: Find "${QUEST_TARGET_WORD}".`)
   }
 
+  function askWordFinder(rawWord: string) {
+    const result = findWord(rawWord)
+    if (!result.valid) {
+      setWordFinderFeedback(result.message)
+      setMessage(result.message)
+      return
+    }
+    setWordFinding(result.finding)
+    setWordFinderFeedback(null)
+    setMessage(`The indexer directs you to ${wordFindingLabel(result.finding)}.`)
+  }
+
   return (
     <main className="arena-shell">
       <section className={`game-frame ${readerOpen || splashOpen || dialogueNpc !== null ? 'ui-modal-open' : ''}`} aria-label="Library game viewport">
@@ -311,11 +336,10 @@ function App() {
                 movementCue={movementCue}
                 cameraPitch={cameraPitch}
                 jumpOffset={jumpOffset}
-                npc={currentNpc}
-                questMarker={questMarker}
-                canTalkToNpc={canTalkToNpc && dialogueNpc === null}
+                npcStates={npcStates}
+                talkableNpcId={dialogueNpc === null ? talkableNpc?.id ?? null : null}
                 onOpenBook={openBook}
-                onTalkToNpc={talkToNpc}
+                onTalkToNpc={(npc) => talkToNpc(npc)}
                 onLook={lookPlayer}
                 onInteract={interact}
                 onJump={startJump}
@@ -360,6 +384,7 @@ function App() {
           rightPageNumber={rightPageNumber}
           leftPage={leftPage}
           rightPage={rightPage}
+          highlightWord={wordFinding && addressKey(selectedBook) === addressKey(wordFinding.address) ? wordFinding.word : undefined}
           onClose={() => setReaderOpen(false)}
           onSpreadChange={setSpread}
         />
@@ -370,9 +395,12 @@ function App() {
           npc={dialogueNpc}
           questStatus={wordQuestStatus}
           questFeedback={wordQuestFeedback}
+          wordFinding={wordFinding}
+          wordFinderFeedback={wordFinderFeedback}
           onClose={() => setDialogueNpc(null)}
           onAcceptSignificantWordQuest={acceptSignificantWordQuest}
           onCompleteSignificantWordQuest={completeSignificantWordQuest}
+          onFindWord={askWordFinder}
         />
       ) : null}
     </main>
@@ -398,6 +426,7 @@ function movementFromPressedKeys(keys: Set<string>): HoldMovement {
 }
 
 function questMarkerForNpc(npc: LibraryNpc | null, status: WordQuestStatus): QuestMarkerState {
+  if (npc?.quest === 'word-finder') return 'inquiry'
   if (npc?.quest !== 'significant-word' || status === 'completed') return null
   if (status === 'ready-to-complete') return 'complete'
   return status === 'not-started' ? 'available' : null

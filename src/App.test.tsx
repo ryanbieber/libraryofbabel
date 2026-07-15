@@ -9,6 +9,7 @@ import { QuestLog } from './components/QuestLog'
 import { defaultAddress, generatePage } from './lib/library'
 import type { LibraryNpc } from './lib/npcs'
 import { shouldBookCapturePointer } from './lib/pointer'
+import { defaultSavedGame, writeSavedGame } from './lib/saveGame'
 
 describe('App interactions', () => {
   beforeEach(() => {
@@ -106,6 +107,25 @@ describe('App interactions', () => {
     expect(screen.getAllByText('Wall must be A, B, C, or D.')).toHaveLength(2)
   })
 
+  it('lets the blue-marker indexer locate a submitted word', async () => {
+    const game = defaultSavedGame()
+    game.pose = { ...game.pose, x: 2.35, z: -0.65 }
+    writeSavedGame(game)
+    const { container } = render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    await screen.findByTestId('arena-viewport')
+    expect(container.querySelector('.npc-quest-marker.inquiry')).toHaveTextContent('?')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Talk to Hooded indexer of lost words' }))
+    expect(screen.getByText(/I have found many in my long attendance here/i)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Word to find'), { target: { value: 'world' } })
+    fireEvent.click(screen.getByRole('button', { name: 'ask the indexer' }))
+
+    expect(screen.getByLabelText('Word finder directions')).toHaveTextContent('“world”')
+    expect(screen.getByLabelText('Word finder directions')).toHaveTextContent(/floor .* gallery .* wall [A-D].* shelf .* volume .* page/i)
+  })
+
   it('opens the journey menu with Continue and New Journey choices', async () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
@@ -147,9 +167,12 @@ describe('App interactions', () => {
         npc={npc}
         questStatus="ready-to-complete"
         questFeedback={{ tone: 'success', text: 'Objective complete.' }}
+        wordFinding={null}
+        wordFinderFeedback={null}
         onClose={() => undefined}
         onAcceptSignificantWordQuest={() => undefined}
         onCompleteSignificantWordQuest={onComplete}
+        onFindWord={() => undefined}
       />,
     )
     expect(screen.getByLabelText('Quest ready to complete')).toHaveTextContent('Quest Complete')

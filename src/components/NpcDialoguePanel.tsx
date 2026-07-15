@@ -1,7 +1,9 @@
 import { X } from 'lucide-react'
+import { useState, type FormEvent } from 'react'
 import type { LibraryNpc } from '../lib/npcs'
 import { QUEST_TARGET_WORD, targetWordOdds } from '../lib/quest'
 import type { WordQuestFeedback, WordQuestStatus } from '../lib/significantWordQuest'
+import { wordFindingLabel, type WordFinding } from '../lib/wordFinder'
 
 const significantWordOdds = targetWordOdds(QUEST_TARGET_WORD)
 
@@ -9,18 +11,31 @@ export function NpcDialoguePanel({
   npc,
   questStatus,
   questFeedback,
+  wordFinding,
+  wordFinderFeedback,
   onClose,
   onAcceptSignificantWordQuest,
   onCompleteSignificantWordQuest,
+  onFindWord,
 }: {
   npc: LibraryNpc
   questStatus: WordQuestStatus
   questFeedback: WordQuestFeedback | null
+  wordFinding: WordFinding | null
+  wordFinderFeedback: string | null
   onClose: () => void
   onAcceptSignificantWordQuest: () => void
   onCompleteSignificantWordQuest: () => void
+  onFindWord: (word: string) => void
 }) {
   const isSignificantWordQuest = npc.quest === 'significant-word'
+  const isWordFinder = npc.quest === 'word-finder'
+  const [finderWord, setFinderWord] = useState(wordFinding?.word ?? '')
+
+  function submitWord(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    onFindWord(finderWord)
+  }
 
   return (
     <section className="npc-dialogue" aria-label="Monk dialogue">
@@ -55,6 +70,31 @@ export function NpcDialoguePanel({
             </>
           ) : null}
         </div>
+        {isWordFinder ? (
+          <form className="word-finder-form" aria-label="Ask about a word" onSubmit={submitWord}>
+            <label>
+              Word
+              <input
+                value={finderWord}
+                aria-label="Word to find"
+                maxLength={32}
+                autoComplete="off"
+                placeholder="labyrinth"
+                onChange={(event) => setFinderWord(event.target.value)}
+              />
+            </label>
+            <button type="submit">ask the indexer</button>
+          </form>
+        ) : null}
+        {isWordFinder && wordFinderFeedback ? <p className="quest-feedback error" role="status">{wordFinderFeedback}</p> : null}
+        {isWordFinder && wordFinding ? (
+          <div className="word-finder-result" aria-label="Word finder directions">
+            <span>The index opens</span>
+            <strong>“{wordFinding.word}”</strong>
+            <p>{wordFindingLabel(wordFinding)}</p>
+            <small>Go to that shelf, open the volume, and turn to the named page.</small>
+          </div>
+        ) : null}
         {isSignificantWordQuest && questStatus === 'not-started' ? (
           <div className="quest-offer">
             <button type="button" onClick={onAcceptSignificantWordQuest}>
@@ -85,6 +125,7 @@ export function NpcDialoguePanel({
 
 function npcQuestKicker(quest: LibraryNpc['quest']): string {
   if (quest === 'significant-word') return 'Significant word'
+  if (quest === 'word-finder') return 'Ask about a word'
   return quest === 'messiah' ? 'Man of the Book' : 'Crimson rumor'
 }
 

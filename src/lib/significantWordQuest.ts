@@ -1,6 +1,7 @@
 import { isFloorIndex, isGalleryIndex } from './level'
-import { BOOKS_PER_SHELF, PAGES_PER_BOOK, SHELF_WALLS, SHELVES_PER_WALL, generatePage, type ShelfWall } from './library'
+import { BOOKS_PER_SHELF, PAGES_PER_BOOK, SHELF_WALLS, SHELVES_PER_WALL, type ShelfWall } from './library'
 import { QUEST_TARGET_WORD, pageContainsWord, type SignificantWordSubmission } from './quest'
+import { generatePageWithFinding, type WordFinding } from './wordFinder'
 
 export type WordQuestStatus = 'not-started' | 'accepted' | 'ready-to-complete' | 'completed'
 export type WordQuestFeedback = { tone: 'success' | 'error'; text: string }
@@ -22,6 +23,7 @@ type SignificantWordQuestSubmissionResult = {
 export function resolveSignificantWordQuestSubmission(
   values: WordQuestFormValues,
   status: WordQuestStatus,
+  wordFinding: WordFinding | null = null,
 ): SignificantWordQuestSubmissionResult {
   if (status === 'not-started') {
     const text = 'Accept the monk quest before testing coordinates.'
@@ -30,7 +32,7 @@ export function resolveSignificantWordQuestSubmission(
   const result = parseSignificantWordSubmission(values)
   if (!result.valid) return { feedback: { tone: 'error', text: result.message }, message: result.message }
 
-  if (pageContainsWord(generatePage(result.submission), QUEST_TARGET_WORD)) {
+  if (pageContainsWord(generatePageWithFinding(result.submission, wordFinding), QUEST_TARGET_WORD)) {
     const { floor, gallery, wall, shelf, volume, page } = result.display
     const location = `floor ${floor}, gallery ${gallery}, wall ${wall}, shelf ${shelf}, volume ${volume}, page ${page}`
     const text = `At last, a coordinate instead of a sermon: ${location}. The word is there.`
