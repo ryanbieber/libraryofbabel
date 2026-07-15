@@ -1,6 +1,6 @@
 import { Canvas, type ThreeEvent, useFrame } from '@react-three/fiber'
 import type { PointerEvent as ReactPointerEvent } from 'react'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { FIRST_PERSON_CAMERA_ORDER, cameraYawFromPlayerYaw } from './lib/camera'
 import { galleriesForConnector, signedLabel, zoneLabel } from './lib/level'
@@ -40,7 +40,7 @@ export type SceneNpc = { npc: LibraryNpc; questMarker: QuestMarkerState }
 
 type ArenaViewportProps = {
   playerPose: PlayerPose
-  selectedBook: BookAddress
+  presentedBook: BookAddress | null
   movementCue: MovementCue
   cameraPitch: number
   jumpOffset: number
@@ -58,10 +58,14 @@ const ROOM_HEIGHT = 3.08
 const TOUCH_LOOK_SENSITIVITY = 0.006
 const MOUSE_LOOK_SENSITIVITY = 0.0048
 const CLICK_INTERACT_DEADZONE_PX = 8
+const BOOK_PULL_DISTANCE = 0.42
+const BOOK_PRESENTATION_ANGLE = Math.PI / 4
+const LEATHER_COLORS = ['#32140f', '#482116', '#2b2416', '#182321', '#20212a', '#3a2919', '#241713'] as const
+const SPINE_BAND_HEIGHT_RATIOS = [-0.31, 0.31] as const
 
 export function ArenaViewport({
   playerPose,
-  selectedBook,
+  presentedBook,
   movementCue,
   cameraPitch,
   jumpOffset,
@@ -143,6 +147,7 @@ export function ArenaViewport({
       data-testid="arena-viewport"
       data-zone={playerPose.zone.kind}
       data-book-hovered={hoveredBook ? 'true' : 'false'}
+      data-book-presented={presentedBook ? addressKey(presentedBook) : ''}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}
@@ -159,7 +164,7 @@ export function ArenaViewport({
             playerPose={playerPose}
             cameraPitch={cameraPitch}
             jumpOffset={jumpOffset}
-            selectedBook={selectedBook}
+            presentedBook={presentedBook}
             hoveredBook={hoveredBook}
             movementCue={movementCue}
             npcStates={npcStates}
@@ -209,7 +214,7 @@ function LibraryScene({
   playerPose,
   cameraPitch,
   jumpOffset,
-  selectedBook,
+  presentedBook,
   hoveredBook,
   movementCue,
   npcStates,
@@ -220,7 +225,7 @@ function LibraryScene({
   playerPose: PlayerPose
   cameraPitch: number
   jumpOffset: number
-  selectedBook: BookAddress
+  presentedBook: BookAddress | null
   hoveredBook: BookAddress | null
   movementCue: MovementCue
   npcStates: SceneNpc[]
@@ -245,7 +250,7 @@ function LibraryScene({
               floor={scene.floor}
               playerPose={playerPose}
               gallery={scene.zone.gallery}
-              selectedBook={selectedBook}
+              presentedBook={presentedBook}
               hoveredBook={scene.isCurrent ? hoveredBook : null}
               interactive={scene.isCurrent}
               npcStates={scene.isCurrent ? npcStates : []}
@@ -268,7 +273,7 @@ function GalleryScene({
   floor,
   playerPose,
   gallery,
-  selectedBook,
+  presentedBook,
   hoveredBook,
   interactive,
   npcStates,
@@ -279,7 +284,7 @@ function GalleryScene({
   floor: BookAddress['floor']
   playerPose: PlayerPose
   gallery: BookAddress['gallery']
-  selectedBook: BookAddress
+  presentedBook: BookAddress | null
   hoveredBook: BookAddress | null
   interactive: boolean
   npcStates: SceneNpc[]
@@ -312,7 +317,7 @@ function GalleryScene({
           gallery={gallery}
           wall={wall}
           playerPose={playerPose}
-          selectedBook={selectedBook}
+          presentedBook={presentedBook}
           hoveredBook={hoveredBook}
           interactive={interactive}
           onOpenBook={onOpenBook}
@@ -335,7 +340,7 @@ function ShelfWall({
   gallery,
   wall,
   playerPose,
-  selectedBook,
+  presentedBook,
   hoveredBook,
   interactive,
   onOpenBook,
@@ -345,7 +350,7 @@ function ShelfWall({
   gallery: BookAddress['gallery']
   wall: ShelfWall
   playerPose: PlayerPose
-  selectedBook: BookAddress
+  presentedBook: BookAddress | null
   hoveredBook: BookAddress | null
   interactive: boolean
   onOpenBook: (address: BookAddress) => void
@@ -374,7 +379,7 @@ function ShelfWall({
         gallery={gallery}
         wall={wall}
         playerPose={playerPose}
-        selectedBook={selectedBook}
+        presentedBook={presentedBook}
         hoveredBook={hoveredBook}
         interactive={interactive}
         onOpenBook={onOpenBook}
@@ -389,7 +394,7 @@ function InstancedBooks({
   gallery,
   wall,
   playerPose,
-  selectedBook,
+  presentedBook,
   hoveredBook,
   interactive,
   onOpenBook,
@@ -399,7 +404,7 @@ function InstancedBooks({
   gallery: BookAddress['gallery']
   wall: ShelfWall
   playerPose: PlayerPose
-  selectedBook: BookAddress
+  presentedBook: BookAddress | null
   hoveredBook: BookAddress | null
   interactive: boolean
   onOpenBook: (address: BookAddress) => void
@@ -407,63 +412,137 @@ function InstancedBooks({
 }) {
   const count = SHELVES_PER_WALL * BOOKS_PER_SHELF
   const meshRef = useRef<THREE.InstancedMesh>(null)
+  const toolingRef = useRef<THREE.InstancedMesh>(null)
   const dummy = useMemo(() => new THREE.Object3D(), [])
+  const toolingDummy = useMemo(() => new THREE.Object3D(), [])
+  const animatedInstanceRef = useRef<number | null>(null)
+  const presentationProgressRef = useRef(0)
+  const presentedInstance = useMemo(() => {
+    if (
+      presentedBook === null
+      || presentedBook.floor !== floor
+      || presentedBook.gallery !== gallery
+      || presentedBook.wall !== wall
+    ) return null
+    return presentedBook.shelf * BOOKS_PER_SHELF + presentedBook.book
+  }, [floor, gallery, presentedBook, wall])
+
+  const setBookTransform = useCallback((instance: number, presentation: number) => {
+    const mesh = meshRef.current
+    const tooling = toolingRef.current
+    if (!mesh || !tooling) return
+
+    const shelf = Math.floor(instance / BOOKS_PER_SHELF)
+    const book = instance % BOOKS_PER_SHELF
+    const cellWidth = SHELF_WIDTH / BOOKS_PER_SHELF
+    const width = cellWidth * 0.82
+    const variationSeed = Math.abs(instance * 17 + gallery * 11 + floor * 7)
+    const height = 0.34 + (variationSeed % 9) * 0.009
+    const baseX = -SHELF_WIDTH / 2 + (book + 0.5) * cellWidth
+    const baseY = 1.03 - shelf * 0.49
+    const pullProgress = easeOutCubic(Math.min(1, presentation / 0.72))
+    const turnProgress = smoothStep(Math.max(0, (presentation - 0.28) / 0.72))
+    const angle = BOOK_PRESENTATION_ANGLE * turnProgress
+    const z = -0.31 - BOOK_PULL_DISTANCE * pullProgress
+
+    dummy.position.set(baseX, baseY, z)
+    dummy.rotation.set(0, angle, 0)
+    dummy.scale.set(width, height, 0.13)
+    dummy.updateMatrix()
+    mesh.setMatrixAt(instance, dummy.matrix)
+
+    const spineOffset = 0.073
+    const toolingX = baseX + Math.sin(angle) * spineOffset
+    const toolingZ = z + Math.cos(angle) * spineOffset
+    SPINE_BAND_HEIGHT_RATIOS.forEach((heightRatio, band) => {
+      toolingDummy.position.set(toolingX, baseY + height * heightRatio, toolingZ)
+      toolingDummy.rotation.set(0, angle, 0)
+      toolingDummy.scale.set(width * 0.72, 0.012, 0.008)
+      toolingDummy.updateMatrix()
+      tooling.setMatrixAt(instance * 2 + band, toolingDummy.matrix)
+    })
+  }, [dummy, floor, gallery, toolingDummy])
 
   useLayoutEffect(() => {
     const mesh = meshRef.current
-    if (!mesh) return
+    const tooling = toolingRef.current
+    if (!mesh || !tooling) return
     for (let instance = 0; instance < count; instance += 1) {
-      const shelf = Math.floor(instance / BOOKS_PER_SHELF)
-      const book = instance % BOOKS_PER_SHELF
-      const width = SHELF_WIDTH / BOOKS_PER_SHELF
-      const height = 0.34 + ((instance * 17 + gallery * 11 + floor * 7) % 9) * 0.009
-      dummy.position.set(-SHELF_WIDTH / 2 + (book + 0.5) * width, 1.03 - shelf * 0.49, -0.31)
-      dummy.scale.set(width * 0.82, height, 0.13)
-      dummy.updateMatrix()
-      mesh.setMatrixAt(instance, dummy.matrix)
+      setBookTransform(instance, 0)
     }
     mesh.instanceMatrix.needsUpdate = true
-  }, [count, dummy, floor, gallery])
+    tooling.instanceMatrix.needsUpdate = true
+  }, [count, setBookTransform])
 
   useEffect(() => {
     const mesh = meshRef.current
     if (!mesh) return
+    const activeKey = presentedBook === null ? null : addressKey(presentedBook)
     for (let instance = 0; instance < count; instance += 1) {
       const address = addressFromInstance(floor, gallery, wall, instance)
       const key = addressKey(address)
-      const selected = key === addressKey(selectedBook)
+      const active = key === activeKey
       const hovered = hoveredBook !== null && key === addressKey(hoveredBook)
-      const hue = ((instance * 37 + gallery * 19 + floor * 13) % 360) / 360
-      const color = new THREE.Color().setHSL(hue, 0.44, hovered ? 0.58 : selected ? 0.46 : 0.29)
+      const paletteSeed = Math.abs(instance * 7 + gallery * 5 + floor * 3 + SHELF_WALLS.indexOf(wall) * 11)
+      const color = new THREE.Color(LEATHER_COLORS[paletteSeed % LEATHER_COLORS.length])
+      if (hovered) color.offsetHSL(0, 0.04, 0.16)
+      else if (active) color.offsetHSL(0, 0.02, 0.08)
       mesh.setColorAt(instance, color)
     }
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
-  }, [count, floor, gallery, hoveredBook, selectedBook, wall])
+  }, [count, floor, gallery, hoveredBook, presentedBook, wall])
+
+  useFrame((_, delta) => {
+    if (presentedInstance !== null && animatedInstanceRef.current !== presentedInstance) {
+      if (animatedInstanceRef.current !== null) setBookTransform(animatedInstanceRef.current, 0)
+      animatedInstanceRef.current = presentedInstance
+      presentationProgressRef.current = 0
+    }
+
+    const animatedInstance = animatedInstanceRef.current
+    if (animatedInstance === null) return
+    const target = presentedInstance === animatedInstance ? 1 : 0
+    const nextProgress = THREE.MathUtils.damp(presentationProgressRef.current, target, 6.5, delta)
+    presentationProgressRef.current = Math.abs(nextProgress - target) < 0.001 ? target : nextProgress
+    setBookTransform(animatedInstance, presentationProgressRef.current)
+    if (meshRef.current) meshRef.current.instanceMatrix.needsUpdate = true
+    if (toolingRef.current) toolingRef.current.instanceMatrix.needsUpdate = true
+
+    if (target === 0 && presentationProgressRef.current === 0) {
+      animatedInstanceRef.current = null
+    }
+  })
 
   function addressForEvent(event: ThreeEvent<PointerEvent | MouseEvent>): BookAddress | null {
     return event.instanceId === undefined ? null : addressFromInstance(floor, gallery, wall, event.instanceId)
   }
 
   return (
-    <instancedMesh
-      ref={meshRef}
-      args={[undefined, undefined, count]}
-      onPointerMove={interactive ? (event) => {
-        if (!shouldBookCapturePointer(eventPointerType(event))) { onHoverBook(null); return }
-        event.stopPropagation()
-        const address = addressForEvent(event)
-        onHoverBook(address && distanceToBook(playerPose, address) <= BOOK_INTERACTION_RADIUS ? address : null)
-      } : undefined}
-      onPointerOut={interactive ? () => onHoverBook(null) : undefined}
-      onClick={interactive ? (event) => {
-        if (shouldBookCapturePointer(eventPointerType(event))) event.stopPropagation()
-        const address = addressForEvent(event)
-        if (address) onOpenBook(address)
-      } : undefined}
-    >
-      <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial roughness={0.88} />
-    </instancedMesh>
+    <>
+      <instancedMesh
+        ref={meshRef}
+        args={[undefined, undefined, count]}
+        onPointerMove={interactive ? (event) => {
+          if (!shouldBookCapturePointer(eventPointerType(event))) { onHoverBook(null); return }
+          event.stopPropagation()
+          const address = addressForEvent(event)
+          onHoverBook(address && distanceToBook(playerPose, address) <= BOOK_INTERACTION_RADIUS ? address : null)
+        } : undefined}
+        onPointerOut={interactive ? () => onHoverBook(null) : undefined}
+        onClick={interactive ? (event) => {
+          if (shouldBookCapturePointer(eventPointerType(event))) event.stopPropagation()
+          const address = addressForEvent(event)
+          if (address) onOpenBook(address)
+        } : undefined}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial roughness={0.84} metalness={0.03} />
+      </instancedMesh>
+      <instancedMesh ref={toolingRef} args={[undefined, undefined, count * 2]} raycast={() => null}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#b68a3a" roughness={0.38} metalness={0.58} />
+      </instancedMesh>
+    </>
   )
 }
 
@@ -780,6 +859,15 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
 
 function clampAxis(value: number): number {
   return Math.min(1, Math.max(-1, value))
+}
+
+function easeOutCubic(value: number): number {
+  return 1 - (1 - value) ** 3
+}
+
+function smoothStep(value: number): number {
+  const clamped = Math.min(1, Math.max(0, value))
+  return clamped * clamped * (3 - 2 * clamped)
 }
 
 function isPrimaryPointer(event: ReactPointerEvent<HTMLDivElement>): boolean {
