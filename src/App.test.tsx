@@ -31,8 +31,10 @@ describe('App interactions', () => {
 
     expect(screen.queryByLabelText('Start screen')).not.toBeInTheDocument()
     expect(await screen.findByTestId('arena-viewport')).toHaveAttribute('data-zone', 'gallery')
+    expect(screen.getByLabelText('Current location')).toHaveTextContent('gallery 0')
+    expect(screen.getByLabelText('Current location')).toHaveTextContent('Floor 0')
     expect(screen.getAllByText('gallery 0').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getByText(/four walls · two passages/i)).toBeInTheDocument()
+    expect(screen.queryByText(/four walls · two passages/i)).not.toBeInTheDocument()
   })
 
   it('uses hold-and-drag traversal without a door action', async () => {
@@ -80,6 +82,7 @@ describe('App interactions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Minimize quest log' }))
     expect(screen.queryByLabelText('Quest floor')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Quest log')).not.toHaveTextContent('Find “babel”')
     expect(screen.getByRole('button', { name: 'Expand quest log' })).toHaveAttribute('aria-expanded', 'false')
     fireEvent.click(screen.getByRole('button', { name: 'Expand quest log' }))
     expect(screen.getByLabelText('Quest floor')).toBeInTheDocument()

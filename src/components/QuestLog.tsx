@@ -36,7 +36,7 @@ export function QuestLog({
         <BookOpenText size={21} aria-hidden="true" />
         <div>
           <span>Quest Log</span>
-          <strong>Find “{QUEST_TARGET_WORD}”</strong>
+          {!minimized ? <strong>Find “{QUEST_TARGET_WORD}”</strong> : null}
         </div>
         <button
           type="button"
