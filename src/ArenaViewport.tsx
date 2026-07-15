@@ -35,7 +35,7 @@ import {
 
 type MovementCue = 'idle' | 'step' | 'turn-left' | 'turn-right'
 type HoldMovement = { forward: number; strafe: number }
-export type QuestMarkerState = 'available' | 'active' | 'complete' | null
+export type QuestMarkerState = 'available' | 'complete' | null
 
 type ArenaViewportProps = {
   playerPose: PlayerPose

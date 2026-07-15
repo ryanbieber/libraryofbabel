@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import type { QuestMarkerState } from './ArenaViewport'
 import { BookReader } from './components/BookReader'
 import { NpcDialoguePanel } from './components/NpcDialoguePanel'
+import { QuestLog } from './components/QuestLog'
 import { SplashScreen } from './components/SplashScreen'
 import { SHELF_WALLS, generatePage, nearbyBookAddress, type BookAddress, type ShelfWall } from './lib/library'
 import { spreadToLeftPage, spreadToRightPage } from './lib/bookSpread'
@@ -50,6 +51,7 @@ function App() {
   const [readerOpen, setReaderOpen] = useState(false)
   const [dialogueNpc, setDialogueNpc] = useState<LibraryNpc | null>(null)
   const [wordQuestFeedback, setWordQuestFeedback] = useState<WordQuestFeedback | null>(null)
+  const [questLogMinimized, setQuestLogMinimized] = useState(false)
   const [splashOpen, setSplashOpen] = useState(true)
   const [hasStarted, setHasStarted] = useState(false)
   const [movementCue, setMovementCue] = useState<MovementCue>('idle')
@@ -235,7 +237,16 @@ function App() {
     }
     setReaderOpen(false)
     setDialogueNpc(currentNpc)
-    setMessage(currentNpc.quest === 'significant-word' ? 'The monk offers a quest from the open book.' : 'The monk raises two ink-stained fingers.')
+    if (currentNpc.quest === 'significant-word') {
+      const questMessage = wordQuestStatus === 'ready-to-complete'
+        ? 'You return to the monk with the proven coordinate.'
+        : wordQuestStatus === 'accepted'
+          ? 'The monk waits while the search continues in your Quest Log.'
+          : 'The monk offers a quest from the open book.'
+      setMessage(questMessage)
+    } else {
+      setMessage('The monk raises two ink-stained fingers.')
+    }
   }
 
   function startFreshJourney() {
@@ -245,6 +256,7 @@ function App() {
     setSelectedBook(game.selectedBook)
     setWordQuestStatus(game.questStatus)
     setWordQuestFeedback(null)
+    setQuestLogMinimized(false)
     setDialogueNpc(null)
     setReaderOpen(false)
     setCameraPitchClamped(0)
@@ -266,12 +278,17 @@ function App() {
   function acceptSignificantWordQuest() {
     setWordQuestStatus((current) => current === 'not-started' ? 'accepted' : current)
     setWordQuestFeedback(null)
-    setMessage('The monk waits for floor, gallery, wall, shelf, volume, and page.')
+    setQuestLogMinimized(false)
+    setDialogueNpc(null)
+    setMessage('Quest accepted. The Quest Log opens with fields for floor, gallery, wall, shelf, volume, and page.')
   }
 
   function submitSignificantWordQuest(values: WordQuestFormValues) {
     const result = resolveSignificantWordQuestSubmission(values, wordQuestStatus)
-    if (result.nextStatus !== undefined) setWordQuestStatus(result.nextStatus)
+    if (result.nextStatus !== undefined) {
+      setWordQuestStatus(result.nextStatus)
+      if (result.nextStatus === 'ready-to-complete') setQuestLogMinimized(false)
+    }
     setWordQuestFeedback(result.feedback)
     setMessage(result.message)
   }
@@ -310,11 +327,13 @@ function App() {
         {hasStarted ? <button type="button" className="journey-menu" onClick={() => setSplashOpen(true)}>Journey</button> : null}
         <div className="message-bar" role="status">{message}</div>
         {wordQuestStatus === 'accepted' || wordQuestStatus === 'ready-to-complete' ? (
-          <aside className={`quest-tracker ${wordQuestStatus}`} aria-label="Quest tracker">
-            <span>{wordQuestStatus === 'ready-to-complete' ? 'Ready to turn in' : 'Quest accepted'}</span>
-            <strong>Find "{QUEST_TARGET_WORD}"</strong>
-            <p>{wordQuestStatus === 'ready-to-complete' ? 'Return to the hooded keeper.' : 'Find a page containing the word and report its coordinates.'}</p>
-          </aside>
+          <QuestLog
+            status={wordQuestStatus}
+            feedback={wordQuestFeedback}
+            minimized={questLogMinimized}
+            onToggleMinimized={() => setQuestLogMinimized((current) => !current)}
+            onSubmit={submitSignificantWordQuest}
+          />
         ) : null}
         {hasStarted ? (
           <div className="control-readout" aria-label="Current position and controls">
@@ -353,7 +372,6 @@ function App() {
           questFeedback={wordQuestFeedback}
           onClose={() => setDialogueNpc(null)}
           onAcceptSignificantWordQuest={acceptSignificantWordQuest}
-          onSubmitSignificantWordQuest={submitSignificantWordQuest}
           onCompleteSignificantWordQuest={completeSignificantWordQuest}
         />
       ) : null}
@@ -382,7 +400,7 @@ function movementFromPressedKeys(keys: Set<string>): HoldMovement {
 function questMarkerForNpc(npc: LibraryNpc | null, status: WordQuestStatus): QuestMarkerState {
   if (npc?.quest !== 'significant-word' || status === 'completed') return null
   if (status === 'ready-to-complete') return 'complete'
-  return status === 'not-started' ? 'available' : 'active'
+  return status === 'not-started' ? 'available' : null
 }
 
 function nearestShelfWall(pose: PlayerPose): ShelfWall {
