@@ -115,17 +115,20 @@ describe('App interactions', () => {
     expect(screen.getByRole('button', { name: 'New Journey' })).toBeInTheDocument()
   })
 
-  it('exposes keyboard, touch, jump, and direct-use controls', async () => {
+  it('uses a scene tap for interaction without a redundant mobile Use button', async () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
-    await screen.findByTestId('arena-viewport')
+    const viewport = await screen.findByTestId('arena-viewport')
     expect(screen.getByLabelText('Current position and controls')).toHaveTextContent('WASD move')
     expect(screen.getByLabelText('Touch controls')).toBeInTheDocument()
     expect(screen.getByLabelText('Movement joystick')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Use' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Use' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Jump' })).toBeInTheDocument()
     fireEvent.keyDown(window, { key: ' ' })
     expect(screen.getByText('You jump.')).toBeInTheDocument()
+    fireEvent.pointerDown(viewport, { button: 0, clientX: 200, clientY: 200, pointerId: 1, pointerType: 'touch' })
+    fireEvent.pointerUp(viewport, { button: 0, clientX: 200, clientY: 200, pointerId: 1, pointerType: 'touch' })
+    expect(screen.getByLabelText('Monk dialogue')).toBeInTheDocument()
   })
 
   it('supports the quest turn-in state with canonical coordinates', () => {
