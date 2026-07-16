@@ -405,7 +405,9 @@ function App() {
           <div className="control-readout" aria-label="Current position and controls">
             <strong>{zoneLabel(playerPose.zone)}</strong>
             <span>{`floor ${signed(playerPose.floor)}`}</span>
-            <span>WASD move. Mouse or swipe looks. Click, tap, or touch to interact. Space jumps.</span>
+            <span>{playerPose.zone.kind === 'stair'
+              ? 'W or ↑ follows the stairs. S or ↓ backtracks to the landing.'
+              : 'WASD move. Mouse or swipe looks. Click, tap, or touch to interact. Space jumps.'}</span>
           </div>
         ) : null}
         {arrivalVisible ? (

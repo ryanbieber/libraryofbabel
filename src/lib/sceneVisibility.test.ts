@@ -40,7 +40,7 @@ describe('adjacent scene visibility', () => {
   it('shows both landings while traveling on a stair', () => {
     const scenes = visibleScenesForPose({
       ...STARTING_PLAYER_POSE,
-      zone: { kind: 'stair', connector: 0, from: 0, to: 1, progress: 0.5 },
+      zone: { kind: 'stair', connector: 0, from: 0, to: 1, distance: 3.9 },
       x: 0,
       z: 0,
     })

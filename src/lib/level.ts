@@ -11,7 +11,7 @@ export type WorldZone =
   | { kind: 'gallery'; gallery: GalleryIndex }
   | { kind: 'vestibule'; connector: ConnectorIndex }
   | { kind: 'service'; connector: ConnectorIndex; room: ServiceRoomKind }
-  | { kind: 'stair'; connector: ConnectorIndex; from: FloorIndex; to: FloorIndex; progress: number }
+  | { kind: 'stair'; connector: ConnectorIndex; from: FloorIndex; to: FloorIndex; distance: number }
 
 export const STARTING_FLOOR: FloorIndex = 0
 export const STARTING_GALLERY: GalleryIndex = 0

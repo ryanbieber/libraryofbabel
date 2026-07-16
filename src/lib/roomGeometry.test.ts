@@ -5,6 +5,7 @@ import {
   GALLERY_APOTHEM,
   LIGHTWELL_RADIUS,
   STARTING_PLAYER_POSE,
+  STAIR_TRAVEL_DISTANCE,
   bookWorldPosition,
   distanceToBook,
   isBookReachable,
@@ -61,8 +62,25 @@ describe('hexagonal first-person geometry', () => {
   })
 
   it('provides a continuous helical camera path', () => {
-    const pose = { ...STARTING_PLAYER_POSE, zone: { kind: 'stair' as const, connector: 0 as const, from: 0 as const, to: 1 as const, progress: 0.5 } }
-    expect(stairCameraPose(pose).y).toBeCloseTo(1.7)
+    const ascending = { ...STARTING_PLAYER_POSE, zone: { kind: 'stair' as const, connector: 0 as const, from: 0 as const, to: 1 as const, distance: STAIR_TRAVEL_DISTANCE / 2 } }
+    const descending = { ...STARTING_PLAYER_POSE, floor: 1 as const, zone: { kind: 'stair' as const, connector: 0 as const, from: 1 as const, to: 0 as const, distance: STAIR_TRAVEL_DISTANCE / 2 } }
+
+    expect(stairCameraPose(ascending).y).toBeCloseTo(1.7)
+    expect(stairCameraPose(descending).y).toBeCloseTo(1.7)
+    expect(stairCameraPose(ascending).yaw).not.toBeCloseTo(stairCameraPose(descending).yaw)
+  })
+
+  it('lets the player reverse along the stair track and return to the original landing', () => {
+    const vestibule = { ...STARTING_PLAYER_POSE, zone: { kind: 'vestibule' as const, connector: -1 as const }, x: 2.55, z: -0.4, yaw: Math.PI / 2 }
+    const entered = movePose(vestibule, 1, 0, 0.3)
+    const advanced = movePose(entered.pose, 1, 0, 2)
+    const reversed = movePose(advanced.pose, -1, 0, 0.75)
+
+    expect(reversed.pose.zone).toMatchObject({ kind: 'stair', distance: 1.25 })
+    const returned = movePose(reversed.pose, -1, 0, 2)
+    expect(returned.transition).toBe('vestibule')
+    expect(returned.pose.floor).toBe(0)
+    expect(returned.pose.zone).toEqual({ kind: 'vestibule', connector: -1 })
   })
 
   it('places a player close enough to interact with a selected book', () => {

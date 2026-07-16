@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest'
 import { clearSavedGame, defaultSavedGame, parseSavedGame, readSavedGame, writeSavedGame } from './saveGame'
+import { STAIR_TRAVEL_DISTANCE } from './roomGeometry'
 import { findWord } from './wordFinder'
 
 describe('local journey save', () => {
@@ -26,6 +27,21 @@ describe('local journey save', () => {
   it('migrates an existing save without a word finding', () => {
     const { wordFinding: _wordFinding, ...oldSave } = defaultSavedGame()
     expect(parseSavedGame(JSON.stringify(oldSave))?.wordFinding).toBeNull()
+  })
+
+  it('migrates an in-progress stair save from percentage to track distance', () => {
+    const game = defaultSavedGame()
+    const legacy = {
+      ...game,
+      pose: {
+        ...game.pose,
+        zone: { kind: 'stair', connector: 0, from: 0, to: 1, progress: 0.5 },
+      },
+    }
+
+    expect(parseSavedGame(JSON.stringify(legacy))?.pose.zone).toEqual({
+      kind: 'stair', connector: 0, from: 0, to: 1, distance: STAIR_TRAVEL_DISTANCE / 2,
+    })
   })
 
   it('clears a journey', () => {

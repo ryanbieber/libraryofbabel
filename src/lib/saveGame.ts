@@ -1,6 +1,6 @@
 import { defaultAddress, SHELF_WALLS, type BookAddress } from './library'
 import { isFloorIndex, isGalleryIndex } from './level'
-import { isValidPlayerPose, STARTING_PLAYER_POSE, type PlayerPose } from './roomGeometry'
+import { isValidPlayerPose, STARTING_PLAYER_POSE, STAIR_TRAVEL_DISTANCE, type PlayerPose } from './roomGeometry'
 import type { WordQuestStatus } from './significantWordQuest'
 import { isValidWordFinding, type WordFinding } from './wordFinder'
 
@@ -26,12 +26,24 @@ export function parseSavedGame(raw: string | null): SavedGameV1 | null {
   if (!raw) return null
   try {
     const value = JSON.parse(raw) as Partial<SavedGameV1>
-    if (value.version !== 1 || !isValidPlayerPose(value.pose) || !isValidBookAddress(value.selectedBook) || !isQuestStatus(value.questStatus)) return null
+    const pose = migrateLegacyStairPose(value.pose)
+    if (value.version !== 1 || !isValidPlayerPose(pose) || !isValidBookAddress(value.selectedBook) || !isQuestStatus(value.questStatus)) return null
     if (value.wordFinding !== undefined && value.wordFinding !== null && !isValidWordFinding(value.wordFinding)) return null
-    return { ...value, wordFinding: value.wordFinding ?? null } as SavedGameV1
+    return { ...value, pose, wordFinding: value.wordFinding ?? null } as SavedGameV1
   } catch {
     return null
   }
+}
+
+function migrateLegacyStairPose(value: unknown): unknown {
+  if (!value || typeof value !== 'object') return value
+  const pose = value as Record<string, unknown>
+  if (!pose.zone || typeof pose.zone !== 'object') return value
+  const zone = pose.zone as Record<string, unknown>
+  if (zone.kind !== 'stair' || Number.isFinite(zone.distance) || !Number.isFinite(zone.progress)) return value
+  const { progress, ...rest } = zone
+  const fraction = Math.min(1, Math.max(0, Number(progress)))
+  return { ...pose, zone: { ...rest, distance: fraction * STAIR_TRAVEL_DISTANCE } }
 }
 
 export function readSavedGame(storage: Pick<Storage, 'getItem'> = localStorage): SavedGameV1 | null {
