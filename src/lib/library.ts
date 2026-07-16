@@ -15,6 +15,8 @@ export const BOOKS_PER_SHELF = 32
 export const SHELF_WALLS = ['A', 'B', 'C', 'D'] as const
 export type ShelfWall = (typeof SHELF_WALLS)[number]
 
+const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V'] as const
+
 export type BookAddress = {
   floor: FloorIndex
   gallery: GalleryIndex
@@ -38,7 +40,32 @@ export function addressKey(address: BookAddress): string {
 }
 
 export function addressLabel(address: BookAddress): string {
-  return `floor ${signedLabel(address.floor)} / gallery ${signedLabel(address.gallery)} / wall ${address.wall} / shelf ${address.shelf + 1} / volume ${address.book + 1}`
+  return `floor ${signedLabel(address.floor)} / gallery ${signedLabel(address.gallery)} / wall ${wallDisplayLabel(address.wall)} / row ${rowDisplayLabel(address.shelf)} (${address.shelf + 1}) / book ${address.book + 1}`
+}
+
+export function romanNumeral(value: number): string {
+  return ROMAN_NUMERALS[value - 1] ?? String(value)
+}
+
+export function wallDisplayLabel(wall: ShelfWall): string {
+  return `${romanNumeral(SHELF_WALLS.indexOf(wall) + 1)} (${wall})`
+}
+
+export function rowDisplayLabel(shelf: number): string {
+  return romanNumeral(shelf + 1)
+}
+
+export function shelfWallFromLabel(value: string): ShelfWall | null {
+  const clean = value.trim().toUpperCase()
+  const letterIndex = SHELF_WALLS.indexOf(clean as ShelfWall)
+  if (letterIndex >= 0) return SHELF_WALLS[letterIndex]
+  const romanIndex = ROMAN_NUMERALS.indexOf(clean as (typeof ROMAN_NUMERALS)[number])
+  if (romanIndex >= 0 && romanIndex < SHELF_WALLS.length) return SHELF_WALLS[romanIndex]
+  if (/^\d+$/.test(clean)) {
+    const numericIndex = Number(clean) - 1
+    if (numericIndex >= 0 && numericIndex < SHELF_WALLS.length) return SHELF_WALLS[numericIndex]
+  }
+  return null
 }
 
 export function clampPage(page: number): number {

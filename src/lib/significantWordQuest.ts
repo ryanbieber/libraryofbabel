@@ -1,5 +1,13 @@
 import { isFloorIndex, isGalleryIndex } from './level'
-import { BOOKS_PER_SHELF, PAGES_PER_BOOK, SHELF_WALLS, SHELVES_PER_WALL, type ShelfWall } from './library'
+import {
+  BOOKS_PER_SHELF,
+  PAGES_PER_BOOK,
+  SHELVES_PER_WALL,
+  rowDisplayLabel,
+  shelfWallFromLabel,
+  wallDisplayLabel,
+  type ShelfWall,
+} from './library'
 import { QUEST_TARGET_WORD, pageContainsWord, type SignificantWordSubmission } from './quest'
 import { generatePageWithFinding, type WordFinding } from './wordFinder'
 
@@ -34,7 +42,7 @@ export function resolveSignificantWordQuestSubmission(
 
   if (pageContainsWord(generatePageWithFinding(result.submission, wordFinding), QUEST_TARGET_WORD)) {
     const { floor, gallery, wall, shelf, volume, page } = result.display
-    const location = `floor ${floor}, gallery ${gallery}, wall ${wall}, shelf ${shelf}, volume ${volume}, page ${page}`
+    const location = `floor ${floor}, gallery ${gallery}, wall ${wallDisplayLabel(wall)}, row ${rowDisplayLabel(shelf - 1)} (${shelf}), book ${volume}, page ${page}`
     const text = `At last, a coordinate instead of a sermon: ${location}. The word is there.`
     return {
       feedback: { tone: 'success', text },
@@ -60,9 +68,9 @@ function parseSignificantWordSubmission(values: WordQuestFormValues): {
 
   if (floor === null || !isFloorIndex(floor)) return { valid: false, message: 'Floor must be -1, 0, or 1.' }
   if (gallery === null || !isGalleryIndex(gallery)) return { valid: false, message: 'Gallery must be between -2 and 2.' }
-  if (wall === null) return { valid: false, message: 'Wall must be A, B, C, or D.' }
-  if (shelf === null || shelf < 1 || shelf > SHELVES_PER_WALL) return { valid: false, message: `Shelf must be 1-${SHELVES_PER_WALL}.` }
-  if (volume === null || volume < 1 || volume > BOOKS_PER_SHELF) return { valid: false, message: `Volume must be 1-${BOOKS_PER_SHELF}.` }
+  if (wall === null) return { valid: false, message: 'Wall must be I-IV, A-D, or 1-4.' }
+  if (shelf === null || shelf < 1 || shelf > SHELVES_PER_WALL) return { valid: false, message: `Row must be 1-${SHELVES_PER_WALL}.` }
+  if (volume === null || volume < 1 || volume > BOOKS_PER_SHELF) return { valid: false, message: `Book must be 1-${BOOKS_PER_SHELF}.` }
   if (page === null || page < 1 || page > PAGES_PER_BOOK) return { valid: false, message: `Page must be 1-${PAGES_PER_BOOK}.` }
 
   return {
@@ -73,10 +81,7 @@ function parseSignificantWordSubmission(values: WordQuestFormValues): {
 }
 
 function parseWall(value: string): ShelfWall | null {
-  const clean = value.trim().toUpperCase()
-  const numeric = parseUnsignedInteger(clean)
-  if (numeric !== null && numeric >= 1 && numeric <= SHELF_WALLS.length) return SHELF_WALLS[numeric - 1]
-  return SHELF_WALLS.includes(clean as ShelfWall) ? clean as ShelfWall : null
+  return shelfWallFromLabel(value)
 }
 
 function parseSignedInteger(value: string): number | null {

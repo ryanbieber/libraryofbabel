@@ -177,6 +177,64 @@
   font-size: 0.58rem;
 }
 
+.shelf-address-guide {
+  position: absolute;
+  top: 12px;
+  left: 104px;
+  z-index: 8;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 5px 9px;
+  border: 1px solid rgb(207 169 76 / 42%);
+  background: rgb(8 7 10 / 72%);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 241 172 / 4%),
+    0 5px 16px rgb(0 0 0 / 24%);
+  color: var(--ui-gold-muted);
+  font-size: 0.56rem;
+  line-height: 1;
+  pointer-events: none;
+  text-transform: uppercase;
+}
+
+.shelf-address-guide strong {
+  color: var(--ui-gold-bright);
+}
+
+.shelf-address-guide span + span {
+  padding-left: 9px;
+  border-left: 1px solid rgb(207 169 76 / 34%);
+}
+
+.book-address-chip {
+  position: absolute;
+  bottom: 54px;
+  left: 50%;
+  z-index: 9;
+  display: grid;
+  gap: 3px;
+  min-width: min(430px, calc(100vw - 32px));
+  padding: 7px 12px;
+  border: 1px solid rgb(255 214 122 / 76%);
+  background: rgb(20 13 9 / 88%);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 241 172 / 8%),
+    0 8px 28px rgb(0 0 0 / 48%);
+  color: var(--ui-gold-muted);
+  font-size: 0.62rem;
+  line-height: 1.15;
+  pointer-events: none;
+  text-align: center;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+}
+
+.book-address-chip strong {
+  color: var(--ui-gold-bright);
+  font-size: 0.72rem;
+}
+
 .door-strip {
   position: absolute;
   top: 12px;
@@ -1719,6 +1777,24 @@
   .room-label {
     top: 10px;
     right: 10px;
+  }
+
+  .shelf-address-guide {
+    top: 48px;
+    right: 10px;
+    left: 10px;
+    justify-content: center;
+    gap: 6px;
+    font-size: 0.5rem;
+  }
+
+  .shelf-address-guide span + span {
+    padding-left: 6px;
+  }
+
+  .book-address-chip {
+    bottom: 58px;
+    min-width: min(390px, calc(100vw - 24px));
   }
 
   .zone-help {

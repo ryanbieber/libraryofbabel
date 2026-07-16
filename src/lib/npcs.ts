@@ -39,7 +39,7 @@ export function npcForGallery(floor: FloorIndex, gallery: GalleryIndex): Library
       quest: 'significant-word',
       dialogue: [
         'Reader, bring me a book that contains the word babel.',
-        'Tell me the floor, gallery, wall, shelf, volume, and page, and I will test the page myself.',
+        'Tell me the floor, gallery, wall, row, book, and page, and I will test the page myself.',
         'Most pilgrims return with arithmetic and call it faith. I prefer coordinates.',
       ],
       position: NPC_POSITION,
@@ -77,7 +77,7 @@ export function npcsForGallery(floor: FloorIndex, gallery: GalleryIndex): Librar
       quest: 'word-finder',
       dialogue: [
         'Reader, if you would look for a word, I have found many in my long attendance here.',
-        'Give me one word. I will tell you the floor, gallery, wall, shelf, volume, and page where it waits.',
+        'Give me one word. I will tell you the floor, gallery, wall, row, book, and page where it waits.',
         'No word is lost in the Library. Some are merely very far from the question that summoned them.',
       ],
       position: WORD_FINDER_POSITION,

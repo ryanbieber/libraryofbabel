@@ -7,6 +7,7 @@ import {
   SHELVES_PER_WALL,
   SYMBOLS_PER_BOOK,
   SYMBOLS_PER_LINE,
+  addressLabel,
   clampPage,
   defaultAddress,
   deterministicJump,
@@ -14,7 +15,10 @@ import {
   isValidLibraryText,
   nearbyBookAddress,
   normalizeLibraryText,
+  rowDisplayLabel,
   sequenceOdds,
+  shelfWallFromLabel,
+  wallDisplayLabel,
 } from './library'
 
 describe('library constants', () => {
@@ -43,6 +47,15 @@ describe('library constants', () => {
       shelf: 0,
       book: 0,
     })
+  })
+
+  it('presents walls and rows as readable Roman and canonical coordinates', () => {
+    expect(wallDisplayLabel('C')).toBe('III (C)')
+    expect(rowDisplayLabel(1)).toBe('II')
+    expect(addressLabel(defaultAddress)).toBe('floor 0 / gallery 0 / wall I (A) / row II (2) / book 8')
+    expect(shelfWallFromLabel('III')).toBe('C')
+    expect(shelfWallFromLabel('3')).toBe('C')
+    expect(shelfWallFromLabel('c')).toBe('C')
   })
 })
 

@@ -10,6 +10,8 @@ import {
   SHELVES_PER_WALL,
   addressKey,
   nearbyBookAddress,
+  rowDisplayLabel,
+  wallDisplayLabel,
   type BookAddress,
   type ShelfWall,
 } from './lib/library'
@@ -180,6 +182,20 @@ export function ArenaViewport({
         <strong>{zoneLabel(playerPose.zone)}</strong>
         <span>Floor {signedLabel(playerPose.floor)}</span>
       </div>
+      {playerPose.zone.kind === 'gallery' ? (
+        <div className="shelf-address-guide" aria-label="Shelf address guide">
+          <strong>Address guide</strong>
+          <span>Walls I-IV = A-D</span>
+          <span>Rows I-V · top to bottom</span>
+          <span>Books 1-32 · left to right</span>
+        </div>
+      ) : null}
+      {hoveredBook ? (
+        <div className="book-address-chip" role="status">
+          <span>Floor {signedLabel(hoveredBook.floor)} · Gallery {signedLabel(hoveredBook.gallery)}</span>
+          <strong>Wall {wallDisplayLabel(hoveredBook.wall)} · Row {rowDisplayLabel(hoveredBook.shelf)} ({hoveredBook.shelf + 1}) · Book {hoveredBook.book + 1}</strong>
+        </div>
+      ) : null}
       {playerPose.zone.kind === 'vestibule' ? (
         <div className="zone-help" aria-hidden="true">{vestibuleHelp(playerPose.floor)}</div>
       ) : null}
@@ -366,14 +382,20 @@ function ShelfWall({
       </mesh>
       <mesh position={[0, -0.02, -0.1]}>
         <boxGeometry args={[SHELF_WIDTH + 0.24, 2.76, 0.2]} />
-        <meshStandardMaterial color="#3e2417" roughness={1} />
+        <meshStandardMaterial color="#4a2c1c" emissive="#160b06" emissiveIntensity={0.34} roughness={1} />
       </mesh>
       {Array.from({ length: SHELVES_PER_WALL + 1 }, (_, shelf) => (
         <mesh key={shelf} position={[0, 1.18 - shelf * 0.49, -0.24]}>
           <boxGeometry args={[SHELF_WIDTH + 0.28, 0.08, 0.36]} />
-          <meshStandardMaterial color="#6a4025" roughness={0.94} />
+          <meshStandardMaterial color="#765033" emissive="#241207" emissiveIntensity={0.42} roughness={0.94} />
         </mesh>
       ))}
+      {interactive ? (
+        <>
+          <ShelfLamp />
+          <ShelfWayfinding gallery={gallery} wall={wall} />
+        </>
+      ) : null}
       <InstancedBooks
         floor={floor}
         gallery={gallery}
@@ -387,6 +409,101 @@ function ShelfWall({
       />
     </group>
   )
+}
+
+function ShelfLamp() {
+  return (
+    <group position={[0, 1.08, -0.52]}>
+      <mesh position={[0, 0.12, 0.12]}>
+        <boxGeometry args={[0.48, 0.16, 0.12]} />
+        <meshStandardMaterial color="#76502c" metalness={0.22} roughness={0.72} />
+      </mesh>
+      <mesh>
+        <sphereGeometry args={[0.1, 12, 8]} />
+        <meshStandardMaterial color="#ffe0a0" emissive="#ff9d36" emissiveIntensity={2.6} />
+      </mesh>
+      <pointLight color="#ffd39a" intensity={12} distance={4.2} decay={2} position={[0, -0.24, -0.36]} />
+    </group>
+  )
+}
+
+function ShelfWayfinding({ gallery, wall }: { gallery: BookAddress['gallery']; wall: ShelfWall }) {
+  const wallTexture = useMemo(
+    () => createPlaqueTexture(`GALLERY ${signedLabel(gallery)}  ·  WALL ${wallDisplayLabel(wall)}`, 1024, 144),
+    [gallery, wall],
+  )
+  const rowTextures = useMemo(
+    () => Array.from({ length: SHELVES_PER_WALL }, (_, shelf) => createPlaqueTexture(rowDisplayLabel(shelf), 160, 128)),
+    [],
+  )
+  const bookScaleTexture = useMemo(() => createBookScaleTexture(), [])
+
+  useEffect(() => () => {
+    wallTexture.dispose()
+    rowTextures.forEach((texture) => texture.dispose())
+    bookScaleTexture.dispose()
+  }, [bookScaleTexture, rowTextures, wallTexture])
+
+  return (
+    <group>
+      <sprite position={[0, 1.34, -0.39]} scale={[3.15, 0.42, 1]}>
+        <spriteMaterial map={wallTexture} transparent depthWrite={false} toneMapped={false} />
+      </sprite>
+      {Array.from({ length: SHELVES_PER_WALL }, (_, shelf) => (
+        <group key={shelf}>
+          <sprite position={[-SHELF_WIDTH / 2 - 0.2, 1.03 - shelf * 0.49, -0.4]} scale={[0.25, 0.19, 1]}>
+            <spriteMaterial map={rowTextures[shelf]} transparent depthWrite={false} toneMapped={false} />
+          </sprite>
+          <sprite position={[0, 0.74 - shelf * 0.49, -0.43]} scale={[SHELF_WIDTH - 0.16, 0.105, 1]}>
+            <spriteMaterial map={bookScaleTexture} transparent depthWrite={false} toneMapped={false} />
+          </sprite>
+        </group>
+      ))}
+    </group>
+  )
+}
+
+function createPlaqueTexture(text: string, width: number, height: number): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const context = canvas.getContext('2d')
+  if (context) {
+    context.fillStyle = 'rgba(30, 18, 11, 0.94)'
+    context.fillRect(0, 0, width, height)
+    context.strokeStyle = '#c89a4a'
+    context.lineWidth = Math.max(5, height * 0.06)
+    context.strokeRect(context.lineWidth / 2, context.lineWidth / 2, width - context.lineWidth, height - context.lineWidth)
+    context.fillStyle = '#ffe6a1'
+    context.font = `700 ${Math.round(height * 0.46)}px Georgia`
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+    context.fillText(text, width / 2, height * 0.53)
+  }
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  return texture
+}
+
+function createBookScaleTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas')
+  canvas.width = 1024
+  canvas.height = 64
+  const context = canvas.getContext('2d')
+  if (context) {
+    context.fillStyle = 'rgba(42, 24, 13, 0.92)'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    context.fillStyle = '#f4cc78'
+    context.font = '700 35px Georgia'
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+    ;[1, 8, 16, 24, 32].forEach((book, index) => {
+      context.fillText(String(book), 34 + index * ((canvas.width - 68) / 4), canvas.height * 0.54)
+    })
+  }
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  return texture
 }
 
 function InstancedBooks({
@@ -536,11 +653,11 @@ function InstancedBooks({
         } : undefined}
       >
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial roughness={0.84} metalness={0.03} />
+        <meshStandardMaterial emissive="#24120b" emissiveIntensity={0.56} roughness={0.84} metalness={0.03} />
       </instancedMesh>
       <instancedMesh ref={toolingRef} args={[undefined, undefined, count * 2]} raycast={() => null}>
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="#b68a3a" roughness={0.38} metalness={0.58} />
+        <meshStandardMaterial color="#c69a4b" emissive="#4a2808" emissiveIntensity={0.48} roughness={0.38} metalness={0.58} />
       </instancedMesh>
     </>
   )
