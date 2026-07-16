@@ -27,6 +27,7 @@ import {
   PLAYER_EYE_HEIGHT,
   RAILING_HEIGHT,
   SHELF_WIDTH,
+  STAIR_START_ANGLE,
   VESTIBULE_HALF_DEPTH,
   VESTIBULE_HALF_WIDTH,
   distanceToBook,
@@ -277,7 +278,7 @@ function LibraryScene({
           ) : null}
           {scene.zone.kind === 'vestibule' ? <VestibuleScene connector={scene.zone.connector} /> : null}
           {scene.zone.kind === 'service' ? <ServiceRoomScene room={scene.zone.room} /> : null}
-          {scene.zone.kind === 'stair' ? <StairScene ascending={scene.zone.to > scene.zone.from} /> : null}
+          {scene.zone.kind === 'stair' ? <StairScene /> : null}
         </group>
       ))}
       <DustMotes zone={playerPose.zone.kind} />
@@ -690,22 +691,48 @@ function ServiceRoomScene({ room }: { room: 'sleeping' | 'latrine' }) {
   )
 }
 
-function StairScene({ ascending }: { ascending: boolean }) {
-  const steps = 40
+function StairScene() {
+  const shaftHeight = FLOOR_HEIGHT * 3
   return (
     <>
       <mesh position={[0, FLOOR_HEIGHT / 2, 0]}>
-        <cylinderGeometry args={[2.55, 2.55, FLOOR_HEIGHT, 24, 1, true]} />
+        <cylinderGeometry args={[2.55, 2.55, shaftHeight, 32, 1, true]} />
         <meshStandardMaterial color="#292522" roughness={1} side={THREE.BackSide} />
       </mesh>
       <mesh position={[0, FLOOR_HEIGHT / 2, 0]}>
-        <cylinderGeometry args={[0.43, 0.43, FLOOR_HEIGHT, 12]} />
+        <cylinderGeometry args={[0.43, 0.43, shaftHeight, 12, 1, true]} />
         <meshStandardMaterial color="#171311" roughness={0.96} />
       </mesh>
+      {[-FLOOR_HEIGHT, 0, FLOOR_HEIGHT].map((yOffset) => (
+        <SpiralFlight key={yOffset} yOffset={yOffset} />
+      ))}
+      {[-FLOOR_HEIGHT * 0.52, FLOOR_HEIGHT * 0.5, FLOOR_HEIGHT * 1.52].map((y) => (
+        <pointLight key={y} color="#ffc05c" intensity={16} distance={7} decay={1.9} position={[0, y, 0]} />
+      ))}
+    </>
+  )
+}
+
+function SpiralFlight({ yOffset }: { yOffset: number }) {
+  const steps = 40
+  const handrail = useMemo(() => new THREE.CatmullRomCurve3(
+    Array.from({ length: 65 }, (_, index) => {
+      const trackFraction = index / 64
+      const angle = STAIR_START_ANGLE + trackFraction * Math.PI * 2
+      return new THREE.Vector3(
+        Math.cos(angle) * 2.05,
+        yOffset + trackFraction * FLOOR_HEIGHT + RAILING_HEIGHT,
+        Math.sin(angle) * 2.05,
+      )
+    }),
+  ), [yOffset])
+
+  return (
+    <>
       {Array.from({ length: steps }, (_, index) => {
-        const progress = index / (steps - 1)
-        const angle = -Math.PI / 2 + progress * Math.PI * 2
-        const y = progress * FLOOR_HEIGHT
+        const trackFraction = index / (steps - 1)
+        const angle = STAIR_START_ANGLE + trackFraction * Math.PI * 2
+        const y = yOffset + trackFraction * FLOOR_HEIGHT
         return (
           <group key={index} position={[Math.cos(angle) * 1.38, y, Math.sin(angle) * 1.38]} rotation={[0, -angle, 0]}>
             <mesh position={[0, 0, 0]}>
@@ -719,7 +746,10 @@ function StairScene({ ascending }: { ascending: boolean }) {
           </group>
         )
       })}
-      <pointLight color="#ffc05c" intensity={22} distance={9} decay={1.8} position={[0, ascending ? FLOOR_HEIGHT * 0.7 : FLOOR_HEIGHT * 0.3, 0]} />
+      <mesh>
+        <tubeGeometry args={[handrail, 72, 0.04, 7, false]} />
+        <meshStandardMaterial color="#9b7538" metalness={0.42} roughness={0.62} />
+      </mesh>
     </>
   )
 }

@@ -81,7 +81,7 @@ function visibleFromVestibule(pose: PlayerPose, current: VisibleScene): VisibleS
     scenes.push(scene(
       'stair',
       pose.floor,
-      { kind: 'stair', connector, from: pose.floor, to: stairFloor, progress: 0 },
+      { kind: 'stair', connector, from: pose.floor, to: stairFloor, distance: 0 },
       [STAIR_VESTIBULE_DISTANCE, 0, 0],
     ))
   }

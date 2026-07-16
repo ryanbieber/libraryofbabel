@@ -49,6 +49,7 @@ export const STEP_DISTANCE = 0.74
 export const WALK_SPEED = 2.75
 export const SHELF_WIDTH = GALLERY_RADIUS - 0.72
 export const STAIR_TRAVEL_DISTANCE = 7.8
+export const STAIR_START_ANGLE = Math.PI
 
 export const STARTING_PLAYER_POSE: PlayerPose = {
   floor: 0,
@@ -80,23 +81,37 @@ export function movePose(pose: PlayerPose, forward: number, strafe: number, dist
   if (inputMagnitude === 0 || distance <= 0) return { pose }
 
   if (pose.zone.kind === 'stair') {
-    if (forward <= 0) return { pose }
-    const progress = Math.min(1, pose.zone.progress + distance / STAIR_TRAVEL_DISTANCE)
-    if (progress >= 1) {
+    if (forward === 0) return { pose }
+    const ascending = pose.zone.to > pose.zone.from
+    const trackDistance = pose.zone.distance + Math.sign(forward) * distance
+    if (trackDistance <= 0) {
+      return {
+        pose: {
+          floor: pose.zone.from,
+          zone: { kind: 'vestibule', connector: pose.zone.connector },
+          x: VESTIBULE_HALF_WIDTH - 0.3,
+          y: 0,
+          z: ascending ? -0.45 : 0.45,
+          yaw: Math.PI / 2,
+        },
+        transition: 'vestibule',
+      }
+    }
+    if (trackDistance >= STAIR_TRAVEL_DISTANCE) {
       return {
         pose: {
           floor: pose.zone.to,
           zone: { kind: 'vestibule', connector: pose.zone.connector },
           x: VESTIBULE_HALF_WIDTH - 0.3,
           y: 0,
-          z: pose.zone.to > pose.zone.from ? -0.45 : 0.45,
+          z: ascending ? 0.45 : -0.45,
           yaw: -Math.PI / 2,
         },
         transition: 'floor',
       }
     }
     return {
-      pose: { ...pose, zone: { ...pose.zone, progress } },
+      pose: { ...pose, zone: { ...pose.zone, distance: trackDistance } },
       transition: 'stairs',
     }
   }
@@ -185,7 +200,7 @@ function moveInVestibule(
     return {
       pose: {
         ...pose,
-        zone: { kind: 'stair', connector, from: pose.floor, to: destination, progress: 0 },
+        zone: { kind: 'stair', connector, from: pose.floor, to: destination, distance: 0 },
         x: 0,
         y: 0,
         z: 0,
@@ -225,14 +240,15 @@ function moveInServiceRoom(pose: PlayerPose, targetX: number, targetZ: number): 
 
 export function stairCameraPose(pose: PlayerPose): { x: number; y: number; z: number; yaw: number } {
   if (pose.zone.kind !== 'stair') return { x: pose.x, y: pose.y, z: pose.z, yaw: pose.yaw }
-  const angle = -Math.PI / 2 + pose.zone.progress * Math.PI * 2
   const ascending = pose.zone.to > pose.zone.from
-  const elevation = (ascending ? pose.zone.progress : 1 - pose.zone.progress) * FLOOR_HEIGHT
+  const tripFraction = pose.zone.distance / STAIR_TRAVEL_DISTANCE
+  const heightFraction = ascending ? tripFraction : 1 - tripFraction
+  const angle = STAIR_START_ANGLE + heightFraction * Math.PI * 2
   return {
-    x: Math.cos(angle) * 1.2,
-    y: elevation,
-    z: Math.sin(angle) * 1.2,
-    yaw: normalizeYaw(Math.PI - angle),
+    x: Math.cos(angle) * 1.48,
+    y: heightFraction * FLOOR_HEIGHT,
+    z: Math.sin(angle) * 1.48,
+    yaw: normalizeYaw(ascending ? angle + Math.PI : angle),
   }
 }
 
@@ -294,7 +310,7 @@ export function isValidPlayerPose(value: unknown): value is PlayerPose {
   if (zone.kind === 'vestibule') return isConnectorIndex(Number(zone.connector))
   if (zone.kind === 'service') return isConnectorIndex(Number(zone.connector)) && (zone.room === 'sleeping' || zone.room === 'latrine')
   if (zone.kind === 'stair') {
-    return isConnectorIndex(Number(zone.connector)) && isFloorIndex(Number(zone.from)) && isFloorIndex(Number(zone.to)) && Number.isFinite(zone.progress) && zone.progress >= 0 && zone.progress <= 1
+    return isConnectorIndex(Number(zone.connector)) && isFloorIndex(Number(zone.from)) && isFloorIndex(Number(zone.to)) && Number.isFinite(zone.distance) && zone.distance >= 0 && zone.distance <= STAIR_TRAVEL_DISTANCE
   }
   return false
 }
