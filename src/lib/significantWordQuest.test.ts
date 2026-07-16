@@ -17,10 +17,11 @@ describe('significant word quest submission', () => {
     expect(result.nextStatus).toBeUndefined()
   })
 
-  it('validates the new floor, gallery, and lettered wall address', () => {
+  it('validates the floor, gallery, and dual-format wall address', () => {
     expect(resolveSignificantWordQuestSubmission({ ...baseSubmission, floor: '2' }, 'accepted').feedback.text).toBe('Floor must be -1, 0, or 1.')
     expect(resolveSignificantWordQuestSubmission({ ...baseSubmission, gallery: '3' }, 'accepted').feedback.text).toBe('Gallery must be between -2 and 2.')
-    expect(resolveSignificantWordQuestSubmission({ ...baseSubmission, wall: 'ceiling' }, 'accepted').feedback.text).toBe('Wall must be A, B, C, or D.')
+    expect(resolveSignificantWordQuestSubmission({ ...baseSubmission, wall: 'ceiling' }, 'accepted').feedback.text).toBe('Wall must be I-IV, A-D, or 1-4.')
+    expect(resolveSignificantWordQuestSubmission({ ...baseSubmission, wall: 'I' }, 'accepted').feedback.text).not.toMatch(/Wall must/)
   })
 
   it('rejects accepted coordinates when the page does not contain the target word', () => {

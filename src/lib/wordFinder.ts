@@ -7,6 +7,8 @@ import {
   SHELVES_PER_WALL,
   SYMBOLS_PER_LINE,
   generatePage,
+  rowDisplayLabel,
+  wallDisplayLabel,
   type PageAddress,
 } from './library'
 
@@ -85,7 +87,7 @@ export function isValidWordFinding(value: unknown): value is WordFinding {
 
 export function wordFindingLabel(finding: WordFinding): string {
   const { floor, gallery, wall, shelf, book, page } = finding.address
-  return `floor ${signed(floor)}, gallery ${signed(gallery)}, wall ${wall}, shelf ${shelf + 1}, volume ${book + 1}, page ${page}`
+  return `floor ${signed(floor)}, gallery ${signed(gallery)}, wall ${wallDisplayLabel(wall)}, row ${rowDisplayLabel(shelf)} (${shelf + 1}), book ${book + 1}, page ${page}`
 }
 
 function stableHash(value: string): number {

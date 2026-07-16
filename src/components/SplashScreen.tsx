@@ -17,8 +17,12 @@ export function SplashScreen({
           vestibules, shafts above and below, and stairs that repeat beyond memory.
         </p>
         <p>
-          Every volume can be opened. Its pages are generated from its exact floor, gallery, wall,
-          shelf, and position, so the same coordinates always return the same book.
+          Every book can be opened. Its pages are generated from its exact floor, gallery, wall,
+          row, and position, so the same coordinates always return the same book.
+        </p>
+        <p>
+          Brass shelf signs mark walls I-IV (also A-D), rows I-V from top to bottom, and books 1-32
+          from left to right.
         </p>
         <p className="splash-author">
           Walk the three accessible floors. Visit the sleeping closets and latrines between galleries.

@@ -31,6 +31,12 @@ The app uses the story's familiar book structure:
 - Click or tap nearby books and people.
 - Use **Journey** to continue or begin again. Progress is saved in this browser.
 
+## Book addresses
+
+The current floor and signed gallery coordinate are always shown on screen. Inside each gallery,
+brass signs identify walls I-IV (also accepted as A-D or 1-4), rows I-V from top to bottom, and
+books 1-32 from left to right. Hovering a reachable book shows its exact translated address.
+
 ## Development
 
 ```sh

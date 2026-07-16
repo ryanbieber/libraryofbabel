@@ -57,9 +57,9 @@ export function QuestLog({
               <form className="quest-form" aria-label="Submit book coordinates" onSubmit={handleSubmit}>
                 <QuestField label="floor" value={formValues.floor} placeholder="0" inputMode="numeric" onChange={(floor) => setFormValues((current) => ({ ...current, floor }))} />
                 <QuestField label="gallery" value={formValues.gallery} placeholder="0" inputMode="numeric" onChange={(gallery) => setFormValues((current) => ({ ...current, gallery }))} />
-                <QuestField label="wall" value={formValues.wall} placeholder="A" onChange={(wall) => setFormValues((current) => ({ ...current, wall }))} />
-                <QuestField label="shelf" value={formValues.shelf} placeholder="1" inputMode="numeric" onChange={(shelf) => setFormValues((current) => ({ ...current, shelf }))} />
-                <QuestField label="volume" value={formValues.volume} placeholder="1" inputMode="numeric" onChange={(volume) => setFormValues((current) => ({ ...current, volume }))} />
+                <QuestField label="wall" value={formValues.wall} placeholder="I / A / 1" onChange={(wall) => setFormValues((current) => ({ ...current, wall }))} />
+                <QuestField label="row" value={formValues.shelf} placeholder="1" inputMode="numeric" onChange={(shelf) => setFormValues((current) => ({ ...current, shelf }))} />
+                <QuestField label="book" value={formValues.volume} placeholder="1" inputMode="numeric" onChange={(volume) => setFormValues((current) => ({ ...current, volume }))} />
                 <QuestField label="page" value={formValues.page} placeholder="1" inputMode="numeric" onChange={(page) => setFormValues((current) => ({ ...current, page }))} />
                 <button type="submit">test page</button>
               </form>

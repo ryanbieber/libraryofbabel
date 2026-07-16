@@ -8,7 +8,7 @@ describe('library monk NPCs', () => {
     const npc = npcForGallery(0, 0)
     expect(npc?.id).toBe('monk:0:0')
     expect(npc?.quest).toBe('significant-word')
-    expect(npc?.dialogue.join(' ')).toMatch(/floor, gallery, wall, shelf, volume, and page/i)
+    expect(npc?.dialogue.join(' ')).toMatch(/floor, gallery, wall, row, book, and page/i)
   })
 
   it('places a blue-marker word indexer at the opposite starting-gallery table', () => {

@@ -92,7 +92,7 @@ export function NpcDialoguePanel({
             <span>The index opens</span>
             <strong>“{wordFinding.word}”</strong>
             <p>{wordFindingLabel(wordFinding)}</p>
-            <small>Go to that shelf, open the volume, and turn to the named page.</small>
+            <small>Find that wall and row, open the numbered book, and turn to the named page.</small>
           </div>
         ) : null}
         {isSignificantWordQuest && questStatus === 'not-started' ? (

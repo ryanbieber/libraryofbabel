@@ -10,7 +10,7 @@ describe('word finder index', () => {
     expect(first.valid).toBe(true)
     if (!first.valid) return
     expect(isValidWordFinding(first.finding)).toBe(true)
-    expect(wordFindingLabel(first.finding)).toMatch(/floor [-+0-9]+, gallery [-+0-9]+, wall [A-D], shelf [1-5], volume ([1-9]|[12][0-9]|3[0-2]), page ([1-9]|[1-3][0-9]{2}|40[0-9]|410)/)
+    expect(wordFindingLabel(first.finding)).toMatch(/floor [-+0-9]+, gallery [-+0-9]+, wall [IV]+ \([A-D]\), row [IV]+ \([1-5]\), book ([1-9]|[12][0-9]|3[0-2]), page ([1-9]|[1-3][0-9]{2}|40[0-9]|410)/)
   })
 
   it('places the requested word only on its indexed page', () => {

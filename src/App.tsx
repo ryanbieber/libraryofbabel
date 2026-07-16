@@ -320,7 +320,7 @@ function App() {
     setWordQuestFeedback(null)
     setQuestLogMinimized(false)
     setDialogueNpc(null)
-    setMessage('Quest accepted. The Quest Log opens with fields for floor, gallery, wall, shelf, volume, and page.')
+    setMessage('Quest accepted. The Quest Log opens with fields for floor, gallery, wall, row, book, and page.')
   }
 
   function submitSignificantWordQuest(values: WordQuestFormValues) {

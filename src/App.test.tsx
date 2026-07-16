@@ -36,6 +36,9 @@ describe('App interactions', () => {
     expect(await screen.findByTestId('arena-viewport')).toHaveAttribute('data-zone', 'gallery')
     expect(screen.getByLabelText('Current location')).toHaveTextContent('gallery 0')
     expect(screen.getByLabelText('Current location')).toHaveTextContent('Floor 0')
+    expect(screen.getByLabelText('Shelf address guide')).toHaveTextContent('Walls I-IV = A-D')
+    expect(screen.getByLabelText('Shelf address guide')).toHaveTextContent('Rows I-V · top to bottom')
+    expect(screen.getByLabelText('Shelf address guide')).toHaveTextContent('Books 1-32 · left to right')
     expect(screen.getAllByText('gallery 0').length).toBeGreaterThanOrEqual(2)
     expect(screen.queryByText(/four walls · two passages/i)).not.toBeInTheDocument()
   })
@@ -62,7 +65,7 @@ describe('App interactions', () => {
         onSpreadChange={() => undefined}
       />,
     )
-    expect(screen.getAllByText(/floor 0 \/ gallery 0 \/ wall A/i)).toHaveLength(3)
+    expect(screen.getAllByText(/floor 0 \/ gallery 0 \/ wall I \(A\) \/ row II \(2\) \/ book 8/i)).toHaveLength(3)
     expect(screen.getByText('page 1')).toBeInTheDocument()
     expect(screen.getByText('page 2')).toBeInTheDocument()
   })
@@ -80,7 +83,7 @@ describe('App interactions', () => {
     expect(screen.getByLabelText('Quest log')).toBeInTheDocument()
     expect(screen.getByLabelText('Quest floor')).toBeInTheDocument()
     expect(screen.getByLabelText('Quest gallery')).toBeInTheDocument()
-    expect(screen.getByLabelText('Quest wall')).toHaveAttribute('placeholder', 'A')
+    expect(screen.getByLabelText('Quest wall')).toHaveAttribute('placeholder', 'I / A / 1')
     expect(container.querySelector('.npc-quest-marker')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Minimize quest log' }))
@@ -101,12 +104,12 @@ describe('App interactions', () => {
     fireEvent.change(screen.getByLabelText('Quest floor'), { target: { value: '0' } })
     fireEvent.change(screen.getByLabelText('Quest gallery'), { target: { value: '0' } })
     fireEvent.change(screen.getByLabelText('Quest wall'), { target: { value: 'ceiling' } })
-    fireEvent.change(screen.getByLabelText('Quest shelf'), { target: { value: '1' } })
-    fireEvent.change(screen.getByLabelText('Quest volume'), { target: { value: '1' } })
+    fireEvent.change(screen.getByLabelText('Quest row'), { target: { value: '1' } })
+    fireEvent.change(screen.getByLabelText('Quest book'), { target: { value: '1' } })
     fireEvent.change(screen.getByLabelText('Quest page'), { target: { value: '1' } })
     fireEvent.click(screen.getByRole('button', { name: 'test page' }))
 
-    expect(screen.getAllByText('Wall must be A, B, C, or D.')).toHaveLength(2)
+    expect(screen.getAllByText('Wall must be I-IV, A-D, or 1-4.')).toHaveLength(2)
   })
 
   it('lets the blue-marker indexer locate a submitted word', async () => {
@@ -125,7 +128,7 @@ describe('App interactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'ask the indexer' }))
 
     expect(screen.getByLabelText('Word finder directions')).toHaveTextContent('“world”')
-    expect(screen.getByLabelText('Word finder directions')).toHaveTextContent(/floor .* gallery .* wall [A-D].* shelf .* volume .* page/i)
+    expect(screen.getByLabelText('Word finder directions')).toHaveTextContent(/floor .* gallery .* wall [IV]+ \([A-D]\).* row [IV]+ \([1-5]\).* book .* page/i)
   })
 
   it('opens the journey menu with Continue and New Journey choices', async () => {
