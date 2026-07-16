@@ -33,6 +33,8 @@ describe('App interactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
 
     expect(screen.queryByLabelText('Start screen')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Journey introduction')).toHaveTextContent('Welcome to your new life.')
+    expect(screen.getByLabelText('Journey introduction')).toHaveTextContent('The Library has been waiting for you.')
     expect(await screen.findByTestId('arena-viewport')).toHaveAttribute('data-zone', 'gallery')
     expect(screen.getByLabelText('Current location')).toHaveTextContent('gallery 0')
     expect(screen.getByLabelText('Current location')).toHaveTextContent('Floor 0')
@@ -71,8 +73,9 @@ describe('App interactions', () => {
   })
 
   it('opens the starting monk quest and uses the canonical address fields', async () => {
+    writeSaveNearStartingMonk()
     const { container } = render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
     await screen.findByTestId('arena-viewport')
     expect(container.querySelector('.npc-quest-marker.available')?.textContent).toBe('!')
 
@@ -95,8 +98,9 @@ describe('App interactions', () => {
   })
 
   it('validates the new quest coordinates', async () => {
+    writeSaveNearStartingMonk()
     render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
     await screen.findByTestId('arena-viewport')
     fireEvent.click(screen.getByRole('button', { name: /Talk to Hooded keeper of improbable words/ }))
     fireEvent.click(screen.getByRole('button', { name: 'accept quest' }))
@@ -141,8 +145,9 @@ describe('App interactions', () => {
   })
 
   it('uses a scene tap for interaction without a redundant mobile Use button', async () => {
+    writeSaveNearStartingMonk()
     render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
     const viewport = await screen.findByTestId('arena-viewport')
     expect(screen.getByLabelText('Current position and controls')).toHaveTextContent('WASD move')
     expect(screen.getByLabelText('Touch controls')).toBeInTheDocument()
@@ -241,4 +246,10 @@ function holdViewportForward(viewport: HTMLElement, times: number) {
     fireEvent.pointerDown(viewport, { button: 0, clientX: 190, clientY: 420, pointerId, pointerType: 'mouse' })
     fireEvent.pointerUp(viewport, { button: 0, pointerId, pointerType: 'mouse' })
   }
+}
+
+function writeSaveNearStartingMonk() {
+  const game = defaultSavedGame()
+  game.pose = { ...game.pose, x: -2.35, z: 0.65, yaw: Math.PI }
+  writeSavedGame(game)
 }

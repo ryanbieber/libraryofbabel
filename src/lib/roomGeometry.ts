@@ -53,10 +53,10 @@ export const STAIR_TRAVEL_DISTANCE = 7.8
 export const STARTING_PLAYER_POSE: PlayerPose = {
   floor: 0,
   zone: { kind: 'gallery', gallery: 0 },
-  x: -1.4,
+  x: 0,
   y: 0,
-  z: 0.65,
-  yaw: Math.PI,
+  z: 4.35,
+  yaw: 0,
 }
 
 const WALL_NORMALS: Record<ShelfWall, readonly [number, number]> = {

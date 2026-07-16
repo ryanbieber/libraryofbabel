@@ -15,6 +15,12 @@ import {
 } from './roomGeometry'
 
 describe('hexagonal first-person geometry', () => {
+  it('starts at the clear southern threshold facing into the library', () => {
+    expect(STARTING_PLAYER_POSE.x).toBe(0)
+    expect(STARTING_PLAYER_POSE.z).toBeGreaterThan(4)
+    expect(STARTING_PLAYER_POSE.yaw).toBe(0)
+  })
+
   it('walks continuously from a gallery into its north vestibule', () => {
     const pose = { ...STARTING_PLAYER_POSE, x: 0, z: -GALLERY_APOTHEM + 0.05, yaw: 0 }
     const result = movePose(pose, 1, 0, 0.25)

@@ -41,6 +41,7 @@ const JUMP_GRAVITY = 9.2
 const MIN_CAMERA_PITCH = -0.82
 const MAX_CAMERA_PITCH = 0.72
 const BOOK_PRESENTATION_DELAY_MS = 700
+const JOURNEY_ARRIVAL_DURATION_MS = 5400
 
 function App() {
   const initialSave = useRef<SavedGameV1 | null>(readSavedGame())
@@ -59,6 +60,7 @@ function App() {
   const [questLogMinimized, setQuestLogMinimized] = useState(false)
   const [splashOpen, setSplashOpen] = useState(true)
   const [hasStarted, setHasStarted] = useState(false)
+  const [arrivalVisible, setArrivalVisible] = useState(false)
   const [movementCue, setMovementCue] = useState<MovementCue>('idle')
   const [spread, setSpread] = useState(1)
   const [message, setMessage] = useState('The lamps wait above the central shaft.')
@@ -71,6 +73,7 @@ function App() {
   const jumpOffsetRef = useRef(0)
   const cueTimeout = useRef<number | null>(null)
   const bookPresentationTimeout = useRef<number | null>(null)
+  const arrivalTimeout = useRef<number | null>(null)
 
   const leftPageNumber = spreadToLeftPage(spread)
   const rightPageNumber = spreadToRightPage(spread)
@@ -88,12 +91,12 @@ function App() {
   })), [currentNpcs, wordQuestStatus])
 
   useEffect(() => {
-    modalOpenRef.current = readerOpen || presentedBook !== null || splashOpen || dialogueNpc !== null
+    modalOpenRef.current = readerOpen || presentedBook !== null || splashOpen || arrivalVisible || dialogueNpc !== null
     if (modalOpenRef.current) {
       touchMovementRef.current = { forward: 0, strafe: 0 }
       pressedKeysRef.current.clear()
     }
-  }, [readerOpen, presentedBook, splashOpen, dialogueNpc])
+  }, [readerOpen, presentedBook, splashOpen, arrivalVisible, dialogueNpc])
 
   useEffect(() => setDialogueNpc(null), [playerPose.floor, playerPose.zone])
 
@@ -155,6 +158,7 @@ function App() {
   useEffect(() => () => {
     if (cueTimeout.current !== null) window.clearTimeout(cueTimeout.current)
     if (bookPresentationTimeout.current !== null) window.clearTimeout(bookPresentationTimeout.current)
+    if (arrivalTimeout.current !== null) window.clearTimeout(arrivalTimeout.current)
   }, [])
 
   function setPlayerPose(nextPose: PlayerPose) {
@@ -209,7 +213,7 @@ function App() {
   }
 
   function interact() {
-    if (readerOpen || presentedBook !== null || splashOpen || dialogueNpc !== null) return
+    if (readerOpen || presentedBook !== null || splashOpen || arrivalVisible || dialogueNpc !== null) return
     if (talkableNpc) {
       talkToNpc(talkableNpc)
       return
@@ -305,11 +309,22 @@ function App() {
     setJumpOffset(0)
     setHasStarted(true)
     setSplashOpen(false)
+    setArrivalVisible(true)
+    if (arrivalTimeout.current !== null) window.clearTimeout(arrivalTimeout.current)
+    arrivalTimeout.current = window.setTimeout(() => {
+      setArrivalVisible(false)
+      arrivalTimeout.current = null
+    }, JOURNEY_ARRIVAL_DURATION_MS)
     initialSave.current = null
-    setMessage('The door seals behind you. The galleries breathe dust.')
+    setMessage('The Library has been waiting for you.')
   }
 
   function continueJourney() {
+    if (arrivalTimeout.current !== null) {
+      window.clearTimeout(arrivalTimeout.current)
+      arrivalTimeout.current = null
+    }
+    setArrivalVisible(false)
     setHasStarted(true)
     setSplashOpen(false)
     setMessage(`You return to floor ${signed(playerPoseRef.current.floor)}, ${zoneLabel(playerPoseRef.current.zone)}.`)
@@ -353,7 +368,7 @@ function App() {
 
   return (
     <main className="arena-shell">
-      <section className={`game-frame ${readerOpen || presentedBook !== null || splashOpen || dialogueNpc !== null ? 'ui-modal-open' : ''}`} aria-label="Library game viewport">
+      <section className={`game-frame ${readerOpen || presentedBook !== null || splashOpen || arrivalVisible || dialogueNpc !== null ? 'ui-modal-open' : ''}`} aria-label="Library game viewport">
         <div className={`scene scene-library movement-${movementCue}`}>
           {hasStarted ? (
             <Suspense fallback={<div className="scene-loading">Lighting the gallery…</div>}>
@@ -392,6 +407,24 @@ function App() {
             <span>{`floor ${signed(playerPose.floor)}`}</span>
             <span>WASD move. Mouse or swipe looks. Click, tap, or touch to interact. Space jumps.</span>
           </div>
+        ) : null}
+        {arrivalVisible ? (
+          <section
+            className="journey-arrival"
+            aria-label="Journey introduction"
+            aria-live="polite"
+            onAnimationEnd={() => {
+              if (arrivalTimeout.current !== null) window.clearTimeout(arrivalTimeout.current)
+              arrivalTimeout.current = null
+              setArrivalVisible(false)
+            }}
+          >
+            <div className="journey-arrival-copy">
+              <span className="journey-arrival-kicker">The Library of Babel</span>
+              <p>Welcome to your new life.</p>
+              <span className="journey-arrival-subtitle">The Library has been waiting for you.</span>
+            </div>
+          </section>
         ) : null}
       </section>
 
