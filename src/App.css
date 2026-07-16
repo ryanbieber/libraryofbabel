@@ -1718,6 +1718,76 @@
   box-shadow: 0 0 80px rgb(255 159 54 / 20%);
 }
 
+.journey-arrival {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #020203;
+  pointer-events: auto;
+  animation: journey-arrival-curtain 5.4s cubic-bezier(0.22, 0.72, 0.24, 1) both;
+}
+
+.journey-arrival::before {
+  position: absolute;
+  inset: 9vh 8vw;
+  border: 1px solid rgb(230 199 120 / 18%);
+  clip-path: polygon(18% 0, 82% 0, 100% 50%, 82% 100%, 18% 100%, 0 50%);
+  content: '';
+  opacity: 0;
+  animation: journey-arrival-ornament 5.4s ease both;
+}
+
+.journey-arrival-copy {
+  position: relative;
+  display: grid;
+  gap: clamp(10px, 2vh, 22px);
+  width: min(880px, calc(100vw - 48px));
+  padding: 32px;
+  color: #f8e7b7;
+  font-family: Georgia, 'Times New Roman', serif;
+  text-align: center;
+  text-shadow:
+    0 3px 18px rgb(0 0 0 / 92%),
+    0 0 34px rgb(209 149 55 / 26%);
+  animation: journey-arrival-copy 5.4s cubic-bezier(0.22, 0.72, 0.24, 1) both;
+}
+
+.journey-arrival-copy::before,
+.journey-arrival-copy::after {
+  width: min(240px, 44vw);
+  height: 1px;
+  margin: 0 auto;
+  background: linear-gradient(90deg, transparent, #bd8d3e, transparent);
+  content: '';
+}
+
+.journey-arrival-kicker,
+.journey-arrival-subtitle {
+  color: #c9a96d;
+  font-size: clamp(0.58rem, 1.25vw, 0.78rem);
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+
+.journey-arrival-copy p {
+  margin: 0;
+  font-size: clamp(2.25rem, 7vw, 6.6rem);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  line-height: 0.94;
+}
+
+.journey-arrival-subtitle {
+  color: #e0c78c;
+  font-size: clamp(0.62rem, 1.4vw, 0.88rem);
+  letter-spacing: 0.2em;
+}
+
 .journey-menu {
   position: absolute;
   top: 12px;
@@ -1813,5 +1883,70 @@
 
   .quest-form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@keyframes journey-arrival-curtain {
+  0%,
+  12% {
+    background: #020203;
+    visibility: visible;
+  }
+
+  58% {
+    background: rgb(2 2 3 / 72%);
+  }
+
+  100% {
+    background: transparent;
+    visibility: hidden;
+  }
+}
+
+@keyframes journey-arrival-copy {
+  0%,
+  10% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+
+  25%,
+  58% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  88%,
+  100% {
+    opacity: 0;
+    transform: translateY(-12px) scale(1.012);
+  }
+}
+
+@keyframes journey-arrival-ornament {
+  0%,
+  16% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  32%,
+  58% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  90%,
+  100% {
+    opacity: 0;
+    transform: scale(1.025);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-arrival,
+  .journey-arrival::before,
+  .journey-arrival-copy {
+    animation-duration: 2.4s;
   }
 }

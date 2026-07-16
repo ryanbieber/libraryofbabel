@@ -30,9 +30,11 @@ describe('library monk NPCs', () => {
 
   it('measures interaction distance only in the same gallery', () => {
     const npc = npcForGallery(0, 0)
+    const poseNearNpc = { ...STARTING_PLAYER_POSE, x: -2.35, z: 0.65 }
     const otherGallery = { ...STARTING_PLAYER_POSE, zone: { kind: 'gallery' as const, gallery: 1 as const } }
-    expect(distanceToNpc(STARTING_PLAYER_POSE, npc)).toBeLessThan(INTERACTION_RADIUS)
-    expect(isNpcReachable(STARTING_PLAYER_POSE, npc)).toBe(true)
+    expect(distanceToNpc(poseNearNpc, npc)).toBeLessThan(INTERACTION_RADIUS)
+    expect(isNpcReachable(poseNearNpc, npc)).toBe(true)
+    expect(isNpcReachable(STARTING_PLAYER_POSE, npc)).toBe(false)
     expect(distanceToNpc(otherGallery, npc)).toBe(Number.POSITIVE_INFINITY)
   })
 })
