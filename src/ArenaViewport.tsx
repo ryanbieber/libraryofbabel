@@ -800,22 +800,22 @@ function GreyQuestKeeper({ questMarker }: { questMarker: QuestMarkerState }) {
         <meshStandardMaterial color="#aaa69e" roughness={1} />
       </mesh>
 
-      <mesh position={[0, 0.79, -0.025]} scale={[1, 0.14, 0.9]}>
-        <cylinderGeometry args={[0.34, 0.34, 0.2, 18]} />
+      <mesh position={[0, 0.69, -0.035]} scale={[1, 0.14, 0.9]}>
+        <cylinderGeometry args={[0.35, 0.35, 0.2, 18]} />
         <meshStandardMaterial color="#686966" roughness={1} side={THREE.DoubleSide} />
       </mesh>
       <group rotation={[0, 0, -0.09]}>
-        <mesh position={[0.025, 1.04, 0]}>
-          <coneGeometry args={[0.225, 0.55, 14]} />
+        <mesh position={[0.025, 0.96, 0]}>
+          <coneGeometry args={[0.245, 0.58, 14]} />
           <meshStandardMaterial color="#747570" roughness={1} />
         </mesh>
       </group>
-      <mesh position={[0, 0.815, -0.02]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.205, 0.018, 6, 18]} />
+      <mesh position={[0, 0.715, -0.035]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.218, 0.018, 6, 18]} />
         <meshStandardMaterial color="#3a3632" roughness={0.94} />
       </mesh>
 
-      <LongPipe />
+      <Cigar />
       {questMarker ? <QuestMarker state={questMarker} positionY={1.58} /> : null}
     </>
   )
@@ -917,30 +917,23 @@ function MonasticIndexer({ questMarker }: { questMarker: QuestMarkerState }) {
   )
 }
 
-function LongPipe() {
+function Cigar() {
   return (
     <group>
-      <CylinderBetween start={[0.075, 0.555, -0.278]} end={[0.55, 0.39, -0.35]} radius={0.018} color="#714329" />
-      <mesh position={[0.57, 0.485, -0.35]}>
-        <cylinderGeometry args={[0.075, 0.095, 0.2, 12]} />
-        <meshStandardMaterial color="#6a3a22" roughness={0.9} />
+      <CylinderBetween start={[0.075, 0.555, -0.278]} end={[0.43, 0.5, -0.34]} radius={0.028} color="#71391f" />
+      <CylinderBetween start={[0.305, 0.519, -0.318]} end={[0.332, 0.515, -0.323]} radius={0.031} color="#b18a4e" />
+      <mesh position={[0.434, 0.499, -0.341]} scale={[0.42, 1, 1]}>
+        <sphereGeometry args={[0.033, 10, 7]} />
+        <meshStandardMaterial color="#502219" emissive="#d34b1d" emissiveIntensity={1.35} roughness={0.94} />
       </mesh>
-      <mesh position={[0.57, 0.59, -0.35]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.068, 0.014, 6, 12]} />
-        <meshStandardMaterial color="#3c2117" roughness={1} />
-      </mesh>
-      <mesh position={[0.57, 0.588, -0.35]} scale={[1, 0.22, 1]}>
-        <sphereGeometry args={[0.057, 10, 6]} />
-        <meshStandardMaterial color="#402217" emissive="#8a2f12" emissiveIntensity={0.55} roughness={1} />
-      </mesh>
-      <PipeSmoke origin={[0.57, 0.62, -0.35]} />
+      <CigarSmoke origin={[0.44, 0.53, -0.342]} />
     </group>
   )
 }
 
 const SMOKE_PHASES = [0, 0.24, 0.49, 0.74] as const
 
-function PipeSmoke({ origin }: { origin: [number, number, number] }) {
+function CigarSmoke({ origin }: { origin: [number, number, number] }) {
   const puffRefs = useRef<Array<THREE.Mesh | null>>([])
   useFrame(({ clock }) => {
     SMOKE_PHASES.forEach((phase, index) => {
