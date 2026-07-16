@@ -1264,15 +1264,20 @@ function ServiceRoomFloor({ room }: { room: 'sleeping' | 'latrine' }) {
 function SleepingCloset() {
   return (
     <>
-      <group position={[-0.78, 0, -0.15]}>
-        <mesh position={[0, 0.22, 0]}><boxGeometry args={[1.72, 0.24, 0.92]} /><meshStandardMaterial color="#49331f" roughness={0.98} /></mesh>
-        {[-0.75, 0.75].flatMap((x) => [-0.37, 0.37].map((z) => (
-          <mesh key={`${x}:${z}`} position={[x, 0.11, z]}><boxGeometry args={[0.09, 0.22, 0.09]} /><meshStandardMaterial color="#302319" roughness={1} /></mesh>
-        )))}
-        <mesh position={[0, 0.39, 0]}><boxGeometry args={[1.56, 0.16, 0.79]} /><meshStandardMaterial color="#b1a27e" roughness={1} /></mesh>
-        <mesh position={[-0.56, 0.53, 0]} scale={[1, 0.42, 0.75]}><sphereGeometry args={[0.3, 12, 8]} /><meshStandardMaterial color="#d2c4a3" roughness={1} /></mesh>
-        <mesh position={[0.33, 0.51, 0]}><boxGeometry args={[0.82, 0.09, 0.75]} /><meshStandardMaterial color="#75543b" roughness={1} /></mesh>
-        <mesh position={[-0.82, 0.75, 0]}><boxGeometry args={[0.11, 1.22, 0.98]} /><meshStandardMaterial color="#3f2d1f" roughness={1} /></mesh>
+      <group position={[-1.42, 0, -0.12]}>
+        <mesh position={[0, 1.22, 0]}><boxGeometry args={[0.24, 2.44, 1.18]} /><meshStandardMaterial color="#3f2d1f" roughness={1} /></mesh>
+        {[-0.55, 0.55].map((z) => (
+          <mesh key={z} position={[0.18, 1.2, z]}><boxGeometry args={[0.34, 2.4, 0.13]} /><meshStandardMaterial color="#594029" roughness={0.98} /></mesh>
+        ))}
+        <mesh position={[0.2, 2.38, 0]}><boxGeometry args={[0.48, 0.15, 1.24]} /><meshStandardMaterial color="#594029" roughness={0.98} /></mesh>
+        <mesh position={[0.18, 1.34, 0]}><boxGeometry args={[0.13, 1.62, 0.86]} /><meshStandardMaterial color="#b1a27e" roughness={1} /></mesh>
+        <mesh position={[0.28, 2.03, 0]} scale={[0.42, 0.72, 1]}><sphereGeometry args={[0.32, 12, 8]} /><meshStandardMaterial color="#d2c4a3" roughness={1} /></mesh>
+        <mesh position={[0.28, 0.84, 0]}><boxGeometry args={[0.1, 0.72, 0.78]} /><meshStandardMaterial color="#75543b" roughness={1} /></mesh>
+        <mesh position={[0.39, 0.92, 0]}><boxGeometry args={[0.4, 0.1, 1.02]} /><meshStandardMaterial color="#49331f" roughness={1} /></mesh>
+        <mesh position={[0.42, 0.13, 0]}><boxGeometry args={[0.68, 0.16, 1.02]} /><meshStandardMaterial color="#49331f" roughness={0.98} /></mesh>
+        {[-0.48, 0.48].map((z) => (
+          <mesh key={z} position={[0.45, 1.38, z]}><boxGeometry args={[0.5, 0.08, 0.08]} /><meshStandardMaterial color="#65472b" roughness={0.96} /></mesh>
+        ))}
       </group>
       <mesh position={[-0.1, 0.025, 0.82]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[1.15, 0.62]} />
