@@ -668,13 +668,14 @@ function VestibuleScene({ connector }: { connector: number }) {
   const neighbors = galleriesForConnector(connector as Parameters<typeof galleriesForConnector>[0])
   return (
     <>
-      <BoxRoom width={VESTIBULE_HALF_WIDTH * 2} depth={VESTIBULE_HALF_DEPTH * 2} color="#403933" openNorth openSouth openWest openEast />
+      <BoxRoom width={VESTIBULE_HALF_WIDTH * 2} depth={VESTIBULE_HALF_DEPTH * 2} color="#4a443b" openNorth openSouth openWest openEast />
       <CorridorEnd z={-VESTIBULE_HALF_DEPTH} gated={neighbors.north === null} />
       <CorridorEnd z={VESTIBULE_HALF_DEPTH} gated={neighbors.south === null} rotationY={Math.PI} />
       <SidePortal side="west" z={-0.72} labelColor="#897151" />
       <SidePortal side="west" z={0.72} labelColor="#6d5944" />
       <SidePortal side="east" z={0} labelColor="#a67d36" wide />
-      <Mirror position={[-2.56, 1.58, 0]} rotationY={Math.PI / 2} />
+      <MonasticVestibuleDetails />
+      <ProvisionNook />
       <WarmLamp position={[0, 0, 0]} />
     </>
   )
@@ -683,10 +684,11 @@ function VestibuleScene({ connector }: { connector: number }) {
 function ServiceRoomScene({ room }: { room: 'sleeping' | 'latrine' }) {
   return (
     <>
-      <BoxRoom width={3.6} depth={2.8} color={room === 'sleeping' ? '#322a25' : '#393a35'} openEast />
-      <SidePortal side="east" z={0} labelColor="#735a3c" wide />
+      <BoxRoom width={3.6} depth={2.8} color={room === 'sleeping' ? '#453c32' : '#4a4b43'} openEast />
+      <SidePortal side="east" z={0} labelColor={room === 'sleeping' ? '#836b48' : '#6f766b'} wallX={1.8} wide />
+      <ServiceRoomFloor room={room} />
       {room === 'sleeping' ? <SleepingCloset /> : <Latrine />}
-      <WarmLamp position={[-0.8, 0, 0]} />
+      <WarmLamp position={[-0.75, 0, room === 'sleeping' ? 0.75 : -0.78]} />
     </>
   )
 }
@@ -826,11 +828,101 @@ function CorridorEnd({ z, gated, rotationY = 0 }: { z: number; gated: boolean; r
   )
 }
 
-function SidePortal({ side, z, labelColor, wide = false }: { side: 'east' | 'west'; z: number; labelColor: string; wide?: boolean }) {
-  const x = side === 'east' ? VESTIBULE_HALF_WIDTH : -VESTIBULE_HALF_WIDTH
+function SidePortal({ side, z, labelColor, wallX = VESTIBULE_HALF_WIDTH, wide = false }: { side: 'east' | 'west'; z: number; labelColor: string; wallX?: number; wide?: boolean }) {
+  const x = side === 'east' ? wallX : -wallX
+  const openingWidth = wide ? 1.65 : 1.05
   return (
     <group position={[x, 0, z]} rotation={[0, side === 'east' ? -Math.PI / 2 : Math.PI / 2, 0]}>
-      <mesh position={[0, 2.5, -0.02]}><boxGeometry args={[wide ? 1.65 : 1.05, 0.25, 0.18]} /><meshStandardMaterial color={labelColor} /></mesh>
+      {[-1, 1].map((direction) => (
+        <mesh key={direction} position={[direction * openingWidth / 2, 1.1, 0]}>
+          <boxGeometry args={[0.13, 2.2, 0.22]} />
+          <meshStandardMaterial color="#716454" roughness={0.96} />
+        </mesh>
+      ))}
+      <mesh position={[0, 2.18, 0]}>
+        <boxGeometry args={[openingWidth + 0.18, 0.16, 0.24]} />
+        <meshStandardMaterial color="#716454" roughness={0.96} />
+      </mesh>
+      <mesh position={[0, 2.5, -0.02]}><boxGeometry args={[openingWidth, 0.22, 0.18]} /><meshStandardMaterial color={labelColor} roughness={0.8} /></mesh>
+    </group>
+  )
+}
+
+function MonasticVestibuleDetails() {
+  return (
+    <>
+      <mesh position={[0, 0.018, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[2.15, 3.08]} />
+        <meshStandardMaterial color="#625443" roughness={1} />
+      </mesh>
+      {[-1.06, 1.06].map((x) => (
+        <mesh key={x} position={[x, 0.026, 0]}>
+          <boxGeometry args={[0.045, 0.035, 3.08]} />
+          <meshStandardMaterial color="#a18b67" roughness={0.9} />
+        </mesh>
+      ))}
+      {[-1.42, 0, 1.42].map((x) => (
+        <mesh key={x} position={[x, ROOM_HEIGHT - 0.1, 0]}>
+          <boxGeometry args={[0.1, 0.14, VESTIBULE_HALF_DEPTH * 2]} />
+          <meshStandardMaterial color="#514638" roughness={0.94} />
+        </mesh>
+      ))}
+      <mesh position={[0, ROOM_HEIGHT - 0.08, 0]}>
+        <boxGeometry args={[VESTIBULE_HALF_WIDTH * 2, 0.12, 0.1]} />
+        <meshStandardMaterial color="#514638" roughness={0.94} />
+      </mesh>
+      <group position={[-2.48, 1.46, 0]} rotation={[0, Math.PI / 2, 0]}>
+        <mesh><boxGeometry args={[0.6, 0.9, 0.09]} /><meshStandardMaterial color="#33271e" roughness={0.9} /></mesh>
+        <mesh position={[0, 0, -0.052]}><planeGeometry args={[0.48, 0.77]} /><meshStandardMaterial color="#777c77" metalness={0.42} roughness={0.38} /></mesh>
+      </group>
+      <pointLight color="#e8c581" intensity={4.5} distance={4.5} decay={2} position={[0, 1.8, 0]} />
+    </>
+  )
+}
+
+function ProvisionNook() {
+  return (
+    <group position={[1.92, 0, -1.06]} rotation={[0, -Math.PI / 2, 0]}>
+      <mesh position={[0, 0.46, 0]}><boxGeometry args={[0.82, 0.1, 0.42]} /><meshStandardMaterial color="#59422d" roughness={0.95} /></mesh>
+      {[-0.32, 0.32].map((x) => (
+        <mesh key={x} position={[x, 0.23, 0]}><boxGeometry args={[0.09, 0.46, 0.34]} /><meshStandardMaterial color="#3c2c20" roughness={1} /></mesh>
+      ))}
+      <mesh position={[0, 1.28, 0.15]}><boxGeometry args={[0.88, 1.46, 0.12]} /><meshStandardMaterial color="#413124" roughness={1} /></mesh>
+      {[0.82, 1.28, 1.72].map((y) => (
+        <mesh key={y} position={[0, y, -0.02]}><boxGeometry args={[0.84, 0.08, 0.42]} /><meshStandardMaterial color="#664b31" roughness={0.96} /></mesh>
+      ))}
+      <BreadLoaf position={[-0.18, 0.57, -0.02]} scale={0.95} />
+      <BreadLoaf position={[0.16, 0.56, 0]} scale={0.78} />
+      <mesh position={[-0.2, 0.94, -0.05]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.17, 0.17, 0.14, 16]} />
+        <meshStandardMaterial color="#c99b45" roughness={0.88} />
+      </mesh>
+      {[-0.05, 0.23].map((x, index) => <ClayVessel key={x} position={[x, 1.05, -0.04]} scale={index ? 0.82 : 1} />)}
+      {[-0.2, 0, 0.2].map((x, index) => (
+        <mesh key={x} position={[x, 1.82 + index * 0.015, -0.05]}>
+          <sphereGeometry args={[0.085, 10, 7]} />
+          <meshStandardMaterial color={index === 1 ? '#8d6e2e' : '#6f7b3a'} roughness={1} />
+        </mesh>
+      ))}
+      <mesh position={[0, 2.18, 0.14]}><boxGeometry args={[0.68, 0.22, 0.08]} /><meshStandardMaterial color="#8f774e" roughness={0.9} /></mesh>
+    </group>
+  )
+}
+
+function BreadLoaf({ position, scale = 1 }: { position: [number, number, number]; scale?: number }) {
+  return (
+    <mesh position={position} scale={[scale, scale * 0.7, scale * 0.72]}>
+      <sphereGeometry args={[0.22, 12, 8]} />
+      <meshStandardMaterial color="#b98748" roughness={0.94} />
+    </mesh>
+  )
+}
+
+function ClayVessel({ position, scale = 1 }: { position: [number, number, number]; scale?: number }) {
+  return (
+    <group position={position} scale={scale}>
+      <mesh><cylinderGeometry args={[0.1, 0.14, 0.3, 12]} /><meshStandardMaterial color="#8a5a3b" roughness={1} /></mesh>
+      <mesh position={[0, 0.17, 0]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[0.075, 0.018, 6, 12]} /><meshStandardMaterial color="#a36d49" roughness={1} /></mesh>
     </group>
   )
 }
@@ -1152,23 +1244,83 @@ function QuestMarker({ state, positionY = 1.3 }: { state: Exclude<QuestMarkerSta
   return <sprite position={[0, positionY, 0]} scale={[0.4, 0.4, 1]}><spriteMaterial map={texture} transparent depthTest={false} /></sprite>
 }
 
+function ServiceRoomFloor({ room }: { room: 'sleeping' | 'latrine' }) {
+  return (
+    <group>
+      <mesh position={[0, 0.012, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[3.48, 2.68]} />
+        <meshStandardMaterial color={room === 'sleeping' ? '#51483d' : '#5a5a50'} roughness={1} />
+      </mesh>
+      {[-1.16, 0, 1.16].map((x) => (
+        <mesh key={x} position={[x, 0.02, 0]}><boxGeometry args={[0.025, 0.02, 2.68]} /><meshStandardMaterial color="#35332e" roughness={1} /></mesh>
+      ))}
+      {[-0.89, 0, 0.89].map((z) => (
+        <mesh key={z} position={[0, 0.021, z]}><boxGeometry args={[3.48, 0.021, 0.025]} /><meshStandardMaterial color="#35332e" roughness={1} /></mesh>
+      ))}
+    </group>
+  )
+}
+
 function SleepingCloset() {
   return (
-    <group position={[-0.75, 0, 0]}>
-      <mesh position={[0, 0.27, 0]}><boxGeometry args={[1.55, 0.42, 0.86]} /><meshStandardMaterial color="#4b3325" /></mesh>
-      <mesh position={[-0.55, 0.52, 0]}><boxGeometry args={[0.38, 0.12, 0.7]} /><meshStandardMaterial color="#a48c68" /></mesh>
-      <mesh position={[0.15, 0.5, 0]}><boxGeometry args={[1.0, 0.12, 0.72]} /><meshStandardMaterial color="#665a4b" /></mesh>
-    </group>
+    <>
+      <group position={[-0.78, 0, -0.15]}>
+        <mesh position={[0, 0.22, 0]}><boxGeometry args={[1.72, 0.24, 0.92]} /><meshStandardMaterial color="#49331f" roughness={0.98} /></mesh>
+        {[-0.75, 0.75].flatMap((x) => [-0.37, 0.37].map((z) => (
+          <mesh key={`${x}:${z}`} position={[x, 0.11, z]}><boxGeometry args={[0.09, 0.22, 0.09]} /><meshStandardMaterial color="#302319" roughness={1} /></mesh>
+        )))}
+        <mesh position={[0, 0.39, 0]}><boxGeometry args={[1.56, 0.16, 0.79]} /><meshStandardMaterial color="#b1a27e" roughness={1} /></mesh>
+        <mesh position={[-0.56, 0.53, 0]} scale={[1, 0.42, 0.75]}><sphereGeometry args={[0.3, 12, 8]} /><meshStandardMaterial color="#d2c4a3" roughness={1} /></mesh>
+        <mesh position={[0.33, 0.51, 0]}><boxGeometry args={[0.82, 0.09, 0.75]} /><meshStandardMaterial color="#75543b" roughness={1} /></mesh>
+        <mesh position={[-0.82, 0.75, 0]}><boxGeometry args={[0.11, 1.22, 0.98]} /><meshStandardMaterial color="#3f2d1f" roughness={1} /></mesh>
+      </group>
+      <mesh position={[-0.1, 0.025, 0.82]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[1.15, 0.62]} />
+        <meshStandardMaterial color="#6f6048" roughness={1} />
+      </mesh>
+      <group position={[-1.7, 1.72, 0.76]} rotation={[0, Math.PI / 2, 0]}>
+        <mesh position={[0, 0, 0]}><boxGeometry args={[0.09, 0.76, 0.08]} /><meshStandardMaterial color="#65472b" roughness={1} /></mesh>
+        <mesh position={[0, 0.1, 0]}><boxGeometry args={[0.46, 0.08, 0.08]} /><meshStandardMaterial color="#65472b" roughness={1} /></mesh>
+      </group>
+      <group position={[-1.55, 1.25, -0.92]}>
+        <mesh><boxGeometry args={[0.48, 0.07, 0.54]} /><meshStandardMaterial color="#553c28" roughness={1} /></mesh>
+        <mesh position={[0.05, 0.06, 0]} rotation={[0, 0.12, 0]}><boxGeometry args={[0.26, 0.035, 0.36]} /><meshStandardMaterial color="#8d5c38" roughness={0.9} /></mesh>
+        <mesh position={[-0.15, 0.16, 0]}><cylinderGeometry args={[0.045, 0.055, 0.21, 9]} /><meshStandardMaterial color="#d5b66c" emissive="#6d3e12" emissiveIntensity={0.35} /></mesh>
+      </group>
+      <group position={[0.25, 0, 0.79]}>
+        <mesh position={[0, 0.2, 0]}><boxGeometry args={[0.42, 0.4, 0.34]} /><meshStandardMaterial color="#4c3827" roughness={1} /></mesh>
+        <mesh position={[-0.18, 0.5, 0]} rotation={[0, 0, -0.12]}><boxGeometry args={[0.12, 0.58, 0.12]} /><meshStandardMaterial color="#4c3827" roughness={1} /></mesh>
+      </group>
+    </>
   )
 }
 
 function Latrine() {
   return (
-    <group position={[-0.72, 0, 0]}>
-      <mesh position={[0, 0.32, 0]}><cylinderGeometry args={[0.42, 0.33, 0.56, 12]} /><meshStandardMaterial color="#8d8b7b" roughness={0.85} /></mesh>
-      <mesh position={[0, 0.64, 0]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[0.34, 0.07, 8, 16]} /><meshStandardMaterial color="#b3b09c" /></mesh>
-      <mesh position={[-0.75, 1.5, -1.32]}><planeGeometry args={[0.72, 1.05]} /><meshStandardMaterial color="#75807e" metalness={0.7} roughness={0.2} /></mesh>
-    </group>
+    <>
+      <group position={[-1.24, 0, 0.38]}>
+        <mesh position={[0, 0.36, 0]}><boxGeometry args={[0.82, 0.68, 1.45]} /><meshStandardMaterial color="#8b897b" roughness={1} /></mesh>
+        <mesh position={[0.26, 0.71, 0]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[0.2, 0.055, 8, 18]} /><meshStandardMaterial color="#b0ab96" roughness={0.9} /></mesh>
+        <mesh position={[0.26, 0.685, 0]} rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[0.145, 18]} /><meshStandardMaterial color="#27251f" roughness={1} /></mesh>
+      </group>
+      <group position={[-0.12, 0, -0.72]}>
+        <mesh position={[0, 0.42, 0]}><cylinderGeometry args={[0.42, 0.34, 0.76, 12]} /><meshStandardMaterial color="#655f51" roughness={1} /></mesh>
+        <mesh position={[0, 0.82, 0]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[0.36, 0.055, 8, 20]} /><meshStandardMaterial color="#a9733e" metalness={0.45} roughness={0.58} /></mesh>
+        <mesh position={[0, 0.78, 0]} rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[0.32, 20]} /><meshStandardMaterial color="#4d6d70" metalness={0.26} roughness={0.28} /></mesh>
+        <ClayVessel position={[0.35, 1.02, 0.08]} scale={1.15} />
+      </group>
+      <Mirror position={[-1.74, 1.73, -0.72]} rotationY={Math.PI / 2} />
+      <group position={[0.35, 1.42, 1.28]}>
+        <mesh><boxGeometry args={[0.82, 0.055, 0.06]} /><meshStandardMaterial color="#725739" roughness={0.92} /></mesh>
+        <mesh position={[-0.18, -0.34, 0]}><boxGeometry args={[0.34, 0.62, 0.045]} /><meshStandardMaterial color="#d0c5a5" roughness={1} /></mesh>
+        <mesh position={[0.2, -0.26, 0]}><boxGeometry args={[0.3, 0.48, 0.045]} /><meshStandardMaterial color="#aaa78e" roughness={1} /></mesh>
+      </group>
+      <group position={[0.78, 0.18, 0.72]}>
+        <mesh><cylinderGeometry args={[0.24, 0.2, 0.36, 12]} /><meshStandardMaterial color="#825c3b" roughness={1} /></mesh>
+        <mesh position={[0, 0.2, 0]}><torusGeometry args={[0.2, 0.025, 6, 12]} /><meshStandardMaterial color="#9a704c" roughness={1} /></mesh>
+      </group>
+      <pointLight color="#c8e3d6" intensity={3.5} distance={3.8} decay={2} position={[-0.2, 1.4, -0.65]} />
+    </>
   )
 }
 
