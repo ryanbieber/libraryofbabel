@@ -18,9 +18,10 @@ describe('significant word quest submission', () => {
     expect(result.nextStatus).toBeUndefined()
   })
 
-  it('validates the floor, gallery, and dual-format wall address', () => {
-    expect(resolveSignificantWordQuestSubmission({ ...baseSubmission, floor: '2' }, 'accepted').feedback.text).toBe('Floor must be -1, 0, or 1.')
-    expect(resolveSignificantWordQuestSubmission({ ...baseSubmission, gallery: '3' }, 'accepted').feedback.text).toBe('Gallery must be between -2 and 2.')
+  it('validates unbounded coordinates and the dual-format wall address', () => {
+    expect(resolveSignificantWordQuestSubmission({ ...baseSubmission, floor: '01' }, 'accepted').feedback.text).toBe('Floor must be a canonical signed integer.')
+    expect(resolveSignificantWordQuestSubmission({ ...baseSubmission, gallery: '1e9' }, 'accepted').feedback.text).toBe('Gallery must be a canonical signed integer.')
+    expect(resolveSignificantWordQuestSubmission({ ...baseSubmission, floor: '999999999999999999999', gallery: '-888888888888888888888' }, 'accepted').feedback.text).not.toMatch(/canonical signed integer/)
     expect(resolveSignificantWordQuestSubmission({ ...baseSubmission, wall: 'ceiling' }, 'accepted').feedback.text).toBe('Wall must be I-IV, A-D, or 1-4.')
     expect(resolveSignificantWordQuestSubmission({ ...baseSubmission, wall: 'I' }, 'accepted').feedback.text).not.toMatch(/Wall must/)
   })

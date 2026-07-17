@@ -1,4 +1,7 @@
 import type { FloorIndex, GalleryIndex } from './level'
+import { STARTING_FLOOR, STARTING_GALLERY } from './level'
+
+export const NPC_GENERATION_VERSION = 'v1' as const
 import { INTERACTION_RADIUS, type PlayerPose } from './roomGeometry'
 
 export type NpcQuest = 'messiah' | 'crimson-book' | 'significant-word' | 'word-finder'
@@ -30,7 +33,7 @@ const crimsonHexagonLines = [
 ]
 
 export function npcForGallery(floor: FloorIndex, gallery: GalleryIndex): LibraryNpc | null {
-  if (floor === 0 && gallery === 0) {
+  if (floor === STARTING_FLOOR && gallery === STARTING_GALLERY) {
     return {
       id: 'monk:0:0',
       floor,
@@ -65,7 +68,7 @@ export function npcForGallery(floor: FloorIndex, gallery: GalleryIndex): Library
 
 export function npcsForGallery(floor: FloorIndex, gallery: GalleryIndex): LibraryNpc[] {
   const resident = npcForGallery(floor, gallery)
-  if (floor !== 0 || gallery !== 0) return resident ? [resident] : []
+  if (floor !== STARTING_FLOOR || gallery !== STARTING_GALLERY) return resident ? [resident] : []
 
   return [
     ...(resident ? [resident] : []),

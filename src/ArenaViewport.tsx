@@ -5,7 +5,7 @@ import * as THREE from 'three'
 import { Reflector } from 'three/addons/objects/Reflector.js'
 import { FIRST_PERSON_CAMERA_ORDER, cameraYawFromPlayerYaw } from './lib/camera'
 import { incidentForGallery, type GalleryIncident } from './lib/incidents'
-import { galleriesForConnector, signedLabel, zoneLabel } from './lib/level'
+import { signedLabel, zoneLabel, type ConnectorCoordinate } from './lib/level'
 import {
   BOOKS_PER_SHELF,
   BOOK_DIMENSIONS,
@@ -24,7 +24,6 @@ import { shouldBookCapturePointer } from './lib/pointer'
 import { visibleScenesForPose } from './lib/sceneVisibility'
 import { GALLERY_BULB_POSITIONS, VESTIBULE_MIRROR_POSITION } from './lib/sceneDetails'
 import {
-  BOUNDARY_GALLERY_DEPTHS,
   LIGHTWELL_RAILS_PER_SHELL,
   LIGHTWELL_SHELL_LEVELS,
   STAIR_FLIGHT_LEVELS,
@@ -710,7 +709,14 @@ function createPlaqueTexture(text: string, width: number, height: number): THREE
     context.lineWidth = Math.max(5, height * 0.06)
     context.strokeRect(context.lineWidth / 2, context.lineWidth / 2, width - context.lineWidth, height - context.lineWidth)
     context.fillStyle = '#ffe6a1'
-    context.font = `700 ${Math.round(height * 0.46)}px Georgia`
+    const maximumFontSize = Math.round(height * 0.46)
+    let fontSize = maximumFontSize
+    context.font = `700 ${fontSize}px Georgia`
+    const availableWidth = width - height * 0.3
+    while (fontSize > 12 && context.measureText(text).width > availableWidth) {
+      fontSize -= 2
+      context.font = `700 ${fontSize}px Georgia`
+    }
     context.textAlign = 'center'
     context.textBaseline = 'middle'
     context.fillText(text, width / 2, height * 0.53)
@@ -931,13 +937,12 @@ function InstancedBooks({
   )
 }
 
-function VestibuleScene({ connector, reflectiveMirror }: { connector: number; reflectiveMirror: boolean }) {
-  const neighbors = galleriesForConnector(connector as Parameters<typeof galleriesForConnector>[0])
+function VestibuleScene({ connector: _connector, reflectiveMirror }: { connector: ConnectorCoordinate; reflectiveMirror: boolean }) {
   return (
     <>
       <BoxRoom width={VESTIBULE_HALF_WIDTH * 2} depth={VESTIBULE_HALF_DEPTH * 2} color="#4a443b" openNorth openSouth openWest openEast />
-      <CorridorEnd z={-VESTIBULE_HALF_DEPTH} gated={neighbors.north === null} />
-      <CorridorEnd z={VESTIBULE_HALF_DEPTH} gated={neighbors.south === null} rotationY={Math.PI} />
+      <CorridorEnd z={-VESTIBULE_HALF_DEPTH} />
+      <CorridorEnd z={VESTIBULE_HALF_DEPTH} rotationY={Math.PI} />
       <SidePortal side="west" z={-0.72} labelColor="#897151" />
       <SidePortal side="west" z={0.72} labelColor="#6d5944" />
       <SidePortal side="east" z={0} labelColor="#a67d36" wide />
@@ -1156,74 +1161,10 @@ function PassageFrame({ z, rotationY = 0, totalWidth = GALLERY_RADIUS }: { z: nu
   )
 }
 
-function CorridorEnd({ z, gated, rotationY = 0 }: { z: number; gated: boolean; rotationY?: number }) {
+function CorridorEnd({ z, rotationY = 0 }: { z: number; rotationY?: number }) {
   return (
     <group position={[0, 0, z]} rotation={[0, rotationY, 0]}>
       <PassageFrame z={0} totalWidth={VESTIBULE_HALF_WIDTH * 2} />
-      {gated ? Array.from({ length: 7 }, (_, index) => (
-        <mesh key={index} position={[-0.6 + index * 0.2, 1.12, -0.04]}>
-          <boxGeometry args={[0.035, 2.2, 0.05]} />
-          <meshStandardMaterial color="#5d4a31" metalness={0.45} roughness={0.72} />
-        </mesh>
-      )) : null}
-      {gated ? <BoundaryGalleryContinuation /> : null}
-    </group>
-  )
-}
-
-function BoundaryGalleryContinuation() {
-  const shellsRef = useRef<THREE.InstancedMesh>(null)
-  const lampsRef = useRef<THREE.InstancedMesh>(null)
-
-  useLayoutEffect(() => {
-    const shells = shellsRef.current
-    const lamps = lampsRef.current
-    if (!shells || !lamps) return
-    const dummy = new THREE.Object3D()
-    let shellInstance = 0
-
-    BOUNDARY_GALLERY_DEPTHS.forEach((depth, index) => {
-      const yaw = (index % 2 === 0 ? 1 : -1) * (0.035 + index * 0.009)
-      for (const side of [-1, 1] as const) {
-        dummy.position.set(side * 1.47, 1.38, -depth)
-        dummy.rotation.set(0, side * 0.2 + yaw, 0)
-        dummy.scale.set(1.3, 2.76, 0.16)
-        dummy.updateMatrix()
-        shells.setMatrixAt(shellInstance, dummy.matrix)
-        shellInstance += 1
-      }
-      dummy.position.set(0, 2.7, -depth)
-      dummy.rotation.set(0, yaw, 0)
-      dummy.scale.set(3.35, 0.2, 0.18)
-      dummy.updateMatrix()
-      shells.setMatrixAt(shellInstance, dummy.matrix)
-      shellInstance += 1
-
-      dummy.position.set(index % 2 === 0 ? -0.72 : 0.64, 2.25, -depth - 0.28)
-      dummy.rotation.set(0, 0, 0)
-      dummy.scale.setScalar(1)
-      dummy.updateMatrix()
-      lamps.setMatrixAt(index, dummy.matrix)
-    })
-
-    shells.instanceMatrix.needsUpdate = true
-    lamps.instanceMatrix.needsUpdate = true
-  }, [])
-
-  return (
-    <group>
-      <mesh position={[0, 1.45, -14]} raycast={() => null}>
-        <boxGeometry args={[3.75, 2.9, 28]} />
-        <meshStandardMaterial color="#17130f" roughness={1} side={THREE.BackSide} />
-      </mesh>
-      <instancedMesh ref={shellsRef} args={[undefined, undefined, BOUNDARY_GALLERY_DEPTHS.length * 3]} raycast={() => null}>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="#342c24" roughness={1} />
-      </instancedMesh>
-      <instancedMesh ref={lampsRef} args={[undefined, undefined, BOUNDARY_GALLERY_DEPTHS.length]} raycast={() => null}>
-        <sphereGeometry args={[0.075, 7, 5]} />
-        <meshStandardMaterial color="#8d622c" emissive="#d08a38" emissiveIntensity={0.8} />
-      </instancedMesh>
     </group>
   )
 }
@@ -1838,9 +1779,8 @@ function addressFromInstance(
   return nearbyBookAddress(floor, gallery, wall, Math.floor(instance / BOOKS_PER_SHELF), instance % BOOKS_PER_SHELF)
 }
 
-function vestibuleHelp(floor: number): string {
-  if (floor === 0) return 'west: sleeping closet / latrine · east stair: north lane up / south lane down'
-  return 'west: sleeping closet / latrine · east: spiral stair to floor 0'
+function vestibuleHelp(_floor: BookAddress['floor']): string {
+  return 'west: sleeping closet / latrine · east stair: north lane up / south lane down'
 }
 
 function isInteractiveTarget(target: EventTarget | null): boolean {

@@ -11,6 +11,7 @@ import {
   type GalleryIndex,
   type WorldZone,
 } from './level'
+import { coordinate } from './coordinate'
 import {
   BOOKS_PER_SHELF,
   SHELF_WALLS,
@@ -30,7 +31,7 @@ export type PlayerPose = {
 export type MoveResult = {
   pose: PlayerPose
   transition?: 'gallery' | 'vestibule' | 'service' | 'stairs' | 'floor'
-  blocked?: 'wall' | 'lightwell' | 'gate' | 'landing'
+  blocked?: 'wall' | 'lightwell'
 }
 
 export const GALLERY_APOTHEM = 5.4
@@ -52,8 +53,8 @@ export const STAIR_TRAVEL_DISTANCE = 7.8
 export const STAIR_START_ANGLE = Math.PI
 
 export const STARTING_PLAYER_POSE: PlayerPose = {
-  floor: 0,
-  zone: { kind: 'gallery', gallery: 0 },
+  floor: coordinate(0),
+  zone: { kind: 'gallery', gallery: coordinate(0) },
   x: 0,
   y: 0,
   z: 4.35,
@@ -170,14 +171,12 @@ function moveInVestibule(
 ): MoveResult {
   const neighbors = galleriesForConnector(connector)
   if (targetZ < -VESTIBULE_HALF_DEPTH + PLAYER_RADIUS && Math.abs(targetX) <= PASSAGE_HALF_WIDTH) {
-    if (neighbors.north === null) return { pose, blocked: 'gate' }
     return {
       pose: { ...pose, zone: { kind: 'gallery', gallery: neighbors.north }, x: targetX, z: GALLERY_APOTHEM - 0.32 },
       transition: 'gallery',
     }
   }
   if (targetZ > VESTIBULE_HALF_DEPTH - PLAYER_RADIUS && Math.abs(targetX) <= PASSAGE_HALF_WIDTH) {
-    if (neighbors.south === null) return { pose, blocked: 'gate' }
     return {
       pose: { ...pose, zone: { kind: 'gallery', gallery: neighbors.south }, x: targetX, z: -GALLERY_APOTHEM + 0.32 },
       transition: 'gallery',
@@ -194,9 +193,8 @@ function moveInVestibule(
   }
 
   if (targetX > VESTIBULE_HALF_WIDTH - PLAYER_RADIUS && Math.abs(targetZ) <= 0.8) {
-    const direction: -1 | 1 = pose.floor === -1 ? 1 : pose.floor === 1 ? -1 : targetZ <= 0 ? 1 : -1
+    const direction: -1 | 1 = targetZ <= 0 ? 1 : -1
     const destination = adjacentFloor(pose.floor, direction)
-    if (destination === null) return { pose, blocked: 'landing' }
     return {
       pose: {
         ...pose,
@@ -222,7 +220,7 @@ function moveInVestibule(
 function moveInServiceRoom(pose: PlayerPose, targetX: number, targetZ: number): MoveResult {
   if (targetX > 1.8 - PLAYER_RADIUS && Math.abs(targetZ) <= 0.82) {
     const room = pose.zone.kind === 'service' ? pose.zone.room : 'sleeping'
-    const connector = pose.zone.kind === 'service' ? pose.zone.connector : 0
+    const connector = pose.zone.kind === 'service' ? pose.zone.connector : coordinate(0)
     return {
       pose: {
         ...pose,
@@ -302,15 +300,20 @@ export function poseNearBook(address: BookAddress): PlayerPose {
 export function isValidPlayerPose(value: unknown): value is PlayerPose {
   if (!value || typeof value !== 'object') return false
   const pose = value as Partial<PlayerPose>
-  if (!isFloorIndex(Number(pose.floor)) || !Number.isFinite(pose.x) || !Number.isFinite(pose.y) || !Number.isFinite(pose.z) || !Number.isFinite(pose.yaw)) return false
+  if (!isFloorIndex(pose.floor) || !Number.isFinite(pose.x) || !Number.isFinite(pose.y) || !Number.isFinite(pose.z) || !Number.isFinite(pose.yaw)) return false
   if (Math.abs(Number(pose.x)) > 10 || Math.abs(Number(pose.z)) > 10 || Number(pose.y) < 0 || Number(pose.y) > FLOOR_HEIGHT) return false
   const zone = pose.zone
   if (!zone || typeof zone !== 'object' || typeof zone.kind !== 'string') return false
-  if (zone.kind === 'gallery') return isGalleryIndex(Number(zone.gallery))
-  if (zone.kind === 'vestibule') return isConnectorIndex(Number(zone.connector))
-  if (zone.kind === 'service') return isConnectorIndex(Number(zone.connector)) && (zone.room === 'sleeping' || zone.room === 'latrine')
+  if (zone.kind === 'gallery') return isGalleryIndex(zone.gallery)
+  if (zone.kind === 'vestibule') return isConnectorIndex(zone.connector)
+  if (zone.kind === 'service') return isConnectorIndex(zone.connector) && (zone.room === 'sleeping' || zone.room === 'latrine')
   if (zone.kind === 'stair') {
-    return isConnectorIndex(Number(zone.connector)) && isFloorIndex(Number(zone.from)) && isFloorIndex(Number(zone.to)) && Number.isFinite(zone.distance) && zone.distance >= 0 && zone.distance <= STAIR_TRAVEL_DISTANCE
+    return pose.floor === zone.from
+      && isConnectorIndex(zone.connector)
+      && isFloorIndex(zone.from)
+      && isFloorIndex(zone.to)
+      && (zone.to === adjacentFloor(zone.from, 1) || zone.to === adjacentFloor(zone.from, -1))
+      && Number.isFinite(zone.distance) && zone.distance >= 0 && zone.distance <= STAIR_TRAVEL_DISTANCE
   }
   return false
 }

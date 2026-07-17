@@ -1,4 +1,4 @@
-import { isFloorIndex, isGalleryIndex } from './level'
+import { parseCoordinate, serializeCoordinate, type Coordinate } from './coordinate'
 import {
   BOOKS_PER_SHELF,
   PAGES_PER_BOOK,
@@ -56,7 +56,7 @@ export function resolveSignificantWordQuestSubmission(
 function parseSignificantWordSubmission(values: WordQuestFormValues): {
   valid: true
   submission: SignificantWordSubmission
-  display: { floor: number; gallery: number; wall: ShelfWall; shelf: number; volume: number; page: number }
+  display: { floor: string; gallery: string; wall: ShelfWall; shelf: number; volume: number; page: number }
 } | { valid: false; message: string } {
   const floor = parseSignedInteger(values.floor)
   const gallery = parseSignedInteger(values.gallery)
@@ -65,8 +65,8 @@ function parseSignificantWordSubmission(values: WordQuestFormValues): {
   const volume = parseUnsignedInteger(values.volume)
   const page = parseUnsignedInteger(values.page)
 
-  if (floor === null || !isFloorIndex(floor)) return { valid: false, message: 'Floor must be -1, 0, or 1.' }
-  if (gallery === null || !isGalleryIndex(gallery)) return { valid: false, message: 'Gallery must be between -2 and 2.' }
+  if (floor === null) return { valid: false, message: 'Floor must be a canonical signed integer.' }
+  if (gallery === null) return { valid: false, message: 'Gallery must be a canonical signed integer.' }
   if (wall === null) return { valid: false, message: 'Wall must be I-IV, A-D, or 1-4.' }
   if (shelf === null || shelf < 1 || shelf > SHELVES_PER_WALL) return { valid: false, message: `Row must be 1-${SHELVES_PER_WALL}.` }
   if (volume === null || volume < 1 || volume > BOOKS_PER_SHELF) return { valid: false, message: `Book must be 1-${BOOKS_PER_SHELF}.` }
@@ -75,7 +75,7 @@ function parseSignificantWordSubmission(values: WordQuestFormValues): {
   return {
     valid: true,
     submission: { floor, gallery, wall, shelf: shelf - 1, book: volume - 1, page },
-    display: { floor, gallery, wall, shelf, volume, page },
+    display: { floor: serializeCoordinate(floor), gallery: serializeCoordinate(gallery), wall, shelf, volume, page },
   }
 }
 
@@ -83,8 +83,8 @@ function parseWall(value: string): ShelfWall | null {
   return shelfWallFromLabel(value)
 }
 
-function parseSignedInteger(value: string): number | null {
-  return /^-?\d+$/.test(value.trim()) ? Number(value) : null
+function parseSignedInteger(value: string): Coordinate | null {
+  return parseCoordinate(value.trim())
 }
 
 function parseUnsignedInteger(value: string): number | null {

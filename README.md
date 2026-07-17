@@ -6,18 +6,23 @@ Play it here: <https://ryanbieber.github.io/libraryofbabel/>
 
 ## About
 
-This project turns Borges's impossible library into a browser-based space: three floors of aligned
+This project turns Borges's impossible library into a browser-based space: unbounded floors of aligned
 hexagonal galleries, guarded lightwells, open vestibules, spiral stairs, sleeping closets, latrines,
 four walls of books, and deterministic pages. It is a small game-like tribute to the story's unsettling
 premise: a universe that contains every possible book, almost all of it meaningless.
 
-The playable map remains three floors by five galleries. Fogged, simplified gallery shells, stair
-flights, and architecture beyond locked grilles make that finite map feel like one accessible window
-onto a much larger Library; the continuation is visual only and disappears before its extent can be
-measured.
+Floors, galleries, and their connectors use globally unbounded signed coordinates. Ordinary passages
+have no end gates, and either stair lane continues to the next global floor. The browser constructs only
+the current zone and its visible neighbors at small positions around the player, so rendering cost and
+floating-point precision do not depend on how large a coordinate becomes. Finite fogged lightwell and
+stair shells are atmospheric rendering details, not a measurable edge or mechanically exposed period;
+narrators remain appropriately uncertain about whether the Library ever repeats.
 
 No book text is stored. Pages are generated in the browser from a book address and page number, so the
-same coordinates always return the same page.
+same coordinates always return the same page. Book content uses the explicit `legacy-v1` strategy and
+keeps the historical seed format at the original three-floor/five-gallery coordinates. Cover generation
+remains independently versioned as `v1`. Future generator changes must add a compatibility version
+rather than rewriting either historical strategy.
 
 Every shelf uses the same restrained binding and physical book format. The five-symbol marks on the
 spines come from a separate deterministic cover seed; they are decorative inscriptions, not titles or
@@ -46,6 +51,16 @@ The current floor and signed gallery coordinate are always shown on screen. Insi
 brass signs identify walls I-IV (also accepted as A-D or 1-4), rows I-V from top to bottom, and
 books 1-32 from left to right. Hovering a reachable book shows its exact translated address.
 
+Global coordinates are displayed as canonical signed decimal integers and remain exact beyond the
+JavaScript safe-number range.
+
+## Saved journeys
+
+Journey saves use version 2, storing every global coordinate as a decimal string. Existing version 1
+saves migrate automatically on read while retaining player location, quest status, selected book, word
+finding, and stair progress. The previous save is left in place until the player explicitly begins again,
+so a failed browser-storage write cannot erase the last usable journey.
+
 ## Development
 
 ```sh
@@ -68,7 +83,11 @@ and capped at 951 instanced details and 23 additional draw calls for any player 
 colliders, navigation nodes, interaction handlers, or dynamically expanding scene lists. The renderer
 publishes current object, draw-call, geometry, and texture counts as `data-*` attributes on the arena
 viewport so a stationary desktop or mobile-landscape view can be sampled repeatedly for growth. Unit
-tests enumerate representative poses and enforce deterministic construction and all three caps.
+tests enumerate representative and enormous global poses and enforce deterministic construction and all
+three caps.
+
+The implementation and migration rationale are recorded in
+[the unbounded-world design](docs/unbounded-world-design.md).
 
 ## Deployment
 

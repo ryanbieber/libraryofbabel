@@ -6,6 +6,8 @@ import {
   type GalleryIndex,
 } from './level'
 
+export const INCIDENT_GENERATION_VERSION = 'v1' as const
+
 export const INCIDENT_KINDS = [
   'purifier-damage',
   'contradictory-catalogs',

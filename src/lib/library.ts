@@ -1,4 +1,5 @@
-import { GALLERY_INDICES, type FloorIndex, type GalleryIndex } from './level'
+import { coordinate } from './coordinate'
+import { LEGACY_GALLERY_COORDINATES, type FloorIndex, type GalleryIndex } from './level'
 
 export const LETTER_SYMBOLS = 'abcdefghijklmnopqrstuv'
 export const ALPHABET = `${LETTER_SYMBOLS} ,.` as const
@@ -12,6 +13,8 @@ export const WALL_COUNT = 4
 export const SHELVES_PER_WALL = 5
 export const BOOKS_PER_SHELF = 32
 export const COVER_INSCRIPTION_LENGTH = 5
+export const BOOK_CONTENT_GENERATION_VERSION = 'legacy-v1' as const
+export const COVER_GENERATION_VERSION = 'v1' as const
 
 export const BOOK_DIMENSIONS = Object.freeze({
   width: 0.141,
@@ -35,8 +38,8 @@ export type BookAddress = {
 export type PageAddress = BookAddress & { page: number }
 
 export const defaultAddress: BookAddress = {
-  floor: 0,
-  gallery: 0,
+  floor: coordinate(0),
+  gallery: coordinate(0),
   wall: 'A',
   shelf: 1,
   book: 7,
@@ -142,8 +145,8 @@ export function nearbyBookAddress(
 }
 
 export function deterministicJump(seed: string): BookAddress {
-  const floor = ([-1, 0, 1] as const)[hashToIndex(`${seed}:floor`) % 3]
-  const gallery = GALLERY_INDICES[hashToIndex(`${seed}:gallery`) % GALLERY_INDICES.length]
+  const floor = ([coordinate(-1), coordinate(0), coordinate(1)] as const)[hashToIndex(`${seed}:floor`) % 3]
+  const gallery = LEGACY_GALLERY_COORDINATES[hashToIndex(`${seed}:gallery`) % LEGACY_GALLERY_COORDINATES.length]
   return nearbyBookAddress(
     floor,
     gallery,
@@ -179,8 +182,8 @@ export function possibleBooksExponent(): number {
   return SYMBOLS_PER_BOOK * Math.log10(ALPHABET_SIZE)
 }
 
-function signedLabel(value: number): string {
-  return value > 0 ? `+${value}` : String(value)
+function signedLabel(value: bigint): string {
+  return value > 0n ? `+${value}` : String(value)
 }
 
 function hashToIndex(input: string): number {
