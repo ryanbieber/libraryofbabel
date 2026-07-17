@@ -11,6 +11,13 @@ export const SYMBOLS_PER_BOOK = PAGES_PER_BOOK * SYMBOLS_PER_PAGE
 export const WALL_COUNT = 4
 export const SHELVES_PER_WALL = 5
 export const BOOKS_PER_SHELF = 32
+export const COVER_INSCRIPTION_LENGTH = 5
+
+export const BOOK_DIMENSIONS = Object.freeze({
+  width: 0.141,
+  height: 0.38,
+  depth: 0.13,
+})
 
 export const SHELF_WALLS = ['A', 'B', 'C', 'D'] as const
 export type ShelfWall = (typeof SHELF_WALLS)[number]
@@ -86,10 +93,31 @@ export function generatePage(address: PageAddress): string[] {
   return Array.from({ length: LINES_PER_PAGE }, (_, lineIndex) => generateLine({ ...address, page }, lineIndex))
 }
 
-export function generateLine(address: PageAddress, lineIndex: number): string {
+/**
+ * Cover marks deliberately use a separate, domain-specific seed from page
+ * generation. They identify a binding visually, but carry no address or
+ * content information a reader can decode.
+ */
+export function coverSeed(address: BookAddress): string {
+  return `cover-inscription:v1:${addressKey(address)}`
+}
+
+export function contentSeed(address: PageAddress, lineIndex: number): string {
   const page = clampPage(address.page)
   const safeLine = Math.min(LINES_PER_PAGE - 1, Math.max(0, Math.round(lineIndex)))
-  let state = fnv1a(`${addressKey(address)}:${page}:${safeLine}`)
+  return `${addressKey(address)}:${page}:${safeLine}`
+}
+
+export function coverInscription(address: BookAddress): string {
+  let state = fnv1a(coverSeed(address))
+  return Array.from({ length: COVER_INSCRIPTION_LENGTH }, () => {
+    state = nextRandom(state)
+    return LETTER_SYMBOLS[state % LETTER_SYMBOLS.length]
+  }).join('')
+}
+
+export function generateLine(address: PageAddress, lineIndex: number): string {
+  let state = fnv1a(contentSeed(address, lineIndex))
   return Array.from({ length: SYMBOLS_PER_LINE }, () => {
     state = nextRandom(state)
     return ALPHABET[state % ALPHABET_SIZE]

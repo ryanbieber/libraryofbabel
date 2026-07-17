@@ -14,6 +14,10 @@ premise: a universe that contains every possible book, almost all of it meaningl
 No book text is stored. Pages are generated in the browser from a book address and page number, so the
 same coordinates always return the same page.
 
+Every shelf uses the same restrained binding and physical book format. The five-symbol marks on the
+spines come from a separate deterministic cover seed; they are decorative inscriptions, not titles or
+addresses, and do not describe or predict the generated pages.
+
 ## Scale
 
 The app uses the story's familiar book structure:
