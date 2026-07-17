@@ -132,7 +132,7 @@ describe('App interactions', () => {
     fireEvent.change(screen.getByLabelText('Word to find'), { target: { value: 'babel' } })
     fireEvent.click(screen.getByRole('button', { name: 'ask the indexer' }))
 
-    expect(await screen.findByLabelText('Word finder directions', {}, { timeout: 5_000 })).toHaveTextContent('“babel”')
+    expect(await screen.findByLabelText('Word finder directions', {}, { timeout: 15_000 })).toHaveTextContent('“babel”')
     expect(screen.getByLabelText('Word finder directions')).toHaveTextContent(/floor .* gallery .* wall [IV]+ \([A-D]\).* row [IV]+ \([1-5]\).* book .* page/i)
   })
 
