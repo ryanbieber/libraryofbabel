@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { CONNECTOR_INDICES, FLOOR_INDICES, GALLERY_INDICES, type FloorIndex } from './level'
+import { LEGACY_CONNECTOR_COORDINATES, LEGACY_FLOOR_COORDINATES, LEGACY_GALLERY_COORDINATES, type FloorIndex } from './level'
 import { FLOOR_HEIGHT, STARTING_PLAYER_POSE, type PlayerPose } from './roomGeometry'
 import { MAX_VISIBLE_SCENES, visibleScenesForPose } from './sceneVisibility'
 import {
-  BOUNDARY_CONTINUATION_INSTANCES,
-  BOUNDARY_GALLERY_DEPTHS,
   LIGHTWELL_CONTINUATION_INSTANCES,
   LIGHTWELL_RAILS_PER_SHELL,
   LIGHTWELL_SHELL_LEVELS,
@@ -16,27 +14,28 @@ import {
   STAIR_STEPS_PER_FLIGHT,
   continuationBudgetForScenes,
 } from './visualContinuation'
+import { coordinate } from './coordinate'
 
 function representativePoses(): PlayerPose[] {
   const poses: PlayerPose[] = []
-  for (const floor of FLOOR_INDICES) {
-    for (const gallery of GALLERY_INDICES) {
+  for (const floor of LEGACY_FLOOR_COORDINATES) {
+    for (const gallery of LEGACY_GALLERY_COORDINATES) {
       poses.push({ ...STARTING_PLAYER_POSE, floor, zone: { kind: 'gallery', gallery } })
     }
-    for (const connector of CONNECTOR_INDICES) {
+    for (const connector of LEGACY_CONNECTOR_COORDINATES) {
       poses.push({ ...STARTING_PLAYER_POSE, floor, zone: { kind: 'vestibule', connector } })
       poses.push({ ...STARTING_PLAYER_POSE, floor, zone: { kind: 'service', connector, room: 'sleeping' } })
       poses.push({ ...STARTING_PLAYER_POSE, floor, zone: { kind: 'service', connector, room: 'latrine' } })
     }
   }
-  for (const connector of CONNECTOR_INDICES) {
-    poses.push(stairPose(-1, 0, connector))
-    poses.push(stairPose(0, 1, connector))
+  for (const connector of LEGACY_CONNECTOR_COORDINATES) {
+    poses.push(stairPose(coordinate(-1), coordinate(0), connector))
+    poses.push(stairPose(coordinate(0), coordinate(1), connector))
   }
   return poses
 }
 
-function stairPose(from: FloorIndex, to: FloorIndex, connector: (typeof CONNECTOR_INDICES)[number]): PlayerPose {
+function stairPose(from: FloorIndex, to: FloorIndex, connector: (typeof LEGACY_CONNECTOR_COORDINATES)[number]): PlayerPose {
   return {
     ...STARTING_PLAYER_POSE,
     floor: from,
@@ -81,6 +80,6 @@ describe('visual continuation construction', () => {
         * (STAIR_STEPS_PER_FLIGHT + STAIR_STEPS_PER_FLIGHT / STAIR_POST_INTERVAL + 1)
         + 10,
     )
-    expect(BOUNDARY_CONTINUATION_INSTANCES).toBe(BOUNDARY_GALLERY_DEPTHS.length * 4)
+    expect(continuationBudgetForScenes(visibleScenesForPose(STARTING_PLAYER_POSE)).boundaries).toBe(0)
   })
 })

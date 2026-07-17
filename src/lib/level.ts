@@ -1,56 +1,58 @@
-export const FLOOR_INDICES = [-1, 0, 1] as const
-export const GALLERY_INDICES = [-2, -1, 0, 1, 2] as const
-export const CONNECTOR_INDICES = [-3, -2, -1, 0, 1, 2] as const
+import { addCoordinate, coordinate, serializeCoordinate, signedCoordinateLabel, type Coordinate } from './coordinate'
 
-export type FloorIndex = (typeof FLOOR_INDICES)[number]
-export type GalleryIndex = (typeof GALLERY_INDICES)[number]
-export type ConnectorIndex = (typeof CONNECTOR_INDICES)[number]
+export type FloorCoordinate = Coordinate
+export type GalleryCoordinate = Coordinate
+export type ConnectorCoordinate = Coordinate
+
+// Transitional aliases keep the domain names concise at call sites.
+export type FloorIndex = FloorCoordinate
+export type GalleryIndex = GalleryCoordinate
+export type ConnectorIndex = ConnectorCoordinate
 export type ServiceRoomKind = 'sleeping' | 'latrine'
 
+// The legacy sector remains useful for compatibility tests and the finite word index.
+export const LEGACY_FLOOR_COORDINATES = [coordinate(-1), coordinate(0), coordinate(1)] as const
+export const LEGACY_GALLERY_COORDINATES = [coordinate(-2), coordinate(-1), coordinate(0), coordinate(1), coordinate(2)] as const
+export const LEGACY_CONNECTOR_COORDINATES = [coordinate(-3), coordinate(-2), coordinate(-1), coordinate(0), coordinate(1), coordinate(2)] as const
+
 export type WorldZone =
-  | { kind: 'gallery'; gallery: GalleryIndex }
-  | { kind: 'vestibule'; connector: ConnectorIndex }
-  | { kind: 'service'; connector: ConnectorIndex; room: ServiceRoomKind }
-  | { kind: 'stair'; connector: ConnectorIndex; from: FloorIndex; to: FloorIndex; distance: number }
+  | { kind: 'gallery'; gallery: GalleryCoordinate }
+  | { kind: 'vestibule'; connector: ConnectorCoordinate }
+  | { kind: 'service'; connector: ConnectorCoordinate; room: ServiceRoomKind }
+  | { kind: 'stair'; connector: ConnectorCoordinate; from: FloorCoordinate; to: FloorCoordinate; distance: number }
 
-export const STARTING_FLOOR: FloorIndex = 0
-export const STARTING_GALLERY: GalleryIndex = 0
+export const STARTING_FLOOR: FloorCoordinate = coordinate(0)
+export const STARTING_GALLERY: GalleryCoordinate = coordinate(0)
 
-export function isFloorIndex(value: number): value is FloorIndex {
-  return FLOOR_INDICES.includes(value as FloorIndex)
+export function isFloorIndex(value: unknown): value is FloorCoordinate {
+  return typeof value === 'bigint'
 }
 
-export function isGalleryIndex(value: number): value is GalleryIndex {
-  return GALLERY_INDICES.includes(value as GalleryIndex)
+export function isGalleryIndex(value: unknown): value is GalleryCoordinate {
+  return typeof value === 'bigint'
 }
 
-export function isConnectorIndex(value: number): value is ConnectorIndex {
-  return CONNECTOR_INDICES.includes(value as ConnectorIndex)
+export function isConnectorIndex(value: unknown): value is ConnectorCoordinate {
+  return typeof value === 'bigint'
 }
 
-export function northConnector(gallery: GalleryIndex): ConnectorIndex {
-  return (gallery - 1) as ConnectorIndex
+export function northConnector(gallery: GalleryCoordinate): ConnectorCoordinate {
+  return addCoordinate(gallery, -1)
 }
 
-export function southConnector(gallery: GalleryIndex): ConnectorIndex {
-  return gallery as ConnectorIndex
+export function southConnector(gallery: GalleryCoordinate): ConnectorCoordinate {
+  return gallery
 }
 
-export function galleriesForConnector(connector: ConnectorIndex): {
-  north: GalleryIndex | null
-  south: GalleryIndex | null
+export function galleriesForConnector(connector: ConnectorCoordinate): {
+  north: GalleryCoordinate
+  south: GalleryCoordinate
 } {
-  const north = connector as number
-  const south = connector + 1
-  return {
-    north: isGalleryIndex(north) ? north : null,
-    south: isGalleryIndex(south) ? south : null,
-  }
+  return { north: connector, south: addCoordinate(connector, 1) }
 }
 
-export function adjacentFloor(floor: FloorIndex, direction: -1 | 1): FloorIndex | null {
-  const candidate = floor + direction
-  return isFloorIndex(candidate) ? candidate : null
+export function adjacentFloor(floor: FloorCoordinate, direction: -1 | 1): FloorCoordinate {
+  return addCoordinate(floor, direction)
 }
 
 export function zoneLabel(zone: WorldZone): string {
@@ -66,12 +68,11 @@ export function zoneLabel(zone: WorldZone): string {
   }
 }
 
-export function worldKey(floor: FloorIndex, zone: WorldZone): string {
-  if (zone.kind === 'gallery') return `${floor}:gallery:${zone.gallery}`
-  if (zone.kind === 'service') return `${floor}:${zone.room}:${zone.connector}`
-  return `${floor}:${zone.kind}:${zone.connector}`
+export function worldKey(floor: FloorCoordinate, zone: WorldZone): string {
+  const floorKey = serializeCoordinate(floor)
+  if (zone.kind === 'gallery') return `${floorKey}:gallery:${serializeCoordinate(zone.gallery)}`
+  if (zone.kind === 'service') return `${floorKey}:${zone.room}:${serializeCoordinate(zone.connector)}`
+  return `${floorKey}:${zone.kind}:${serializeCoordinate(zone.connector)}`
 }
 
-export function signedLabel(value: number): string {
-  return value > 0 ? `+${value}` : String(value)
-}
+export const signedLabel = signedCoordinateLabel

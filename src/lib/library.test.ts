@@ -5,6 +5,8 @@ import {
   BOOK_DIMENSIONS,
   BOOKS_PER_SHELF,
   COVER_INSCRIPTION_LENGTH,
+  BOOK_CONTENT_GENERATION_VERSION,
+  COVER_GENERATION_VERSION,
   LINES_PER_PAGE,
   PAGES_PER_BOOK,
   SHELVES_PER_WALL,
@@ -26,6 +28,7 @@ import {
   shelfWallFromLabel,
   wallDisplayLabel,
 } from './library'
+import { coordinate } from './coordinate'
 
 describe('library constants', () => {
   it('uses the requested book dimensions and alphabet size', () => {
@@ -41,8 +44,8 @@ describe('library constants', () => {
   it('gives every addressed volume identical physical dimensions', () => {
     const addresses = [
       defaultAddress,
-      nearbyBookAddress(-1, -2, 'D', 4, 31),
-      nearbyBookAddress(1, 2, 'B', 0, 0),
+      nearbyBookAddress(coordinate(-1), coordinate(-2), 'D', 4, 31),
+      nearbyBookAddress(coordinate(1), coordinate(2), 'B', 0, 0),
     ]
 
     expect(addresses.map(() => BOOK_DIMENSIONS)).toEqual([
@@ -54,16 +57,16 @@ describe('library constants', () => {
   })
 
   it('wraps wall shelf and volume addresses into the Borges shelf shape', () => {
-    expect(nearbyBookAddress(0, 0, -1, -1, -1)).toEqual({
-      floor: 0,
-      gallery: 0,
+    expect(nearbyBookAddress(coordinate(0), coordinate(0), -1, -1, -1)).toEqual({
+      floor: 0n,
+      gallery: 0n,
       wall: 'D',
       shelf: 4,
       book: 31,
     })
-    expect(nearbyBookAddress(0, 0, 4, 5, 32)).toEqual({
-      floor: 0,
-      gallery: 0,
+    expect(nearbyBookAddress(coordinate(0), coordinate(0), 4, 5, 32)).toEqual({
+      floor: 0n,
+      gallery: 0n,
       wall: 'A',
       shelf: 0,
       book: 0,
@@ -81,6 +84,10 @@ describe('library constants', () => {
 })
 
 describe('page generation', () => {
+  it('names the immutable legacy content strategy explicitly', () => {
+    expect(BOOK_CONTENT_GENERATION_VERSION).toBe('legacy-v1')
+  })
+
   it('generates the same addressed page every time', () => {
     const first = generatePage({ ...defaultAddress, page: 12 })
     const second = generatePage({ ...defaultAddress, page: 12 })
@@ -105,12 +112,17 @@ describe('page generation', () => {
 
   it('changes output across floors and galleries', () => {
     const first = generatePage({ ...defaultAddress, page: 1 })
-    expect(generatePage({ ...defaultAddress, floor: 1, page: 1 })).not.toEqual(first)
-    expect(generatePage({ ...defaultAddress, gallery: 1, page: 1 })).not.toEqual(first)
+    expect(generatePage({ ...defaultAddress, floor: coordinate(1), page: 1 })).not.toEqual(first)
+    expect(generatePage({ ...defaultAddress, gallery: coordinate(1), page: 1 })).not.toEqual(first)
   })
 })
 
 describe('cover inscriptions', () => {
+  it('pins the legacy-origin cover under its explicit generator version', () => {
+    expect(COVER_GENERATION_VERSION).toBe('v1')
+    expect(coverInscription(defaultAddress)).toBe('luqrv')
+  })
+
   it('generates the same short inscription for the same cover seed', () => {
     expect(coverInscription(defaultAddress)).toBe(coverInscription(defaultAddress))
     expect(coverInscription(defaultAddress)).toHaveLength(COVER_INSCRIPTION_LENGTH)
@@ -118,7 +130,7 @@ describe('cover inscriptions', () => {
 
   it('uses only symbols from the canonical alphabet', () => {
     const addresses = Array.from({ length: BOOKS_PER_SHELF }, (_, book) => (
-      nearbyBookAddress(1, -2, 'C', 4, book)
+      nearbyBookAddress(coordinate(1), coordinate(-2), 'C', 4, book)
     ))
 
     expect(addresses.every((address) => (

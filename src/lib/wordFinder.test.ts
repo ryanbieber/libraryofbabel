@@ -10,7 +10,7 @@ describe('word finder index', () => {
     expect(first).toEqual(second)
     expect(first.valid).toBe(true)
     if (!first.valid) return
-    expect(first.finding.address).toEqual({ floor: -1, gallery: -2, wall: 'A', shelf: 0, book: 11, page: 169 })
+    expect(first.finding.address).toEqual({ floor: -1n, gallery: -2n, wall: 'A', shelf: 0, book: 11, page: 169 })
     expect(isValidWordFinding(first.finding)).toBe(true)
     expect(wordFindingLabel(first.finding)).toMatch(/floor [-+0-9]+, gallery [-+0-9]+, wall [IV]+ \([A-D]\), row [IV]+ \([1-5]\), book ([1-9]|[12][0-9]|3[0-2]), page ([1-9]|[1-3][0-9]{2}|40[0-9]|410)/)
   })

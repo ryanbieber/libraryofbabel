@@ -5,6 +5,7 @@ import {
   southConnector,
   type FloorIndex,
   type WorldZone,
+  worldKey,
 } from './level'
 import {
   FLOOR_HEIGHT,
@@ -63,28 +64,24 @@ function visibleFromVestibule(pose: PlayerPose, current: VisibleScene): VisibleS
   const neighbors = galleriesForConnector(connector)
   const scenes = [current]
 
-  if (neighbors.north !== null) {
-    scenes.push(scene('north-gallery', pose.floor, { kind: 'gallery', gallery: neighbors.north }, [0, 0, -GALLERY_VESTIBULE_DISTANCE]))
-  }
-  if (neighbors.south !== null) {
-    scenes.push(scene('south-gallery', pose.floor, { kind: 'gallery', gallery: neighbors.south }, [0, 0, GALLERY_VESTIBULE_DISTANCE]))
-  }
+  scenes.push(
+    scene('north-gallery', pose.floor, { kind: 'gallery', gallery: neighbors.north }, [0, 0, -GALLERY_VESTIBULE_DISTANCE]),
+    scene('south-gallery', pose.floor, { kind: 'gallery', gallery: neighbors.south }, [0, 0, GALLERY_VESTIBULE_DISTANCE]),
+  )
 
   scenes.push(
     scene('sleeping-room', pose.floor, { kind: 'service', connector, room: 'sleeping' }, [-SERVICE_VESTIBULE_DISTANCE, 0, -SERVICE_ROOM_Z_OFFSET]),
     scene('latrine', pose.floor, { kind: 'service', connector, room: 'latrine' }, [-SERVICE_VESTIBULE_DISTANCE, 0, SERVICE_ROOM_Z_OFFSET]),
   )
 
-  const stairDirection: -1 | 1 = pose.floor === -1 ? 1 : pose.floor === 1 ? -1 : pose.z <= 0 ? 1 : -1
+  const stairDirection: -1 | 1 = pose.z <= 0 ? 1 : -1
   const stairFloor = adjacentFloor(pose.floor, stairDirection)
-  if (stairFloor !== null) {
-    scenes.push(scene(
-      'stair',
-      pose.floor,
-      { kind: 'stair', connector, from: pose.floor, to: stairFloor, distance: 0 },
-      [STAIR_VESTIBULE_DISTANCE, 0, 0],
-    ))
-  }
+  scenes.push(scene(
+    'stair',
+    pose.floor,
+    { kind: 'stair', connector, from: pose.floor, to: stairFloor, distance: 0 },
+    [STAIR_VESTIBULE_DISTANCE, 0, 0],
+  ))
 
   return scenes
 }
@@ -96,7 +93,7 @@ function scene(
   position: [number, number, number],
   isCurrent = false,
 ): VisibleScene {
-  return { id, floor, zone, position, isCurrent }
+  return { id: `${id}:${worldKey(floor, zone)}`, floor, zone, position, isCurrent }
 }
 
 export const MAX_VISIBLE_SCENES = 6

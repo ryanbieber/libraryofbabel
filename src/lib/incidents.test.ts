@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { incidentForGallery, INCIDENT_KINDS } from './incidents'
-import { FLOOR_INDICES, GALLERY_INDICES } from './level'
+import { LEGACY_FLOOR_COORDINATES, LEGACY_GALLERY_COORDINATES } from './level'
+import { coordinate } from './coordinate'
 
-const galleryCoordinates = FLOOR_INDICES.flatMap((floor) => (
-  GALLERY_INDICES.map((gallery) => ({ floor, gallery }))
+const galleryCoordinates = LEGACY_FLOOR_COORDINATES.flatMap((floor) => (
+  LEGACY_GALLERY_COORDINATES.map((gallery) => ({ floor, gallery }))
 ))
 
 describe('deterministic gallery incidents', () => {
@@ -23,7 +24,7 @@ describe('deterministic gallery incidents', () => {
   })
 
   it('always excludes the starting gallery so its quest NPCs remain legible', () => {
-    expect(incidentForGallery(0, 0)).toBeNull()
+    expect(incidentForGallery(coordinate(0), coordinate(0))).toBeNull()
   })
 
   it('is stable across JSON serialization without adding mutable save state', () => {

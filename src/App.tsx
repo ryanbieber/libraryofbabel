@@ -6,7 +6,7 @@ import { QuestLog } from './components/QuestLog'
 import { SplashScreen } from './components/SplashScreen'
 import { SHELF_WALLS, addressKey, generatePage, nearbyBookAddress, type BookAddress, type ShelfWall } from './lib/library'
 import { spreadToLeftPage, spreadToRightPage } from './lib/bookSpread'
-import { zoneLabel } from './lib/level'
+import { signedLabel, zoneLabel } from './lib/level'
 import { isNpcReachable, nearestNpc, npcsForGallery, type LibraryNpc } from './lib/npcs'
 import {
   BOOK_INTERACTION_RADIUS,
@@ -18,7 +18,7 @@ import {
   wallNormal,
   type PlayerPose,
 } from './lib/roomGeometry'
-import { clearSavedGame, defaultSavedGame, readSavedGame, writeSavedGame, type SavedGameV1 } from './lib/saveGame'
+import { clearSavedGame, defaultSavedGame, readSavedGame, writeSavedGame, type SavedGameV2 } from './lib/saveGame'
 import {
   resolveSignificantWordQuestSubmission,
   type WordQuestFeedback,
@@ -44,7 +44,7 @@ const BOOK_PRESENTATION_DELAY_MS = 700
 const JOURNEY_ARRIVAL_DURATION_MS = 5400
 
 function App() {
-  const initialSave = useRef<SavedGameV1 | null>(readSavedGame())
+  const initialSave = useRef<SavedGameV2 | null>(readSavedGame())
   const initialGame = initialSave.current ?? defaultSavedGame()
   const [playerPose, setPlayerPoseState] = useState<PlayerPose>(initialGame.pose)
   const [cameraPitch, setCameraPitch] = useState(0)
@@ -104,7 +104,7 @@ function App() {
   useEffect(() => {
     if (!hasStarted) return
     const timeout = window.setTimeout(() => {
-      writeSavedGame({ version: 1, pose: playerPose, selectedBook, questStatus: wordQuestStatus, wordFinding })
+      writeSavedGame({ version: 2, pose: playerPose, selectedBook, questStatus: wordQuestStatus, wordFinding })
     }, 300)
     return () => window.clearTimeout(timeout)
   }, [hasStarted, playerPose, selectedBook, wordFinding, wordQuestStatus])
@@ -184,10 +184,11 @@ function App() {
     const result = movePose(previous, forward, strafe, distance)
     setPlayerPose(result.pose)
     if (result.pose.zone.kind === 'gallery' && (previous.zone.kind !== 'gallery' || previous.floor !== result.pose.floor || previous.zone.gallery !== result.pose.zone.gallery)) {
-      setSelectedBook((current) => nearbyBookAddress(result.pose.floor, result.pose.zone.kind === 'gallery' ? result.pose.zone.gallery : 0, current.wall, current.shelf, current.book))
+      const gallery = result.pose.zone.gallery
+      setSelectedBook((current) => nearbyBookAddress(result.pose.floor, gallery, current.wall, current.shelf, current.book))
     }
     if (result.transition === 'floor') {
-      setMessage(`You reach floor ${signed(result.pose.floor)}. The same procession continues.`)
+      setMessage(`You reach floor ${signedLabel(result.pose.floor)}. The same procession continues.`)
     } else if (result.transition === 'stairs') {
       setMessage('Your steps circle the stairwell above the dark.')
     } else if (result.transition) {
@@ -328,7 +329,7 @@ function App() {
     setArrivalVisible(false)
     setHasStarted(true)
     setSplashOpen(false)
-    setMessage(`You return to floor ${signed(playerPoseRef.current.floor)}, ${zoneLabel(playerPoseRef.current.zone)}.`)
+    setMessage(`You return to floor ${signedLabel(playerPoseRef.current.floor)}, ${zoneLabel(playerPoseRef.current.zone)}.`)
   }
 
   function acceptSignificantWordQuest() {
@@ -408,7 +409,7 @@ function App() {
         {hasStarted ? (
           <div className="control-readout" aria-label="Current position and controls">
             <strong>{zoneLabel(playerPose.zone)}</strong>
-            <span>{`floor ${signed(playerPose.floor)}`}</span>
+            <span>{`floor ${signedLabel(playerPose.floor)}`}</span>
             <span>{playerPose.zone.kind === 'stair'
               ? 'W or ↑ follows the stairs. S or ↓ backtracks to the landing.'
               : 'WASD move. Mouse or swipe looks. Click, tap, or touch to interact. Space jumps.'}</span>
@@ -476,8 +477,6 @@ function App() {
 
 function blockedMessage(reason: NonNullable<ReturnType<typeof movePose>['blocked']>): string {
   if (reason === 'lightwell') return 'The low railing keeps you from the shaft.'
-  if (reason === 'gate') return 'Beyond the grille, more galleries disappear into the dark.'
-  if (reason === 'landing') return 'The stair continues beyond the playable floors, but the landing is barred.'
   return 'Old stone blocks the way.'
 }
 
@@ -508,10 +507,6 @@ function nearestShelfWall(pose: PlayerPose): ShelfWall {
     if (score > bestScore) { best = wall; bestScore = score }
   }
   return best
-}
-
-function signed(value: number): string {
-  return value > 0 ? `+${value}` : String(value)
 }
 
 export default App

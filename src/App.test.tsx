@@ -6,6 +6,7 @@ import App from './App'
 import { BookReader } from './components/BookReader'
 import { NpcDialoguePanel } from './components/NpcDialoguePanel'
 import { QuestLog } from './components/QuestLog'
+import { coordinate } from './lib/coordinate'
 import { defaultAddress, generatePage } from './lib/library'
 import type { LibraryNpc } from './lib/npcs'
 import { shouldBookCapturePointer } from './lib/pointer'
@@ -189,8 +190,8 @@ describe('App interactions', () => {
   it('supports the quest turn-in state with canonical coordinates', () => {
     const npc: LibraryNpc = {
       id: 'monk:0:0',
-      floor: 0,
-      gallery: 0,
+      floor: coordinate(0),
+      gallery: coordinate(0),
       name: 'Hooded keeper of improbable words',
       quest: 'significant-word',
       dialogue: ['Reader, bring me a book that contains the word babel.'],

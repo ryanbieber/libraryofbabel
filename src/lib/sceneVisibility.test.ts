@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { GALLERY_APOTHEM, STARTING_PLAYER_POSE, VESTIBULE_HALF_DEPTH } from './roomGeometry'
 import { MAX_VISIBLE_SCENES, visibleScenesForPose } from './sceneVisibility'
+import { coordinate } from './coordinate'
 
 describe('adjacent scene visibility', () => {
   it('loads only the two vestibules connected to the current gallery', () => {
@@ -15,7 +16,7 @@ describe('adjacent scene visibility', () => {
   it('loads the rooms directly connected to a vestibule without loading the library', () => {
     const scenes = visibleScenesForPose({
       ...STARTING_PLAYER_POSE,
-      zone: { kind: 'vestibule', connector: 0 },
+      zone: { kind: 'vestibule', connector: coordinate(0) },
       x: 0,
       z: 0,
     })
@@ -28,7 +29,7 @@ describe('adjacent scene visibility', () => {
   it('keeps a service room limited to itself and its vestibule', () => {
     const scenes = visibleScenesForPose({
       ...STARTING_PLAYER_POSE,
-      zone: { kind: 'service', connector: 0, room: 'sleeping' },
+      zone: { kind: 'service', connector: coordinate(0), room: 'sleeping' },
       x: 0,
       z: 0,
     })
@@ -40,13 +41,27 @@ describe('adjacent scene visibility', () => {
   it('shows both landings while traveling on a stair', () => {
     const scenes = visibleScenesForPose({
       ...STARTING_PLAYER_POSE,
-      zone: { kind: 'stair', connector: 0, from: 0, to: 1, distance: 3.9 },
+      zone: { kind: 'stair', connector: coordinate(0), from: coordinate(0), to: coordinate(1), distance: 3.9 },
       x: 0,
       z: 0,
     })
 
     expect(scenes).toHaveLength(3)
-    expect(scenes.map(({ floor }) => floor)).toEqual([0, 0, 1])
+    expect(scenes.map(({ floor }) => floor)).toEqual([0n, 0n, 1n])
     expect(scenes.map(({ zone }) => zone.kind)).toEqual(['stair', 'vestibule', 'vestibule'])
+  })
+
+  it('keeps scene count and local positions bounded at enormous coordinates', () => {
+    const scenes = visibleScenesForPose({
+      ...STARTING_PLAYER_POSE,
+      floor: coordinate('999999999999999999999999999999999'),
+      zone: { kind: 'vestibule', connector: coordinate('-888888888888888888888888888888888') },
+      x: 0,
+      z: 0,
+    })
+
+    expect(scenes).toHaveLength(MAX_VISIBLE_SCENES)
+    expect(scenes.every(({ position }) => position.every(Number.isFinite))).toBe(true)
+    expect(Math.max(...scenes.flatMap(({ position }) => position.map(Math.abs)))).toBeLessThan(10)
   })
 })

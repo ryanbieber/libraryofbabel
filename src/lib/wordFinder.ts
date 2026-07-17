@@ -1,4 +1,5 @@
-import { FLOOR_INDICES, GALLERY_INDICES } from './level'
+import { LEGACY_FLOOR_COORDINATES, LEGACY_GALLERY_COORDINATES } from './level'
+import { signedCoordinateLabel } from './coordinate'
 import {
   BOOKS_PER_SHELF,
   LETTER_SYMBOLS,
@@ -74,12 +75,12 @@ export function isValidWordFinding(value: unknown): value is WordFinding {
 
 export function wordFindingLabel(finding: WordFinding): string {
   const { floor, gallery, wall, shelf, book, page } = finding.address
-  return `floor ${signed(floor)}, gallery ${signed(gallery)}, wall ${wallDisplayLabel(wall)}, row ${rowDisplayLabel(shelf)} (${shelf + 1}), book ${book + 1}, page ${page}`
+  return `floor ${signedCoordinateLabel(floor)}, gallery ${signedCoordinateLabel(gallery)}, wall ${wallDisplayLabel(wall)}, row ${rowDisplayLabel(shelf)} (${shelf + 1}), book ${book + 1}, page ${page}`
 }
 
 function* playablePageAddresses(): Generator<PageAddress> {
-  for (const floor of FLOOR_INDICES) {
-    for (const gallery of GALLERY_INDICES) {
+  for (const floor of LEGACY_FLOOR_COORDINATES) {
+    for (const gallery of LEGACY_GALLERY_COORDINATES) {
       for (const wall of SHELF_WALLS) {
         for (let shelf = 0; shelf < SHELVES_PER_WALL; shelf += 1) {
           for (let book = 0; book < BOOKS_PER_SHELF; book += 1) {
@@ -93,15 +94,11 @@ function* playablePageAddresses(): Generator<PageAddress> {
   }
 }
 
-function signed(value: number): string {
-  return value > 0 ? `+${value}` : String(value)
-}
-
 function isPlayablePageAddress(value: unknown): value is PageAddress {
   if (!value || typeof value !== 'object') return false
   const address = value as Partial<PageAddress>
-  return FLOOR_INDICES.includes(address.floor as PageAddress['floor'])
-    && GALLERY_INDICES.includes(address.gallery as PageAddress['gallery'])
+  return LEGACY_FLOOR_COORDINATES.includes(address.floor as (typeof LEGACY_FLOOR_COORDINATES)[number])
+    && LEGACY_GALLERY_COORDINATES.includes(address.gallery as (typeof LEGACY_GALLERY_COORDINATES)[number])
     && SHELF_WALLS.includes(address.wall as PageAddress['wall'])
     && Number.isInteger(address.shelf) && Number(address.shelf) >= 0 && Number(address.shelf) < SHELVES_PER_WALL
     && Number.isInteger(address.book) && Number(address.book) >= 0 && Number(address.book) < BOOKS_PER_SHELF
@@ -111,7 +108,7 @@ function isPlayablePageAddress(value: unknown): value is PageAddress {
 function unsupportedResult(word: string): WordFinderResult {
   return {
     valid: false,
-    message: `The index finds no “${word}” in the Library's present finite sector. Its farther addresses are not yet open.`,
+    message: `The index finds no “${word}” in its surviving finite catalog. The Library itself continues.`,
   }
 }
 
