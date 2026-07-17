@@ -28,6 +28,19 @@ describe('library monk NPCs', () => {
     expect(npcForGallery(1, 2)).toEqual(npcForGallery(1, 2))
   })
 
+  it('describes the Crimson Hexagon rumor without turning it into one red book', () => {
+    const crimsonNpc = FLOOR_INDICES
+      .flatMap((floor) => GALLERY_INDICES.map((gallery) => npcForGallery(floor, gallery)))
+      .find((npc) => npc?.quest === 'crimson-book')
+    const lore = crimsonNpc?.dialogue.join(' ') ?? ''
+
+    expect(lore).toMatch(/Crimson Hexagon/)
+    expect(lore).toMatch(/smaller than normal/)
+    expect(lore).toMatch(/illustrated/)
+    expect(lore).toMatch(/magical and omnipotent/)
+    expect(lore).toMatch(/not one necessarily crimson-colored book/)
+  })
+
   it('measures interaction distance only in the same gallery', () => {
     const npc = npcForGallery(0, 0)
     const poseNearNpc = { ...STARTING_PLAYER_POSE, x: -2.35, z: 0.65 }

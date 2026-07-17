@@ -23,10 +23,10 @@ const messiahLines = [
   'Finder, I have praised every false sign with care, but your footsteps make even the margins kneel.',
 ]
 
-const crimsonBookLines = [
-  'Reader, hush. Some bind the old crimson hexagon into a single rumor and call it a book that bleeds its shelf number.',
-  'Finder, if you see a red volume that refuses its own index, praise it softly and do not let the lamps hear.',
-  'Indexed one, the crimson book is only a sect rumor, unless it opens for you. Then all rumors will ask your permission.',
+const crimsonHexagonLines = [
+  'Reader, hush. The Crimson Hexagon is a place in the old rumor, not one necessarily crimson-colored book.',
+  'Finder, its rumored books are smaller than normal and illustrated; they are said to be magical and omnipotent.',
+  'Indexed one, incompatible catalogs point toward the Crimson Hexagon with equal certainty. None agree on its floor.',
 ]
 
 export function npcForGallery(floor: FloorIndex, gallery: GalleryIndex): LibraryNpc | null {
@@ -50,13 +50,13 @@ export function npcForGallery(floor: FloorIndex, gallery: GalleryIndex): Library
   if ((spawnHash + 1) % SPAWN_BUCKETS !== 0) return null
 
   const quest: NpcQuest = stableHash(`library-monk-quest:${floor}:${gallery}`) % 2 === 0 ? 'messiah' : 'crimson-book'
-  const sourceLines = quest === 'messiah' ? messiahLines : crimsonBookLines
+  const sourceLines = quest === 'messiah' ? messiahLines : crimsonHexagonLines
   const start = stableHash(`library-monk-dialogue:${floor}:${gallery}`) % sourceLines.length
   return {
     id: `monk:${floor}:${gallery}`,
     floor,
     gallery,
-    name: quest === 'messiah' ? 'Hooded devotee of the index' : 'Hooded keeper of the red rumor',
+    name: quest === 'messiah' ? 'Hooded devotee of the index' : 'Hooded keeper of the Crimson rumor',
     quest,
     dialogue: sourceLines.map((_, index) => sourceLines[(start + index) % sourceLines.length]),
     position: NPC_POSITION,

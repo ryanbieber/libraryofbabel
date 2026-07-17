@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import * as THREE from 'three'
 import { Reflector } from 'three/addons/objects/Reflector.js'
 import { FIRST_PERSON_CAMERA_ORDER, cameraYawFromPlayerYaw } from './lib/camera'
+import { incidentForGallery, type GalleryIncident } from './lib/incidents'
 import { galleriesForConnector, signedLabel, zoneLabel } from './lib/level'
 import {
   BOOKS_PER_SHELF,
@@ -327,6 +328,7 @@ function GalleryScene({
   onTalkToNpc: (npc: LibraryNpc) => void
 }) {
   const floorShape = useMemo(() => makeGalleryShape(), [])
+  const incident = useMemo(() => incidentForGallery(floor, gallery), [floor, gallery])
   return (
     <>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
@@ -364,8 +366,147 @@ function GalleryScene({
       {npcStates.map(({ npc, questMarker }) => (
         <SeatedMonk key={npc.id} npc={npc} questMarker={questMarker} onTalk={() => onTalkToNpc(npc)} />
       ))}
+      {incident ? <GalleryIncidentDetail incident={incident} /> : null}
       <GalleryBulbs />
     </>
+  )
+}
+
+function GalleryIncidentDetail({ incident }: { incident: GalleryIncident }) {
+  return (
+    <group>
+      {incident.kind === 'purifier-damage' ? <PurifierDamage /> : null}
+      {incident.kind === 'contradictory-catalogs' ? <ContradictoryCatalogs variant={incident.variant} /> : null}
+      {incident.kind === 'abandoned-belongings' ? <AbandonedBelongings /> : null}
+      {incident.kind === 'shaft-omen' ? <ShaftOmen phase={incident.variant / 8} /> : null}
+    </group>
+  )
+}
+
+function PurifierDamage() {
+  return (
+    <group>
+      {[[-2.92, 0.024, -0.74, 0.7], [-2.7, 0.026, -0.36, 0.38]] .map(([x, y, z, radius], index) => (
+        <mesh key={index} position={[x, y, z]} rotation={[-Math.PI / 2, 0, index * 0.7]} scale={[1, 0.55, 1]} raycast={() => null}>
+          <circleGeometry args={[radius, 18]} />
+          <meshBasicMaterial color={index === 0 ? '#160d09' : '#2b1710'} transparent opacity={0.72} depthWrite={false} />
+        </mesh>
+      ))}
+      <group position={[-2.82, 0.08, -0.52]} rotation={[0.05, 0.3, -0.12]}>
+        {[0, 0.18, 0.37].map((offset, index) => (
+          <mesh key={offset} position={[offset, index * 0.018, index * 0.075]} rotation={[0, 0.2 * index, 0.08]} raycast={() => null}>
+            <boxGeometry args={[0.43, 0.055, 0.3]} />
+            <meshStandardMaterial color={index === 1 ? '#44271b' : '#241713'} roughness={1} />
+          </mesh>
+        ))}
+        <mesh position={[0.19, 0.08, 0.04]} rotation={[Math.PI / 2, 0.2, 0]} raycast={() => null}>
+          <torusGeometry args={[0.18, 0.027, 6, 12, Math.PI * 1.55]} />
+          <meshStandardMaterial color="#755331" roughness={1} />
+        </mesh>
+      </group>
+      <mesh position={[-3.96, 1.2, -0.05]} rotation={[0, Math.PI / 2, 0]} scale={[1.5, 1, 1]} raycast={() => null}>
+        <circleGeometry args={[0.42, 20]} />
+        <meshBasicMaterial color="#1a0f0b" transparent opacity={0.68} depthWrite={false} />
+      </mesh>
+    </group>
+  )
+}
+
+function ContradictoryCatalogs({ variant }: { variant: number }) {
+  const labels = variant % 2 === 0
+    ? ['CRIMSON HEXAGON  ·  NORTH', 'CRIMSON HEXAGON  ·  SOUTH']
+    : ['TRUE CATALOG  ·  FLOOR +1', 'TRUE CATALOG  ·  FLOOR -1']
+  const textures = useMemo(() => (
+    (variant % 2 === 0
+      ? ['CRIMSON HEXAGON  ·  NORTH', 'CRIMSON HEXAGON  ·  SOUTH']
+      : ['TRUE CATALOG  ·  FLOOR +1', 'TRUE CATALOG  ·  FLOOR -1'])
+      .map((label) => createPlaqueTexture(label, 900, 150))
+  ), [variant])
+  useEffect(() => () => textures.forEach((texture) => texture.dispose()), [textures])
+
+  return (
+    <group position={[2.52, 1.12, 0]} rotation={[0, -Math.PI / 2, 0]}>
+      {textures.map((texture, index) => (
+        <sprite
+          key={labels[index]}
+          position={[index ? 0.64 : -0.64, index ? -0.18 : 0.18, index ? 0.035 : 0]}
+          rotation={[0, 0, index ? -0.04 : 0.055]}
+          scale={[1.22, 0.25, 1]}
+          raycast={() => null}
+        >
+          <spriteMaterial map={texture} transparent depthWrite={false} toneMapped={false} />
+        </sprite>
+      ))}
+    </group>
+  )
+}
+
+function AbandonedBelongings() {
+  return (
+    <group position={[2.75, 0, 0.84]} rotation={[0, -0.42, 0]}>
+      <mesh position={[0, 0.18, 0]} scale={[1.05, 0.82, 0.78]} raycast={() => null}>
+        <sphereGeometry args={[0.32, 10, 7]} />
+        <meshStandardMaterial color="#443226" roughness={1} />
+      </mesh>
+      <mesh position={[0, 0.32, -0.02]} rotation={[Math.PI / 2, 0, 0]} raycast={() => null}>
+        <torusGeometry args={[0.31, 0.035, 7, 16, Math.PI]} />
+        <meshStandardMaterial color="#5b402c" roughness={1} />
+      </mesh>
+      {[-0.43, -0.24, 0.38].map((x, index) => (
+        <mesh key={x} position={[x, 0.025 + index * 0.006, 0.2 - index * 0.13]} rotation={[-Math.PI / 2, 0, 0.2 - index * 0.32]} raycast={() => null}>
+          <planeGeometry args={[0.38, 0.52]} />
+          <meshStandardMaterial color={index === 2 ? '#a89870' : '#c1b58e'} roughness={1} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
+      <group position={[0.45, 0.12, -0.18]} rotation={[0, 0, 0.16]}>
+        <mesh raycast={() => null}>
+          <cylinderGeometry args={[0.1, 0.085, 0.24, 10]} />
+          <meshStandardMaterial color="#78664b" roughness={0.92} />
+        </mesh>
+        <mesh position={[0.105, 0.02, 0]} rotation={[Math.PI / 2, 0, 0]} raycast={() => null}>
+          <torusGeometry args={[0.075, 0.018, 6, 10]} />
+          <meshStandardMaterial color="#78664b" roughness={0.92} />
+        </mesh>
+      </group>
+    </group>
+  )
+}
+
+function ShaftOmen({ phase }: { phase: number }) {
+  const bookRef = useRef<THREE.Group>(null)
+  const shadowRef = useRef<THREE.Mesh>(null)
+  useFrame(({ clock }) => {
+    const progress = (clock.elapsedTime * 0.045 + phase) % 1
+    const book = bookRef.current
+    const shadow = shadowRef.current
+    if (book) {
+      const angle = progress * Math.PI * 3
+      book.position.set(Math.cos(angle) * 0.54, 5.8 - progress * 11.6, Math.sin(angle) * 0.54)
+      book.rotation.set(progress * Math.PI * 7, progress * Math.PI * 4, progress * Math.PI * 2)
+      book.visible = progress > 0.08 && progress < 0.91
+    }
+    if (shadow) {
+      shadow.position.y = 2.2 - progress * 1.1
+      ;(shadow.material as THREE.MeshBasicMaterial).opacity = Math.sin(progress * Math.PI) * 0.2
+    }
+  })
+  return (
+    <group>
+      <group ref={bookRef}>
+        <mesh raycast={() => null}>
+          <boxGeometry args={[0.22, 0.32, 0.06]} />
+          <meshStandardMaterial color="#241813" roughness={0.96} />
+        </mesh>
+        <mesh position={[0.105, 0, 0]} raycast={() => null}>
+          <boxGeometry args={[0.02, 0.3, 0.065]} />
+          <meshStandardMaterial color="#806541" roughness={0.9} />
+        </mesh>
+      </group>
+      <mesh ref={shadowRef} position={[0.78, 1.6, 0]} rotation={[0, -Math.PI / 2, 0]} scale={[0.34, 1, 1]} raycast={() => null}>
+        <circleGeometry args={[0.48, 16]} />
+        <meshBasicMaterial color="#050404" transparent opacity={0} depthWrite={false} />
+      </mesh>
+    </group>
   )
 }
 

@@ -4,6 +4,7 @@ import { clearSavedGame, defaultSavedGame, parseSavedGame, readSavedGame, writeS
 import { STAIR_TRAVEL_DISTANCE } from './roomGeometry'
 import { findWord } from './wordFinder'
 import { generatePage } from './library'
+import { incidentForGallery } from './incidents'
 
 describe('local journey save', () => {
   beforeEach(() => localStorage.clear())
@@ -18,6 +19,15 @@ describe('local journey save', () => {
     writeSavedGame(game)
     expect(readSavedGame()).toEqual(game)
     expect(generatePage(finding.finding.address)).toEqual(pageBeforeReload)
+  })
+
+  it('keeps incident derivation out of serialized journey state', () => {
+    const game = defaultSavedGame()
+    const before = JSON.stringify(game)
+    incidentForGallery(1, 2)
+
+    expect(JSON.stringify(game)).toBe(before)
+    expect(parseSavedGame(before)).toEqual(game)
   })
 
   it('rejects corrupt, obsolete, and out-of-range saves', () => {
