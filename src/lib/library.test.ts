@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   ALPHABET_SIZE,
+  ALPHABET,
+  BOOK_DIMENSIONS,
   BOOKS_PER_SHELF,
+  COVER_INSCRIPTION_LENGTH,
   LINES_PER_PAGE,
   PAGES_PER_BOOK,
   SHELVES_PER_WALL,
@@ -9,6 +12,9 @@ import {
   SYMBOLS_PER_LINE,
   addressLabel,
   clampPage,
+  contentSeed,
+  coverInscription,
+  coverSeed,
   defaultAddress,
   deterministicJump,
   generatePage,
@@ -30,6 +36,21 @@ describe('library constants', () => {
     expect(SYMBOLS_PER_BOOK).toBe(1_312_000)
     expect(SHELVES_PER_WALL).toBe(5)
     expect(BOOKS_PER_SHELF).toBe(32)
+  })
+
+  it('gives every addressed volume identical physical dimensions', () => {
+    const addresses = [
+      defaultAddress,
+      nearbyBookAddress(-1, -2, 'D', 4, 31),
+      nearbyBookAddress(1, 2, 'B', 0, 0),
+    ]
+
+    expect(addresses.map(() => BOOK_DIMENSIONS)).toEqual([
+      BOOK_DIMENSIONS,
+      BOOK_DIMENSIONS,
+      BOOK_DIMENSIONS,
+    ])
+    expect(BOOK_DIMENSIONS).toEqual({ width: 0.141, height: 0.38, depth: 0.13 })
   })
 
   it('wraps wall shelf and volume addresses into the Borges shelf shape', () => {
@@ -86,6 +107,34 @@ describe('page generation', () => {
     const first = generatePage({ ...defaultAddress, page: 1 })
     expect(generatePage({ ...defaultAddress, floor: 1, page: 1 })).not.toEqual(first)
     expect(generatePage({ ...defaultAddress, gallery: 1, page: 1 })).not.toEqual(first)
+  })
+})
+
+describe('cover inscriptions', () => {
+  it('generates the same short inscription for the same cover seed', () => {
+    expect(coverInscription(defaultAddress)).toBe(coverInscription(defaultAddress))
+    expect(coverInscription(defaultAddress)).toHaveLength(COVER_INSCRIPTION_LENGTH)
+  })
+
+  it('uses only symbols from the canonical alphabet', () => {
+    const addresses = Array.from({ length: BOOKS_PER_SHELF }, (_, book) => (
+      nearbyBookAddress(1, -2, 'C', 4, book)
+    ))
+
+    expect(addresses.every((address) => (
+      [...coverInscription(address)].every((symbol) => ALPHABET.includes(symbol))
+    ))).toBe(true)
+  })
+
+  it('keeps cover and interior generation on separate domain paths', () => {
+    const pageAddress = { ...defaultAddress, page: 12 }
+    const nextPageAddress = { ...defaultAddress, page: 13 }
+
+    expect(coverSeed(defaultAddress)).not.toBe(contentSeed(pageAddress, 0))
+    expect(coverSeed(defaultAddress)).toContain('cover-inscription:v1:')
+    expect(contentSeed(pageAddress, 0)).not.toContain('cover-inscription')
+    expect(coverInscription(pageAddress)).toBe(coverInscription(nextPageAddress))
+    expect(generatePage(pageAddress)).not.toEqual(generatePage(nextPageAddress))
   })
 })
 

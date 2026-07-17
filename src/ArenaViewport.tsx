@@ -6,9 +6,11 @@ import { FIRST_PERSON_CAMERA_ORDER, cameraYawFromPlayerYaw } from './lib/camera'
 import { galleriesForConnector, signedLabel, zoneLabel } from './lib/level'
 import {
   BOOKS_PER_SHELF,
+  BOOK_DIMENSIONS,
   SHELF_WALLS,
   SHELVES_PER_WALL,
   addressKey,
+  coverInscription,
   nearbyBookAddress,
   rowDisplayLabel,
   wallDisplayLabel,
@@ -63,7 +65,7 @@ const MOUSE_LOOK_SENSITIVITY = 0.0048
 const CLICK_INTERACT_DEADZONE_PX = 8
 const BOOK_PULL_DISTANCE = 0.42
 const BOOK_PRESENTATION_ANGLE = Math.PI / 4
-const LEATHER_COLORS = ['#32140f', '#482116', '#2b2416', '#182321', '#20212a', '#3a2919', '#241713'] as const
+const LEATHER_COLOR = '#302019'
 const SPINE_BAND_HEIGHT_RATIOS = [-0.31, 0.31] as const
 
 export function ArenaViewport({
@@ -408,7 +410,24 @@ function ShelfWall({
         onOpenBook={onOpenBook}
         onHoverBook={onHoverBook}
       />
+      <SpineInscriptions floor={floor} gallery={gallery} wall={wall} />
     </group>
+  )
+}
+
+function SpineInscriptions({ floor, gallery, wall }: {
+  floor: BookAddress['floor']
+  gallery: BookAddress['gallery']
+  wall: ShelfWall
+}) {
+  const texture = useMemo(() => createSpineInscriptionTexture(floor, gallery, wall), [floor, gallery, wall])
+  useEffect(() => () => texture.dispose(), [texture])
+
+  return (
+    <mesh position={[0, 0.05, -0.382]} raycast={() => null}>
+      <planeGeometry args={[SHELF_WIDTH, 2.45]} />
+      <meshBasicMaterial map={texture} transparent depthWrite={false} toneMapped={false} />
+    </mesh>
   )
 }
 
@@ -507,6 +526,42 @@ function createBookScaleTexture(): THREE.CanvasTexture {
   return texture
 }
 
+function createSpineInscriptionTexture(
+  floor: BookAddress['floor'],
+  gallery: BookAddress['gallery'],
+  wall: ShelfWall,
+): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas')
+  canvas.width = 2048
+  canvas.height = 1024
+  const context = canvas.getContext('2d')
+  if (context) {
+    const planeTop = 1.275
+    context.fillStyle = 'rgba(211, 171, 99, 0.72)'
+    context.font = '600 19px Georgia'
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+
+    for (let shelf = 0; shelf < SHELVES_PER_WALL; shelf += 1) {
+      const baseY = 1.03 - shelf * 0.49
+      const centerY = (planeTop - baseY) / 2.45 * canvas.height
+      for (let book = 0; book < BOOKS_PER_SHELF; book += 1) {
+        const address = nearbyBookAddress(floor, gallery, wall, shelf, book)
+        const inscription = coverInscription(address)
+        const centerX = (book + 0.5) / BOOKS_PER_SHELF * canvas.width
+        ;[...inscription].forEach((symbol, index) => {
+          context.fillText(symbol, centerX, centerY + (index - (inscription.length - 1) / 2) * 18)
+        })
+      }
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.minFilter = THREE.LinearFilter
+  texture.magFilter = THREE.LinearFilter
+  return texture
+}
+
 function InstancedBooks({
   floor,
   gallery,
@@ -553,9 +608,7 @@ function InstancedBooks({
     const shelf = Math.floor(instance / BOOKS_PER_SHELF)
     const book = instance % BOOKS_PER_SHELF
     const cellWidth = SHELF_WIDTH / BOOKS_PER_SHELF
-    const width = cellWidth * 0.82
-    const variationSeed = Math.abs(instance * 17 + gallery * 11 + floor * 7)
-    const height = 0.34 + (variationSeed % 9) * 0.009
+    const { width, height, depth } = BOOK_DIMENSIONS
     const baseX = -SHELF_WIDTH / 2 + (book + 0.5) * cellWidth
     const baseY = 1.03 - shelf * 0.49
     const pullProgress = easeOutCubic(Math.min(1, presentation / 0.72))
@@ -565,7 +618,7 @@ function InstancedBooks({
 
     dummy.position.set(baseX, baseY, z)
     dummy.rotation.set(0, angle, 0)
-    dummy.scale.set(width, height, 0.13)
+    dummy.scale.set(width, height, depth)
     dummy.updateMatrix()
     mesh.setMatrixAt(instance, dummy.matrix)
 
@@ -579,7 +632,7 @@ function InstancedBooks({
       toolingDummy.updateMatrix()
       tooling.setMatrixAt(instance * 2 + band, toolingDummy.matrix)
     })
-  }, [dummy, floor, gallery, toolingDummy])
+  }, [dummy, toolingDummy])
 
   useLayoutEffect(() => {
     const mesh = meshRef.current
@@ -601,8 +654,7 @@ function InstancedBooks({
       const key = addressKey(address)
       const active = key === activeKey
       const hovered = hoveredBook !== null && key === addressKey(hoveredBook)
-      const paletteSeed = Math.abs(instance * 7 + gallery * 5 + floor * 3 + SHELF_WALLS.indexOf(wall) * 11)
-      const color = new THREE.Color(LEATHER_COLORS[paletteSeed % LEATHER_COLORS.length])
+      const color = new THREE.Color(LEATHER_COLOR)
       if (hovered) color.offsetHSL(0, 0.04, 0.16)
       else if (active) color.offsetHSL(0, 0.02, 0.08)
       mesh.setColorAt(instance, color)
