@@ -89,10 +89,10 @@ export function generatePage(address: PageAddress): string[] {
 export function generateLine(address: PageAddress, lineIndex: number): string {
   const page = clampPage(address.page)
   const safeLine = Math.min(LINES_PER_PAGE - 1, Math.max(0, Math.round(lineIndex)))
-  const baseOffset = (page - 1) * SYMBOLS_PER_PAGE + safeLine * SYMBOLS_PER_LINE
-  return Array.from({ length: SYMBOLS_PER_LINE }, (_, charIndex) => {
-    const value = hashToIndex(`${addressKey(address)}:${page}:${baseOffset + charIndex}`)
-    return ALPHABET[value]
+  let state = fnv1a(`${addressKey(address)}:${page}:${safeLine}`)
+  return Array.from({ length: SYMBOLS_PER_LINE }, () => {
+    state = nextRandom(state)
+    return ALPHABET[state % ALPHABET_SIZE]
   }).join('')
 }
 
@@ -170,4 +170,12 @@ function fnv1a(input: string): number {
     hash = Math.imul(hash, 0x01000193)
   }
   return hash >>> 0
+}
+
+function nextRandom(value: number): number {
+  let next = value
+  next ^= next << 13
+  next ^= next >>> 17
+  next ^= next << 5
+  return next >>> 0
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { resolveSignificantWordQuestSubmission, type WordQuestFormValues } from './significantWordQuest'
+import { findWord } from './wordFinder'
 
 const baseSubmission: WordQuestFormValues = {
   floor: '0',
@@ -28,5 +29,22 @@ describe('significant word quest submission', () => {
     const result = resolveSignificantWordQuestSubmission(baseSubmission, 'accepted')
     expect(result.feedback.tone).toBe('error')
     expect(result.feedback.text).toContain('A confident heretic is still a heretic.')
+  })
+
+  it('accepts the canonical page located for babel', async () => {
+    const finding = await findWord('babel')
+    if (!finding.valid) throw new Error(finding.message)
+    const { floor, gallery, wall, shelf, book, page } = finding.finding.address
+    const result = resolveSignificantWordQuestSubmission({
+      floor: String(floor),
+      gallery: String(gallery),
+      wall,
+      shelf: String(shelf + 1),
+      volume: String(book + 1),
+      page: String(page),
+    }, 'accepted')
+
+    expect(result.feedback.tone).toBe('success')
+    expect(result.nextStatus).toBe('ready-to-complete')
   })
 })

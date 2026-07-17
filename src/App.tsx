@@ -4,7 +4,7 @@ import { BookReader } from './components/BookReader'
 import { NpcDialoguePanel } from './components/NpcDialoguePanel'
 import { QuestLog } from './components/QuestLog'
 import { SplashScreen } from './components/SplashScreen'
-import { SHELF_WALLS, addressKey, nearbyBookAddress, type BookAddress, type ShelfWall } from './lib/library'
+import { SHELF_WALLS, addressKey, generatePage, nearbyBookAddress, type BookAddress, type ShelfWall } from './lib/library'
 import { spreadToLeftPage, spreadToRightPage } from './lib/bookSpread'
 import { zoneLabel } from './lib/level'
 import { isNpcReachable, nearestNpc, npcsForGallery, type LibraryNpc } from './lib/npcs'
@@ -26,7 +26,7 @@ import {
   type WordQuestStatus,
 } from './lib/significantWordQuest'
 import { QUEST_TARGET_WORD } from './lib/quest'
-import { findWord, generatePageWithFinding, wordFindingLabel, type WordFinding } from './lib/wordFinder'
+import { findWord, wordFindingLabel, type WordFinding } from './lib/wordFinder'
 import './App.css'
 
 const LazyArenaViewport = lazy(() => import('./ArenaViewport').then((module) => ({ default: module.ArenaViewport })))
@@ -57,6 +57,7 @@ function App() {
   const [dialogueNpc, setDialogueNpc] = useState<LibraryNpc | null>(null)
   const [wordQuestFeedback, setWordQuestFeedback] = useState<WordQuestFeedback | null>(null)
   const [wordFinderFeedback, setWordFinderFeedback] = useState<string | null>(null)
+  const [wordFinderSearching, setWordFinderSearching] = useState(false)
   const [questLogMinimized, setQuestLogMinimized] = useState(false)
   const [splashOpen, setSplashOpen] = useState(true)
   const [hasStarted, setHasStarted] = useState(false)
@@ -77,8 +78,8 @@ function App() {
 
   const leftPageNumber = spreadToLeftPage(spread)
   const rightPageNumber = spreadToRightPage(spread)
-  const leftPage = useMemo(() => generatePageWithFinding({ ...selectedBook, page: leftPageNumber }, wordFinding), [selectedBook, leftPageNumber, wordFinding])
-  const rightPage = useMemo(() => generatePageWithFinding({ ...selectedBook, page: rightPageNumber }, wordFinding), [selectedBook, rightPageNumber, wordFinding])
+  const leftPage = useMemo(() => generatePage({ ...selectedBook, page: leftPageNumber }), [selectedBook, leftPageNumber])
+  const rightPage = useMemo(() => generatePage({ ...selectedBook, page: rightPageNumber }), [selectedBook, rightPageNumber])
   const currentNpcs = useMemo(() => {
     if (playerPose.zone.kind !== 'gallery') return []
     return npcsForGallery(playerPose.floor, playerPose.zone.gallery)
@@ -339,7 +340,7 @@ function App() {
   }
 
   function submitSignificantWordQuest(values: WordQuestFormValues) {
-    const result = resolveSignificantWordQuestSubmission(values, wordQuestStatus, wordFinding)
+    const result = resolveSignificantWordQuestSubmission(values, wordQuestStatus)
     if (result.nextStatus !== undefined) {
       setWordQuestStatus(result.nextStatus)
       if (result.nextStatus === 'ready-to-complete') setQuestLogMinimized(false)
@@ -354,8 +355,11 @@ function App() {
     setMessage(`Quest complete: Find "${QUEST_TARGET_WORD}".`)
   }
 
-  function askWordFinder(rawWord: string) {
-    const result = findWord(rawWord)
+  async function askWordFinder(rawWord: string) {
+    setWordFinderSearching(true)
+    setWordFinderFeedback('The indexer turns the finite leaves…')
+    const result = await findWord(rawWord)
+    setWordFinderSearching(false)
     if (!result.valid) {
       setWordFinderFeedback(result.message)
       setMessage(result.message)
@@ -459,6 +463,7 @@ function App() {
           questFeedback={wordQuestFeedback}
           wordFinding={wordFinding}
           wordFinderFeedback={wordFinderFeedback}
+          wordFinderSearching={wordFinderSearching}
           onClose={() => setDialogueNpc(null)}
           onAcceptSignificantWordQuest={acceptSignificantWordQuest}
           onCompleteSignificantWordQuest={completeSignificantWordQuest}

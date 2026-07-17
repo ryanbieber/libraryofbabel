@@ -66,7 +66,13 @@ describe('page generation', () => {
 
     expect(first).toEqual(second)
     expect(first).toHaveLength(40)
-    expect(first[0]).toHaveLength(80)
+    expect(first.every((line) => line.length === 80)).toBe(true)
+  })
+
+  it('pins canonical content for a complete address', () => {
+    expect(generatePage({ ...defaultAddress, page: 12 })[0]).toBe(
+      'mgcalg bnlkpfgoicmccqqqpgvqvjubinboq,ccag deprshehemo iooovqutfvpnjogqmpimo.pmbi',
+    )
   })
 
   it('changes output when the page changes', () => {

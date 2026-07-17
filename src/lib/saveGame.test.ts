@@ -3,18 +3,21 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { clearSavedGame, defaultSavedGame, parseSavedGame, readSavedGame, writeSavedGame } from './saveGame'
 import { STAIR_TRAVEL_DISTANCE } from './roomGeometry'
 import { findWord } from './wordFinder'
+import { generatePage } from './library'
 
 describe('local journey save', () => {
   beforeEach(() => localStorage.clear())
 
-  it('round-trips the versioned pose, book, and quest status', () => {
+  it('round-trips finder state without changing the addressed page', async () => {
     const game = defaultSavedGame()
     game.questStatus = 'accepted'
-    const finding = findWord('labyrinth')
+    const finding = await findWord('babel')
     if (!finding.valid) throw new Error('Expected a valid finding')
     game.wordFinding = finding.finding
+    const pageBeforeReload = generatePage(finding.finding.address)
     writeSavedGame(game)
     expect(readSavedGame()).toEqual(game)
+    expect(generatePage(finding.finding.address)).toEqual(pageBeforeReload)
   })
 
   it('rejects corrupt, obsolete, and out-of-range saves', () => {
