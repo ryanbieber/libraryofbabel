@@ -134,7 +134,7 @@ export function NpcDialoguePanel({
 function npcQuestKicker(quest: LibraryNpc['quest']): string {
   if (quest === 'significant-word') return 'Significant word'
   if (quest === 'word-finder') return 'Ask about a word'
-  return quest === 'messiah' ? 'Man of the Book' : 'Crimson rumor'
+  return quest === 'messiah' ? 'Man of the Book' : 'Crimson Hexagon rumor'
 }
 
 function formatPercent(value: number): string {
