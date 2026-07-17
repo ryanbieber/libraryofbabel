@@ -1,16 +1,16 @@
-import { GALLERY_INDICES, type FloorIndex } from './level'
+import { FLOOR_INDICES, GALLERY_INDICES } from './level'
 import {
   BOOKS_PER_SHELF,
-  LINES_PER_PAGE,
+  LETTER_SYMBOLS,
   PAGES_PER_BOOK,
   SHELF_WALLS,
   SHELVES_PER_WALL,
-  SYMBOLS_PER_LINE,
   generatePage,
   rowDisplayLabel,
   wallDisplayLabel,
   type PageAddress,
 } from './library'
+import { pageContainsWord } from './quest'
 
 export type WordFinding = {
   word: string
@@ -21,68 +21,55 @@ export type WordFinderResult =
   | { valid: true; finding: WordFinding }
   | { valid: false; message: string }
 
-const FINDER_FLOORS: readonly FloorIndex[] = [-1, 0, 1]
-const MAX_WORD_LENGTH = 32
+export const MAX_FINDER_WORD_LENGTH = 5
+const SEARCH_BATCH_MS = 8
+const findingCache = new Map<string, WordFinding | null>()
 
-export function findWord(rawWord: string): WordFinderResult {
+export async function findWord(rawWord: string): Promise<WordFinderResult> {
+  const validation = validateFinderWord(rawWord)
+  if (!validation.valid) return validation
+  const { word } = validation
+  const cached = findingCache.get(word)
+  if (cached !== undefined) return cached
+    ? { valid: true, finding: cached }
+    : unsupportedResult(word)
+
+  let batchStarted = now()
+  for (const address of playablePageAddresses()) {
+    if (pageContainsWord(generatePage(address), word)) {
+      const finding = { word, address }
+      findingCache.set(word, finding)
+      return { valid: true, finding }
+    }
+    if (now() - batchStarted >= SEARCH_BATCH_MS) {
+      await yieldToBrowser()
+      batchStarted = now()
+    }
+  }
+
+  findingCache.set(word, null)
+  return unsupportedResult(word)
+}
+
+export function validateFinderWord(rawWord: string): { valid: true; word: string } | { valid: false; message: string } {
   const word = rawWord.trim().toLowerCase()
   if (!word) return { valid: false, message: 'Offer the indexer one word.' }
-  if (!/^[a-z]+$/.test(word)) return { valid: false, message: 'Use one word made only of the letters A-Z.' }
-  if (word.length > MAX_WORD_LENGTH) return { valid: false, message: `Keep the word to ${MAX_WORD_LENGTH} letters or fewer.` }
-
-  return {
-    valid: true,
-    finding: {
-      word,
-      address: {
-        floor: FINDER_FLOORS[stableHash(`word-finder:${word}:floor`) % FINDER_FLOORS.length],
-        gallery: GALLERY_INDICES[stableHash(`word-finder:${word}:gallery`) % GALLERY_INDICES.length],
-        wall: SHELF_WALLS[stableHash(`word-finder:${word}:wall`) % SHELF_WALLS.length],
-        shelf: stableHash(`word-finder:${word}:shelf`) % SHELVES_PER_WALL,
-        book: stableHash(`word-finder:${word}:book`) % BOOKS_PER_SHELF,
-        page: stableHash(`word-finder:${word}:page`) % PAGES_PER_BOOK + 1,
-      },
-    },
+  if ([...word].some((symbol) => !LETTER_SYMBOLS.includes(symbol))) {
+    return { valid: false, message: `Use only the Library's letters: ${LETTER_SYMBOLS}.` }
   }
-}
-
-export function generatePageWithFinding(address: PageAddress, finding: WordFinding | null): string[] {
-  const lines = generatePage(address)
-  if (!finding || !isFindingPage(address, finding)) return lines
-
-  const lineIndex = stableHash(`word-finder:${finding.word}:line`) % LINES_PER_PAGE
-  const availableColumns = SYMBOLS_PER_LINE - finding.word.length - 2
-  const column = stableHash(`word-finder:${finding.word}:column`) % Math.max(1, availableColumns)
-  const insertion = ` ${finding.word} `
-  const line = lines[lineIndex]
-  lines[lineIndex] = `${line.slice(0, column)}${insertion}${line.slice(column + insertion.length)}`
-  return lines
-}
-
-export function isFindingPage(address: PageAddress, finding: WordFinding): boolean {
-  const target = finding.address
-  return address.floor === target.floor
-    && address.gallery === target.gallery
-    && address.wall === target.wall
-    && address.shelf === target.shelf
-    && address.book === target.book
-    && address.page === target.page
+  if (word.length > MAX_FINDER_WORD_LENGTH) {
+    return { valid: false, message: `The present index reaches words of ${MAX_FINDER_WORD_LENGTH} letters or fewer.` }
+  }
+  return { valid: true, word }
 }
 
 export function isValidWordFinding(value: unknown): value is WordFinding {
   if (!value || typeof value !== 'object') return false
   const finding = value as Partial<WordFinding>
   if (typeof finding.word !== 'string') return false
-  const result = findWord(finding.word)
-  if (!result.valid || !finding.address) return false
-  const expected = result.finding
-  return finding.word === expected.word
-    && finding.address.floor === expected.address.floor
-    && finding.address.gallery === expected.address.gallery
-    && finding.address.wall === expected.address.wall
-    && finding.address.shelf === expected.address.shelf
-    && finding.address.book === expected.address.book
-    && finding.address.page === expected.address.page
+  const validation = validateFinderWord(finding.word)
+  if (!validation.valid || validation.word !== finding.word || !isPlayablePageAddress(finding.address)) return false
+  return pageContainsWord(generatePage(finding.address), finding.word)
 }
 
 export function wordFindingLabel(finding: WordFinding): string {
@@ -90,15 +77,48 @@ export function wordFindingLabel(finding: WordFinding): string {
   return `floor ${signed(floor)}, gallery ${signed(gallery)}, wall ${wallDisplayLabel(wall)}, row ${rowDisplayLabel(shelf)} (${shelf + 1}), book ${book + 1}, page ${page}`
 }
 
-function stableHash(value: string): number {
-  let hash = 0x811c9dc5
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index)
-    hash = Math.imul(hash, 0x01000193)
+function* playablePageAddresses(): Generator<PageAddress> {
+  for (const floor of FLOOR_INDICES) {
+    for (const gallery of GALLERY_INDICES) {
+      for (const wall of SHELF_WALLS) {
+        for (let shelf = 0; shelf < SHELVES_PER_WALL; shelf += 1) {
+          for (let book = 0; book < BOOKS_PER_SHELF; book += 1) {
+            for (let page = 1; page <= PAGES_PER_BOOK; page += 1) {
+              yield { floor, gallery, wall, shelf, book, page }
+            }
+          }
+        }
+      }
+    }
   }
-  return hash >>> 0
 }
 
 function signed(value: number): string {
   return value > 0 ? `+${value}` : String(value)
+}
+
+function isPlayablePageAddress(value: unknown): value is PageAddress {
+  if (!value || typeof value !== 'object') return false
+  const address = value as Partial<PageAddress>
+  return FLOOR_INDICES.includes(address.floor as PageAddress['floor'])
+    && GALLERY_INDICES.includes(address.gallery as PageAddress['gallery'])
+    && SHELF_WALLS.includes(address.wall as PageAddress['wall'])
+    && Number.isInteger(address.shelf) && Number(address.shelf) >= 0 && Number(address.shelf) < SHELVES_PER_WALL
+    && Number.isInteger(address.book) && Number(address.book) >= 0 && Number(address.book) < BOOKS_PER_SHELF
+    && Number.isInteger(address.page) && Number(address.page) >= 1 && Number(address.page) <= PAGES_PER_BOOK
+}
+
+function unsupportedResult(word: string): WordFinderResult {
+  return {
+    valid: false,
+    message: `The index finds no “${word}” in the Library's present finite sector. Its farther addresses are not yet open.`,
+  }
+}
+
+function now(): number {
+  return typeof performance === 'undefined' ? Date.now() : performance.now()
+}
+
+function yieldToBrowser(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0))
 }

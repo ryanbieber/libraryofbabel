@@ -128,10 +128,10 @@ describe('App interactions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Talk to Hooded indexer of lost words' }))
     expect(screen.getByText(/I have found many in my long attendance here/i)).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('Word to find'), { target: { value: 'world' } })
+    fireEvent.change(screen.getByLabelText('Word to find'), { target: { value: 'babel' } })
     fireEvent.click(screen.getByRole('button', { name: 'ask the indexer' }))
 
-    expect(screen.getByLabelText('Word finder directions')).toHaveTextContent('“world”')
+    expect(await screen.findByLabelText('Word finder directions', {}, { timeout: 5_000 })).toHaveTextContent('“babel”')
     expect(screen.getByLabelText('Word finder directions')).toHaveTextContent(/floor .* gallery .* wall [IV]+ \([A-D]\).* row [IV]+ \([1-5]\).* book .* page/i)
   })
 
@@ -204,6 +204,7 @@ describe('App interactions', () => {
         questFeedback={{ tone: 'success', text: 'Objective complete.' }}
         wordFinding={null}
         wordFinderFeedback={null}
+        wordFinderSearching={false}
         onClose={() => undefined}
         onAcceptSignificantWordQuest={() => undefined}
         onCompleteSignificantWordQuest={onComplete}

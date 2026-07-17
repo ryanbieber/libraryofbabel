@@ -13,6 +13,7 @@ export function NpcDialoguePanel({
   questFeedback,
   wordFinding,
   wordFinderFeedback,
+  wordFinderSearching,
   onClose,
   onAcceptSignificantWordQuest,
   onCompleteSignificantWordQuest,
@@ -23,6 +24,7 @@ export function NpcDialoguePanel({
   questFeedback: WordQuestFeedback | null
   wordFinding: WordFinding | null
   wordFinderFeedback: string | null
+  wordFinderSearching: boolean
   onClose: () => void
   onAcceptSignificantWordQuest: () => void
   onCompleteSignificantWordQuest: () => void
@@ -77,16 +79,22 @@ export function NpcDialoguePanel({
               <input
                 value={finderWord}
                 aria-label="Word to find"
-                maxLength={32}
+                maxLength={5}
                 autoComplete="off"
-                placeholder="labyrinth"
+                placeholder="babel"
                 onChange={(event) => setFinderWord(event.target.value)}
               />
             </label>
-            <button type="submit">ask the indexer</button>
+            <button type="submit" disabled={wordFinderSearching}>
+              {wordFinderSearching ? 'turning the index…' : 'ask the indexer'}
+            </button>
           </form>
         ) : null}
-        {isWordFinder && wordFinderFeedback ? <p className="quest-feedback error" role="status">{wordFinderFeedback}</p> : null}
+        {isWordFinder && wordFinderFeedback ? (
+          <p className={`quest-feedback ${wordFinderSearching ? '' : 'error'}`} role="status">
+            {wordFinderFeedback}
+          </p>
+        ) : null}
         {isWordFinder && wordFinding ? (
           <div className="word-finder-result" aria-label="Word finder directions">
             <span>The index opens</span>
