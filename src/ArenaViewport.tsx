@@ -2,6 +2,7 @@ import { Canvas, type ThreeEvent, useFrame } from '@react-three/fiber'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { Reflector } from 'three/addons/objects/Reflector.js'
 import { FIRST_PERSON_CAMERA_ORDER, cameraYawFromPlayerYaw } from './lib/camera'
 import { galleriesForConnector, signedLabel, zoneLabel } from './lib/level'
 import {
@@ -20,6 +21,7 @@ import {
 import type { LibraryNpc } from './lib/npcs'
 import { shouldBookCapturePointer } from './lib/pointer'
 import { visibleScenesForPose } from './lib/sceneVisibility'
+import { GALLERY_BULB_POSITIONS, VESTIBULE_MIRROR_POSITION } from './lib/sceneDetails'
 import {
   BOOK_INTERACTION_RADIUS,
   FLOOR_HEIGHT,
@@ -258,10 +260,9 @@ function LibraryScene({
       <PlayerCamera playerPose={playerPose} movementCue={movementCue} cameraPitch={cameraPitch} jumpOffset={jumpOffset} />
       <color attach="background" args={['#0d0b09']} />
       <fog attach="fog" args={['#0d0b09', 8, 22]} />
-      <ambientLight intensity={0.58} color="#c7b99f" />
-      <hemisphereLight color="#f2d9a3" groundColor="#241a12" intensity={0.7} />
-      <directionalLight color="#ffe2aa" intensity={0.78} position={[4, 7, 3]} />
-      <pointLight color="#ffc76f" intensity={30} position={[0, 2.55, 0]} distance={12} decay={1.8} />
+      <ambientLight intensity={0.32} color="#b8ad9a" />
+      <hemisphereLight color="#c8b792" groundColor="#17120e" intensity={0.38} />
+      <directionalLight color="#d6c5a1" intensity={0.3} position={[4, 7, 3]} />
       {visibleScenes.map((scene) => (
         <group key={scene.id} position={scene.position}>
           {scene.zone.kind === 'gallery' ? (
@@ -278,7 +279,7 @@ function LibraryScene({
               onTalkToNpc={onTalkToNpc}
             />
           ) : null}
-          {scene.zone.kind === 'vestibule' ? <VestibuleScene connector={scene.zone.connector} /> : null}
+          {scene.zone.kind === 'vestibule' ? <VestibuleScene connector={scene.zone.connector} reflectiveMirror={scene.isCurrent} /> : null}
           {scene.zone.kind === 'service' ? <ServiceRoomScene room={scene.zone.room} /> : null}
           {scene.zone.kind === 'stair' ? <StairScene /> : null}
         </group>
@@ -348,8 +349,7 @@ function GalleryScene({
       {npcStates.map(({ npc, questMarker }) => (
         <SeatedMonk key={npc.id} npc={npc} questMarker={questMarker} onTalk={() => onTalkToNpc(npc)} />
       ))}
-      <WarmLamp position={[2.7, 0, -2.2]} />
-      <WarmLamp position={[-2.7, 0, 2.2]} />
+      <GalleryBulbs />
     </>
   )
 }
@@ -393,12 +393,7 @@ function ShelfWall({
           <meshStandardMaterial color="#765033" emissive="#241207" emissiveIntensity={0.42} roughness={0.94} />
         </mesh>
       ))}
-      {interactive ? (
-        <>
-          <ShelfLamp />
-          <ShelfWayfinding gallery={gallery} wall={wall} />
-        </>
-      ) : null}
+      {interactive ? <ShelfWayfinding gallery={gallery} wall={wall} /> : null}
       <InstancedBooks
         floor={floor}
         gallery={gallery}
@@ -431,19 +426,19 @@ function SpineInscriptions({ floor, gallery, wall }: {
   )
 }
 
-function ShelfLamp() {
+function GalleryBulbs() {
   return (
-    <group position={[0, 1.08, -0.52]}>
-      <mesh position={[0, 0.12, 0.12]}>
-        <boxGeometry args={[0.48, 0.16, 0.12]} />
-        <meshStandardMaterial color="#76502c" metalness={0.22} roughness={0.72} />
-      </mesh>
-      <mesh>
-        <sphereGeometry args={[0.1, 12, 8]} />
-        <meshStandardMaterial color="#ffe0a0" emissive="#ff9d36" emissiveIntensity={2.6} />
-      </mesh>
-      <pointLight color="#ffd39a" intensity={12} distance={4.2} decay={2} position={[0, -0.24, -0.36]} />
-    </group>
+    <>
+      {GALLERY_BULB_POSITIONS.map((position) => (
+        <group key={position[0]} position={position}>
+          <mesh>
+            <sphereGeometry args={[0.14, 12, 9]} />
+            <meshStandardMaterial color="#f0d49a" emissive="#d47a22" emissiveIntensity={2.05} roughness={0.42} />
+          </mesh>
+          <pointLight color="#e8ad5e" intensity={8.5} distance={5.2} decay={2} />
+        </group>
+      ))}
+    </>
   )
 }
 
@@ -716,7 +711,7 @@ function InstancedBooks({
   )
 }
 
-function VestibuleScene({ connector }: { connector: number }) {
+function VestibuleScene({ connector, reflectiveMirror }: { connector: number; reflectiveMirror: boolean }) {
   const neighbors = galleriesForConnector(connector as Parameters<typeof galleriesForConnector>[0])
   return (
     <>
@@ -728,6 +723,7 @@ function VestibuleScene({ connector }: { connector: number }) {
       <SidePortal side="east" z={0} labelColor="#a67d36" wide />
       <MonasticVestibuleDetails />
       <ProvisionNook />
+      <VestibuleMirror reflective={reflectiveMirror} />
       <WarmLamp position={[0, 0, 0]} />
     </>
   )
@@ -1366,7 +1362,6 @@ function Latrine() {
         <mesh position={[0, 0.78, 0]} rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[0.32, 20]} /><meshStandardMaterial color="#4d6d70" metalness={0.26} roughness={0.28} /></mesh>
         <ClayVessel position={[0.35, 1.02, 0.08]} scale={1.15} />
       </group>
-      <Mirror position={[-1.74, 1.73, -0.72]} rotationY={Math.PI / 2} />
       <group position={[0.35, 1.42, 1.28]}>
         <mesh><boxGeometry args={[0.82, 0.055, 0.06]} /><meshStandardMaterial color="#725739" roughness={0.92} /></mesh>
         <mesh position={[-0.18, -0.34, 0]}><boxGeometry args={[0.34, 0.62, 0.045]} /><meshStandardMaterial color="#d0c5a5" roughness={1} /></mesh>
@@ -1381,8 +1376,48 @@ function Latrine() {
   )
 }
 
-function Mirror({ position, rotationY }: { position: [number, number, number]; rotationY: number }) {
-  return <mesh position={position} rotation={[0, rotationY, 0]}><planeGeometry args={[0.7, 1.15]} /><meshStandardMaterial color="#87908d" metalness={0.72} roughness={0.18} /></mesh>
+function VestibuleMirror({ reflective }: { reflective: boolean }) {
+  return (
+    <group position={VESTIBULE_MIRROR_POSITION} rotation={[0, Math.PI / 2, 0]}>
+      {[-0.61, 0.61].map((x) => (
+        <mesh key={x} position={[x, 0, 0.025]}>
+          <boxGeometry args={[0.1, 1.88, 0.08]} />
+          <meshStandardMaterial color="#33271e" roughness={0.92} />
+        </mesh>
+      ))}
+      {[-0.89, 0.89].map((y) => (
+        <mesh key={y} position={[0, y, 0.025]}>
+          <boxGeometry args={[1.32, 0.1, 0.08]} />
+          <meshStandardMaterial color="#33271e" roughness={0.92} />
+        </mesh>
+      ))}
+      {reflective ? <PlanarMirrorSurface /> : (
+        <mesh position={[0, 0, 0.035]}>
+          <planeGeometry args={[1.12, 1.72]} />
+          <meshStandardMaterial color="#363b39" metalness={0.7} roughness={0.28} />
+        </mesh>
+      )}
+    </group>
+  )
+}
+
+function PlanarMirrorSurface() {
+  const geometry = useMemo(() => new THREE.PlaneGeometry(1.12, 1.72), [])
+  const reflector = useMemo(() => new Reflector(geometry, {
+    clipBias: 0.003,
+    color: 0x70726d,
+    textureWidth: 384,
+    textureHeight: 384,
+  }), [geometry])
+
+  useEffect(() => () => {
+    reflector.getRenderTarget().dispose()
+    if (Array.isArray(reflector.material)) reflector.material.forEach((material) => material.dispose())
+    else reflector.material.dispose()
+    geometry.dispose()
+  }, [geometry, reflector])
+
+  return <primitive object={reflector} position={[0, 0, 0.035]} />
 }
 
 function WarmLamp({ position }: { position: [number, number, number] }) {
