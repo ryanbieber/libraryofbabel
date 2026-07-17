@@ -11,6 +11,11 @@ hexagonal galleries, guarded lightwells, open vestibules, spiral stairs, sleepin
 four walls of books, and deterministic pages. It is a small game-like tribute to the story's unsettling
 premise: a universe that contains every possible book, almost all of it meaningless.
 
+The playable map remains three floors by five galleries. Fogged, simplified gallery shells, stair
+flights, and architecture beyond locked grilles make that finite map feel like one accessible window
+onto a much larger Library; the continuation is visual only and disappears before its extent can be
+measured.
+
 No book text is stored. Pages are generated in the browser from a book address and page number, so the
 same coordinates always return the same page.
 
@@ -55,6 +60,15 @@ npm run lint
 npm test -- --run
 npm run build
 ```
+
+### Rendering budget
+
+Playable scene loading is capped at 6 local scenes. Visual continuation is constructed from fixed data
+and capped at 951 instanced details and 23 additional draw calls for any player pose. It adds no
+colliders, navigation nodes, interaction handlers, or dynamically expanding scene lists. The renderer
+publishes current object, draw-call, geometry, and texture counts as `data-*` attributes on the arena
+viewport so a stationary desktop or mobile-landscape view can be sampled repeatedly for growth. Unit
+tests enumerate representative poses and enforce deterministic construction and all three caps.
 
 ## Deployment
 

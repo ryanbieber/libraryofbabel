@@ -23,6 +23,15 @@ import { shouldBookCapturePointer } from './lib/pointer'
 import { visibleScenesForPose } from './lib/sceneVisibility'
 import { GALLERY_BULB_POSITIONS, VESTIBULE_MIRROR_POSITION } from './lib/sceneDetails'
 import {
+  BOUNDARY_GALLERY_DEPTHS,
+  LIGHTWELL_RAILS_PER_SHELL,
+  LIGHTWELL_SHELL_LEVELS,
+  STAIR_FLIGHT_LEVELS,
+  STAIR_POST_INTERVAL,
+  STAIR_STEPS_PER_FLIGHT,
+  continuationBudgetForScenes,
+} from './lib/visualContinuation'
+import {
   BOOK_INTERACTION_RADIUS,
   FLOOR_HEIGHT,
   GALLERY_APOTHEM,
@@ -69,6 +78,7 @@ const BOOK_PULL_DISTANCE = 0.42
 const BOOK_PRESENTATION_ANGLE = Math.PI / 4
 const LEATHER_COLOR = '#302019'
 const SPINE_BAND_HEIGHT_RATIOS = [-0.31, 0.31] as const
+const DISTANT_LIGHTWELL_RADIUS = LIGHTWELL_RADIUS - 0.13
 
 export function ArenaViewport({
   playerPose,
@@ -86,6 +96,7 @@ export function ArenaViewport({
   onTouchMoveChange,
 }: ArenaViewportProps) {
   const canUseWebGL = useWebGLAvailable()
+  const continuationBudget = continuationBudgetForScenes(visibleScenesForPose(playerPose))
   const talkableNpcState = npcStates.find(({ npc }) => npc.id === talkableNpcId) ?? null
   const dragRef = useRef<{ pointerId: number; lastX: number; lastY: number; totalDistance: number; isTouch: boolean } | null>(null)
   const onTouchMoveChangeRef = useRef(onTouchMoveChange)
@@ -155,6 +166,8 @@ export function ArenaViewport({
       data-zone={playerPose.zone.kind}
       data-book-hovered={hoveredBook ? 'true' : 'false'}
       data-book-presented={presentedBook ? addressKey(presentedBook) : ''}
+      data-continuation-instances={continuationBudget.instances}
+      data-continuation-draw-calls={continuationBudget.drawCalls}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}
@@ -285,6 +298,7 @@ function LibraryScene({
         </group>
       ))}
       <DustMotes zone={playerPose.zone.kind} />
+      <ScenePerformanceProbe />
     </>
   )
 }
@@ -324,9 +338,10 @@ function GalleryScene({
         <meshStandardMaterial color="#2f2a26" roughness={1} side={THREE.DoubleSide} />
       </mesh>
       <mesh position={[0, -FLOOR_HEIGHT / 2, 0]}>
-        <cylinderGeometry args={[LIGHTWELL_RADIUS, LIGHTWELL_RADIUS, FLOOR_HEIGHT * 3, 24, 1, true]} />
+        <cylinderGeometry args={[LIGHTWELL_RADIUS, LIGHTWELL_RADIUS, FLOOR_HEIGHT * 14, 24, 1, true]} />
         <meshStandardMaterial color="#050404" side={THREE.BackSide} />
       </mesh>
+      <LightwellContinuation />
       <LightwellRailing />
       <PassageFrame z={-GALLERY_APOTHEM} />
       <PassageFrame z={GALLERY_APOTHEM} rotationY={Math.PI} />
@@ -351,6 +366,70 @@ function GalleryScene({
       ))}
       <GalleryBulbs />
     </>
+  )
+}
+
+function LightwellContinuation() {
+  const ringsRef = useRef<THREE.InstancedMesh>(null)
+  const railsRef = useRef<THREE.InstancedMesh>(null)
+  const lampsRef = useRef<THREE.InstancedMesh>(null)
+
+  useLayoutEffect(() => {
+    const rings = ringsRef.current
+    const rails = railsRef.current
+    const lamps = lampsRef.current
+    if (!rings || !rails || !lamps) return
+    const dummy = new THREE.Object3D()
+    let railInstance = 0
+
+    LIGHTWELL_SHELL_LEVELS.forEach((level, shellIndex) => {
+      const y = level * FLOOR_HEIGHT
+      dummy.position.set(0, y, 0)
+      dummy.rotation.set(Math.PI / 2, 0, 0)
+      dummy.scale.setScalar(1)
+      dummy.updateMatrix()
+      rings.setMatrixAt(shellIndex, dummy.matrix)
+
+      for (let rail = 0; rail < LIGHTWELL_RAILS_PER_SHELL; rail += 1) {
+        const angle = rail / LIGHTWELL_RAILS_PER_SHELL * Math.PI * 2
+        dummy.position.set(
+          Math.cos(angle) * DISTANT_LIGHTWELL_RADIUS,
+          y + RAILING_HEIGHT / 2,
+          Math.sin(angle) * DISTANT_LIGHTWELL_RADIUS,
+        )
+        dummy.rotation.set(0, -angle, 0)
+        dummy.updateMatrix()
+        rails.setMatrixAt(railInstance, dummy.matrix)
+        railInstance += 1
+      }
+
+      const lampAngle = level * 1.71
+      dummy.position.set(Math.cos(lampAngle) * 0.9, y + 0.18, Math.sin(lampAngle) * 0.9)
+      dummy.rotation.set(0, 0, 0)
+      dummy.updateMatrix()
+      lamps.setMatrixAt(shellIndex, dummy.matrix)
+    })
+
+    rings.instanceMatrix.needsUpdate = true
+    rails.instanceMatrix.needsUpdate = true
+    lamps.instanceMatrix.needsUpdate = true
+  }, [])
+
+  return (
+    <group>
+      <instancedMesh ref={ringsRef} args={[undefined, undefined, LIGHTWELL_SHELL_LEVELS.length]} raycast={() => null}>
+        <torusGeometry args={[DISTANT_LIGHTWELL_RADIUS, 0.08, 5, 24]} />
+        <meshStandardMaterial color="#574a3c" roughness={1} />
+      </instancedMesh>
+      <instancedMesh ref={railsRef} args={[undefined, undefined, LIGHTWELL_SHELL_LEVELS.length * LIGHTWELL_RAILS_PER_SHELL]} raycast={() => null}>
+        <boxGeometry args={[0.045, RAILING_HEIGHT, 0.045]} />
+        <meshStandardMaterial color="#72572e" metalness={0.25} roughness={0.78} />
+      </instancedMesh>
+      <instancedMesh ref={lampsRef} args={[undefined, undefined, LIGHTWELL_SHELL_LEVELS.length]} raycast={() => null}>
+        <sphereGeometry args={[0.08, 7, 5]} />
+        <meshStandardMaterial color="#9c6d31" emissive="#e0a14b" emissiveIntensity={0.85} roughness={0.8} />
+      </instancedMesh>
+    </group>
   )
 }
 
@@ -742,7 +821,7 @@ function ServiceRoomScene({ room }: { room: 'sleeping' | 'latrine' }) {
 }
 
 function StairScene() {
-  const shaftHeight = FLOOR_HEIGHT * 3
+  const shaftHeight = FLOOR_HEIGHT * 12
   return (
     <>
       <mesh position={[0, FLOOR_HEIGHT / 2, 0]}>
@@ -753,53 +832,109 @@ function StairScene() {
         <cylinderGeometry args={[0.43, 0.43, shaftHeight, 12, 1, true]} />
         <meshStandardMaterial color="#171311" roughness={0.96} />
       </mesh>
-      {[-FLOOR_HEIGHT, 0, FLOOR_HEIGHT].map((yOffset) => (
-        <SpiralFlight key={yOffset} yOffset={yOffset} />
-      ))}
-      {[-FLOOR_HEIGHT * 0.52, FLOOR_HEIGHT * 0.5, FLOOR_HEIGHT * 1.52].map((y) => (
-        <pointLight key={y} color="#ffc05c" intensity={16} distance={7} decay={1.9} position={[0, y, 0]} />
+      <SpiralFlights />
+      {[-1.5, -0.5, 0.5, 1.5, 2.5].map((level) => (
+        <pointLight key={level} color="#ffc05c" intensity={13} distance={6.5} decay={2} position={[0, level * FLOOR_HEIGHT, 0]} />
       ))}
     </>
   )
 }
 
-function SpiralFlight({ yOffset }: { yOffset: number }) {
-  const steps = 40
-  const handrail = useMemo(() => new THREE.CatmullRomCurve3(
-    Array.from({ length: 65 }, (_, index) => {
-      const trackFraction = index / 64
+function SpiralFlights() {
+  const stepsRef = useRef<THREE.InstancedMesh>(null)
+  const postsRef = useRef<THREE.InstancedMesh>(null)
+  const lampsRef = useRef<THREE.InstancedMesh>(null)
+  const grillesRef = useRef<THREE.InstancedMesh>(null)
+  const handrails = useMemo(() => STAIR_FLIGHT_LEVELS.map((level) => new THREE.CatmullRomCurve3(
+    Array.from({ length: 49 }, (_, index) => {
+      const trackFraction = index / 48
       const angle = STAIR_START_ANGLE + trackFraction * Math.PI * 2
       return new THREE.Vector3(
         Math.cos(angle) * 2.05,
-        yOffset + trackFraction * FLOOR_HEIGHT + RAILING_HEIGHT,
+        level * FLOOR_HEIGHT + trackFraction * FLOOR_HEIGHT + RAILING_HEIGHT,
         Math.sin(angle) * 2.05,
       )
     }),
-  ), [yOffset])
+  )), [])
+
+  useLayoutEffect(() => {
+    const steps = stepsRef.current
+    const posts = postsRef.current
+    const lamps = lampsRef.current
+    const grilles = grillesRef.current
+    if (!steps || !posts || !lamps || !grilles) return
+    const dummy = new THREE.Object3D()
+    let stepInstance = 0
+    let postInstance = 0
+
+    STAIR_FLIGHT_LEVELS.forEach((level, flightIndex) => {
+      for (let index = 0; index < STAIR_STEPS_PER_FLIGHT; index += 1) {
+        const trackFraction = index / (STAIR_STEPS_PER_FLIGHT - 1)
+        const angle = STAIR_START_ANGLE + trackFraction * Math.PI * 2
+        const y = level * FLOOR_HEIGHT + trackFraction * FLOOR_HEIGHT
+        dummy.position.set(Math.cos(angle) * 1.38, y, Math.sin(angle) * 1.38)
+        dummy.rotation.set(0, -angle, 0)
+        dummy.updateMatrix()
+        steps.setMatrixAt(stepInstance, dummy.matrix)
+        stepInstance += 1
+
+        if (index % STAIR_POST_INTERVAL === 0) {
+          dummy.position.set(Math.cos(angle) * 2.05, y + RAILING_HEIGHT / 2, Math.sin(angle) * 2.05)
+          dummy.rotation.set(0, -angle, 0)
+          dummy.updateMatrix()
+          posts.setMatrixAt(postInstance, dummy.matrix)
+          postInstance += 1
+        }
+      }
+
+      const lampAngle = STAIR_START_ANGLE + (flightIndex % 2 ? Math.PI * 0.7 : Math.PI * 1.35)
+      dummy.position.set(Math.cos(lampAngle) * 2.34, (level + 0.52) * FLOOR_HEIGHT, Math.sin(lampAngle) * 2.34)
+      dummy.rotation.set(0, 0, 0)
+      dummy.updateMatrix()
+      lamps.setMatrixAt(flightIndex, dummy.matrix)
+    })
+
+    let grilleInstance = 0
+    ;[-1, 2].forEach((level) => {
+      for (let bar = 0; bar < 5; bar += 1) {
+        dummy.position.set(-2.43, level * FLOOR_HEIGHT + 1.08, -0.62 + bar * 0.31)
+        dummy.rotation.set(0, 0, 0)
+        dummy.updateMatrix()
+        grilles.setMatrixAt(grilleInstance, dummy.matrix)
+        grilleInstance += 1
+      }
+    })
+
+    steps.instanceMatrix.needsUpdate = true
+    posts.instanceMatrix.needsUpdate = true
+    lamps.instanceMatrix.needsUpdate = true
+    grilles.instanceMatrix.needsUpdate = true
+  }, [])
 
   return (
     <>
-      {Array.from({ length: steps }, (_, index) => {
-        const trackFraction = index / (steps - 1)
-        const angle = STAIR_START_ANGLE + trackFraction * Math.PI * 2
-        const y = yOffset + trackFraction * FLOOR_HEIGHT
-        return (
-          <group key={index} position={[Math.cos(angle) * 1.38, y, Math.sin(angle) * 1.38]} rotation={[0, -angle, 0]}>
-            <mesh position={[0, 0, 0]}>
-              <boxGeometry args={[1.45, 0.09, 0.42]} />
-              <meshStandardMaterial color={index % 2 ? '#5a5047' : '#665a4f'} roughness={1} />
-            </mesh>
-            <mesh position={[0.67, RAILING_HEIGHT / 2, 0]}>
-              <boxGeometry args={[0.05, RAILING_HEIGHT, 0.05]} />
-              <meshStandardMaterial color="#8b6b35" metalness={0.35} roughness={0.7} />
-            </mesh>
-          </group>
-        )
-      })}
-      <mesh>
-        <tubeGeometry args={[handrail, 72, 0.04, 7, false]} />
+      <instancedMesh ref={stepsRef} args={[undefined, undefined, STAIR_FLIGHT_LEVELS.length * STAIR_STEPS_PER_FLIGHT]} raycast={() => null}>
+        <boxGeometry args={[1.45, 0.09, 0.42]} />
+        <meshStandardMaterial color="#5f544a" roughness={1} />
+      </instancedMesh>
+      <instancedMesh ref={postsRef} args={[undefined, undefined, STAIR_FLIGHT_LEVELS.length * STAIR_STEPS_PER_FLIGHT / STAIR_POST_INTERVAL]} raycast={() => null}>
+        <boxGeometry args={[0.05, RAILING_HEIGHT, 0.05]} />
         <meshStandardMaterial color="#9b7538" metalness={0.42} roughness={0.62} />
-      </mesh>
+      </instancedMesh>
+      {handrails.map((handrail, index) => (
+        <mesh key={STAIR_FLIGHT_LEVELS[index]} raycast={() => null}>
+          <tubeGeometry args={[handrail, 48, 0.04, 5, false]} />
+          <meshStandardMaterial color="#85642f" metalness={0.32} roughness={0.72} />
+        </mesh>
+      ))}
+      <instancedMesh ref={lampsRef} args={[undefined, undefined, STAIR_FLIGHT_LEVELS.length]} raycast={() => null}>
+        <sphereGeometry args={[0.09, 7, 5]} />
+        <meshStandardMaterial color="#d79b45" emissive="#f2ad4b" emissiveIntensity={1.2} />
+      </instancedMesh>
+      <instancedMesh ref={grillesRef} args={[undefined, undefined, 10]} raycast={() => null}>
+        <boxGeometry args={[0.06, 2.16, 0.06]} />
+        <meshStandardMaterial color="#5d4a31" metalness={0.45} roughness={0.72} />
+      </instancedMesh>
     </>
   )
 }
@@ -821,6 +956,24 @@ function PlayerCamera({
     const stepBob = movementCue === 'step' ? Math.sin(clock.elapsedTime * 20) * 0.018 : 0
     camera.position.set(transform.x, transform.y + PLAYER_EYE_HEIGHT + jumpOffset + idleBob + stepBob, transform.z)
     camera.rotation.set(cameraPitch, cameraYawFromPlayerYaw(transform.yaw), 0, FIRST_PERSON_CAMERA_ORDER)
+  })
+  return null
+}
+
+function ScenePerformanceProbe() {
+  const elapsedRef = useRef(0)
+  useFrame(({ gl, scene }, delta) => {
+    elapsedRef.current += delta
+    if (elapsedRef.current < 1) return
+    elapsedRef.current = 0
+    const viewport = document.querySelector<HTMLElement>('[data-testid="arena-viewport"]')
+    if (!viewport) return
+    let objects = 0
+    scene.traverse(() => { objects += 1 })
+    viewport.dataset.sceneObjects = String(objects)
+    viewport.dataset.renderCalls = String(gl.info.render.calls)
+    viewport.dataset.rendererGeometries = String(gl.info.memory.geometries)
+    viewport.dataset.rendererTextures = String(gl.info.memory.textures)
   })
   return null
 }
@@ -872,6 +1025,64 @@ function CorridorEnd({ z, gated, rotationY = 0 }: { z: number; gated: boolean; r
           <meshStandardMaterial color="#5d4a31" metalness={0.45} roughness={0.72} />
         </mesh>
       )) : null}
+      {gated ? <BoundaryGalleryContinuation /> : null}
+    </group>
+  )
+}
+
+function BoundaryGalleryContinuation() {
+  const shellsRef = useRef<THREE.InstancedMesh>(null)
+  const lampsRef = useRef<THREE.InstancedMesh>(null)
+
+  useLayoutEffect(() => {
+    const shells = shellsRef.current
+    const lamps = lampsRef.current
+    if (!shells || !lamps) return
+    const dummy = new THREE.Object3D()
+    let shellInstance = 0
+
+    BOUNDARY_GALLERY_DEPTHS.forEach((depth, index) => {
+      const yaw = (index % 2 === 0 ? 1 : -1) * (0.035 + index * 0.009)
+      for (const side of [-1, 1] as const) {
+        dummy.position.set(side * 1.47, 1.38, -depth)
+        dummy.rotation.set(0, side * 0.2 + yaw, 0)
+        dummy.scale.set(1.3, 2.76, 0.16)
+        dummy.updateMatrix()
+        shells.setMatrixAt(shellInstance, dummy.matrix)
+        shellInstance += 1
+      }
+      dummy.position.set(0, 2.7, -depth)
+      dummy.rotation.set(0, yaw, 0)
+      dummy.scale.set(3.35, 0.2, 0.18)
+      dummy.updateMatrix()
+      shells.setMatrixAt(shellInstance, dummy.matrix)
+      shellInstance += 1
+
+      dummy.position.set(index % 2 === 0 ? -0.72 : 0.64, 2.25, -depth - 0.28)
+      dummy.rotation.set(0, 0, 0)
+      dummy.scale.setScalar(1)
+      dummy.updateMatrix()
+      lamps.setMatrixAt(index, dummy.matrix)
+    })
+
+    shells.instanceMatrix.needsUpdate = true
+    lamps.instanceMatrix.needsUpdate = true
+  }, [])
+
+  return (
+    <group>
+      <mesh position={[0, 1.45, -14]} raycast={() => null}>
+        <boxGeometry args={[3.75, 2.9, 28]} />
+        <meshStandardMaterial color="#17130f" roughness={1} side={THREE.BackSide} />
+      </mesh>
+      <instancedMesh ref={shellsRef} args={[undefined, undefined, BOUNDARY_GALLERY_DEPTHS.length * 3]} raycast={() => null}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#342c24" roughness={1} />
+      </instancedMesh>
+      <instancedMesh ref={lampsRef} args={[undefined, undefined, BOUNDARY_GALLERY_DEPTHS.length]} raycast={() => null}>
+        <sphereGeometry args={[0.075, 7, 5]} />
+        <meshStandardMaterial color="#8d622c" emissive="#d08a38" emissiveIntensity={0.8} />
+      </instancedMesh>
     </group>
   )
 }
