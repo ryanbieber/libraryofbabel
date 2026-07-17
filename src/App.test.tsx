@@ -8,7 +8,7 @@ import { NpcDialoguePanel } from './components/NpcDialoguePanel'
 import { QuestLog } from './components/QuestLog'
 import { coordinate } from './lib/coordinate'
 import { defaultAddress, generatePage } from './lib/library'
-import type { LibraryNpc } from './lib/npcs'
+import { wanderingNpcForGallery, type LibraryNpc } from './lib/npcs'
 import { shouldBookCapturePointer } from './lib/pointer'
 import { poseNearBook } from './lib/roomGeometry'
 import { defaultSavedGame, writeSavedGame } from './lib/saveGame'
@@ -137,6 +137,36 @@ describe('App interactions', () => {
 
     expect(await screen.findByLabelText('Word finder directions', {}, { timeout: 15_000 })).toHaveTextContent('“babel”')
     expect(screen.getByLabelText('Word finder directions')).toHaveTextContent(/floor .* gallery .* wall [IV]+ \([A-D]\).* row [IV]+ \([1-5]\).* book .* page/i)
+  })
+
+  it('keeps passing-reader dialogue ambient and free of quest UI', async () => {
+    let wanderer: LibraryNpc | null = null
+    for (let gallery = 1; gallery < 500 && !wanderer; gallery += 1) {
+      wanderer = wanderingNpcForGallery(coordinate(8), coordinate(gallery))
+    }
+    expect(wanderer).not.toBeNull()
+    if (!wanderer) return
+
+    const game = defaultSavedGame()
+    game.pose = {
+      ...game.pose,
+      floor: wanderer.floor,
+      zone: { kind: 'gallery', gallery: wanderer.gallery },
+      x: wanderer.position.x,
+      z: wanderer.position.z,
+    }
+    writeSavedGame(game)
+    const { container } = render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    const viewport = await screen.findByTestId('arena-viewport')
+    expect(viewport).toHaveAttribute('data-wandering-npcs', '1')
+    expect(container.querySelector('.npc-quest-marker')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: `Talk to ${wanderer.name}` }))
+    expect(screen.getByLabelText('Passing reader dialogue')).toHaveTextContent(wanderer.dialogue[0])
+    expect(screen.queryByRole('button', { name: /quest|reward|accept|complete/i })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Quest log')).not.toBeInTheDocument()
   })
 
   it('opens the journey menu with Continue and New Journey choices', async () => {

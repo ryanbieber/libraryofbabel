@@ -180,6 +180,7 @@ export function ArenaViewport({
       data-book-presented={presentedBook ? addressKey(presentedBook) : ''}
       data-continuation-instances={continuationBudget.instances}
       data-continuation-draw-calls={continuationBudget.drawCalls}
+      data-wandering-npcs={npcStates.filter(({ npc }) => npc.wandering).length}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}
@@ -375,7 +376,9 @@ function GalleryScene({
       <ReadingTable position={[-2.35, 0, 0.65]} />
       {npcStates.some(({ npc }) => npc.quest === 'word-finder') ? <ReadingTable position={[2.35, 0, -0.65]} /> : null}
       {npcStates.map(({ npc, questMarker }) => (
-        <SeatedMonk key={npc.id} npc={npc} questMarker={questMarker} onTalk={() => onTalkToNpc(npc)} />
+        npc.wandering
+          ? <WanderingReader key={npc.id} npc={npc} onTalk={() => onTalkToNpc(npc)} />
+          : <SeatedMonk key={npc.id} npc={npc} questMarker={questMarker} onTalk={() => onTalkToNpc(npc)} />
       ))}
       {incident ? <GalleryIncidentDetail incident={incident} /> : null}
       <GalleryBulbs />
@@ -1338,6 +1341,113 @@ function SeatedMonk({ npc, questMarker, onTalk }: { npc: LibraryNpc; questMarker
           <HoodedMonk questMarker={questMarker} />
         )}
       </group>
+    </group>
+  )
+}
+
+const WANDERING_READER_PALETTES = [
+  { coat: '#40505b', trim: '#778895', skin: '#a87859', hair: '#33251f', book: '#7d3528' },
+  { coat: '#5b463c', trim: '#9b8062', skin: '#bd8b68', hair: '#473126', book: '#31506a' },
+  { coat: '#3e503f', trim: '#849276', skin: '#8e624c', hair: '#231d1b', book: '#704c25' },
+  { coat: '#51445c', trim: '#8e7a96', skin: '#c18d65', hair: '#5a4030', book: '#314c3a' },
+  { coat: '#5c3e42', trim: '#9d7776', skin: '#9b6d52', hair: '#2d2524', book: '#5b3f72' },
+  { coat: '#4c4b43', trim: '#908c77', skin: '#b77d59', hair: '#3b2920', book: '#7a652d' },
+] as const
+
+function WanderingReader({ npc, onTalk }: { npc: LibraryNpc; onTalk: () => void }) {
+  const groupRef = useRef<THREE.Group>(null)
+  const bodyRef = useRef<THREE.Group>(null)
+  const positionedNpcIdRef = useRef<string | null>(null)
+  const wandering = npc.wandering!
+  const palette = WANDERING_READER_PALETTES[wandering.appearance.palette % WANDERING_READER_PALETTES.length]
+
+  useFrame(({ clock }, delta) => {
+    const group = groupRef.current
+    const body = bodyRef.current
+    if (!group || !body) return
+    if (positionedNpcIdRef.current !== npc.id) {
+      group.position.set(npc.position.x, 0, npc.position.z)
+      positionedNpcIdRef.current = npc.id
+    }
+    const dx = npc.position.x - group.position.x
+    const dz = npc.position.z - group.position.z
+    const distance = Math.hypot(dx, dz)
+    if (distance > 0.001) {
+      const smoothing = 1 - Math.exp(-delta * 7)
+      group.position.x += dx * smoothing
+      group.position.z += dz * smoothing
+      const targetYaw = Math.atan2(-dx, -dz)
+      const yawDelta = Math.atan2(Math.sin(targetYaw - group.rotation.y), Math.cos(targetYaw - group.rotation.y))
+      group.rotation.y += yawDelta * Math.min(1, delta * 6)
+    }
+    const walking = wandering.activity === 'walking' || distance > 0.015
+    body.position.y = walking ? Math.sin(clock.elapsedTime * 7 + wandering.phase) * 0.025 : 0
+    body.rotation.z = wandering.activity === 'comparing-notes' ? -0.035 : 0
+  })
+
+  return (
+    <group
+      ref={groupRef}
+      scale={wandering.appearance.stature}
+      onClick={(event) => { event.stopPropagation(); onTalk() }}
+    >
+      <group ref={bodyRef}>
+        <mesh position={[-0.14, 0.38, 0]} rotation={[0, 0, -0.025]}>
+          <cylinderGeometry args={[0.085, 0.095, 0.72, 8]} />
+          <meshStandardMaterial color={palette.coat} roughness={1} />
+        </mesh>
+        <mesh position={[0.14, 0.38, 0]} rotation={[0, 0, 0.025]}>
+          <cylinderGeometry args={[0.085, 0.095, 0.72, 8]} />
+          <meshStandardMaterial color={palette.coat} roughness={1} />
+        </mesh>
+        <mesh position={[0, 0.87, 0]} scale={[1, 1, 0.72]}>
+          <coneGeometry args={[0.34, 0.82, 10]} />
+          <meshStandardMaterial color={palette.coat} roughness={1} />
+        </mesh>
+        <mesh position={[0, 1.08, -0.08]} scale={[1, 0.72, 0.75]}>
+          <torusGeometry args={[0.25, 0.035, 7, 14]} />
+          <meshStandardMaterial color={palette.trim} roughness={0.96} />
+        </mesh>
+        <CylinderBetween start={[-0.22, 1.05, -0.02]} end={[-0.13, 0.88, -0.3]} radius={0.07} color={palette.coat} />
+        <CylinderBetween start={[0.22, 1.05, -0.02]} end={[0.13, 0.88, -0.3]} radius={0.07} color={palette.coat} />
+        <mesh position={[-0.13, 0.87, -0.31]}><sphereGeometry args={[0.07, 9, 7]} /><meshStandardMaterial color={palette.skin} roughness={0.95} /></mesh>
+        <mesh position={[0.13, 0.87, -0.31]}><sphereGeometry args={[0.07, 9, 7]} /><meshStandardMaterial color={palette.skin} roughness={0.95} /></mesh>
+        <mesh position={[0, 1.42, -0.02]}>
+          <sphereGeometry args={[0.19, 13, 10]} />
+          <meshStandardMaterial color={palette.skin} roughness={0.95} />
+        </mesh>
+        <mesh position={[0, 1.52, 0.01]} scale={[1.04, 0.72, 1]}>
+          <sphereGeometry args={[0.195, 12, 8, 0, Math.PI * 2, 0, Math.PI / 1.65]} />
+          <meshStandardMaterial color={palette.hair} roughness={1} />
+        </mesh>
+        <mesh position={[-0.067, 1.45, -0.177]} scale={[1, 0.65, 0.5]}>
+          <sphereGeometry args={[0.018, 7, 5]} />
+          <meshStandardMaterial color="#161411" roughness={0.85} />
+        </mesh>
+        <mesh position={[0.067, 1.45, -0.177]} scale={[1, 0.65, 0.5]}>
+          <sphereGeometry args={[0.018, 7, 5]} />
+          <meshStandardMaterial color="#161411" roughness={0.85} />
+        </mesh>
+        <CarriedReading accessory={wandering.appearance.accessory} color={palette.book} />
+      </group>
+    </group>
+  )
+}
+
+function CarriedReading({ accessory, color }: {
+  accessory: NonNullable<LibraryNpc['wandering']>['appearance']['accessory']
+  color: string
+}) {
+  const count = accessory === 'book-stack' ? 3 : accessory === 'catalog-cards' ? 4 : 1
+  const isPaper = accessory === 'notes' || accessory === 'catalog-cards'
+  return (
+    <group position={[0, 0.91, -0.34]} rotation={[isPaper ? -0.28 : -0.12, 0, 0]}>
+      {Array.from({ length: count }, (_, index) => (
+        <mesh key={index} position={[0, index * 0.045, index * 0.012]} rotation={[0, index * 0.05, index % 2 === 0 ? 0.025 : -0.025]}>
+          <boxGeometry args={[isPaper ? 0.36 : 0.42, isPaper ? 0.018 : 0.055, isPaper ? 0.27 : 0.3]} />
+          <meshStandardMaterial color={isPaper ? '#c7b887' : color} roughness={1} />
+        </mesh>
+      ))}
     </group>
   )
 }
