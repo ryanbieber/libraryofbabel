@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { GALLERY_BULB_POSITIONS, VESTIBULE_MIRROR_POSITION } from './sceneDetails'
+import {
+  BOOK_SCALE_LABELS,
+  GALLERY_BULB_POSITIONS,
+  VESTIBULE_MIRROR_POSITION,
+  bookScaleLabelFraction,
+} from './sceneDetails'
 
 describe('authored scene details', () => {
   it('places exactly two visible gallery bulbs crosswise', () => {
@@ -14,5 +19,11 @@ describe('authored scene details', () => {
     expect(VESTIBULE_MIRROR_POSITION[0]).toBeLessThan(-2.5)
     expect(VESTIBULE_MIRROR_POSITION[2]).toBe(0)
   })
-})
 
+  it('centers every printed shelf number under its actual book', () => {
+    expect(BOOK_SCALE_LABELS).toEqual([1, 8, 16, 24, 32])
+    expect(bookScaleLabelFraction(1)).toBe(0.5 / 32)
+    expect(bookScaleLabelFraction(8)).toBe(7.5 / 32)
+    expect(bookScaleLabelFraction(32)).toBe(31.5 / 32)
+  })
+})

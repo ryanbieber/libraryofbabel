@@ -10,6 +10,8 @@ import {
 import {
   FLOOR_HEIGHT,
   GALLERY_APOTHEM,
+  SERVICE_ROOM_HALF_WIDTH,
+  SERVICE_ROOM_WORLD_Z_OFFSET,
   VESTIBULE_HALF_DEPTH,
   VESTIBULE_HALF_WIDTH,
   type PlayerPose,
@@ -24,8 +26,7 @@ export type VisibleScene = {
 }
 
 const GALLERY_VESTIBULE_DISTANCE = GALLERY_APOTHEM + VESTIBULE_HALF_DEPTH
-const SERVICE_VESTIBULE_DISTANCE = VESTIBULE_HALF_WIDTH + 1.8
-const SERVICE_ROOM_Z_OFFSET = 1.4
+const SERVICE_VESTIBULE_DISTANCE = VESTIBULE_HALF_WIDTH + SERVICE_ROOM_HALF_WIDTH
 const STAIR_VESTIBULE_DISTANCE = VESTIBULE_HALF_WIDTH + 2.55
 
 export function visibleScenesForPose(pose: PlayerPose): VisibleScene[] {
@@ -41,7 +42,7 @@ export function visibleScenesForPose(pose: PlayerPose): VisibleScene[] {
     case 'vestibule':
       return visibleFromVestibule(pose, current)
     case 'service': {
-      const vestibuleZ = pose.zone.room === 'sleeping' ? SERVICE_ROOM_Z_OFFSET : -SERVICE_ROOM_Z_OFFSET
+      const vestibuleZ = pose.zone.room === 'sleeping' ? SERVICE_ROOM_WORLD_Z_OFFSET : -SERVICE_ROOM_WORLD_Z_OFFSET
       return [
         current,
         scene('vestibule', pose.floor, { kind: 'vestibule', connector: pose.zone.connector }, [SERVICE_VESTIBULE_DISTANCE, 0, vestibuleZ]),
@@ -70,8 +71,8 @@ function visibleFromVestibule(pose: PlayerPose, current: VisibleScene): VisibleS
   )
 
   scenes.push(
-    scene('sleeping-room', pose.floor, { kind: 'service', connector, room: 'sleeping' }, [-SERVICE_VESTIBULE_DISTANCE, 0, -SERVICE_ROOM_Z_OFFSET]),
-    scene('latrine', pose.floor, { kind: 'service', connector, room: 'latrine' }, [-SERVICE_VESTIBULE_DISTANCE, 0, SERVICE_ROOM_Z_OFFSET]),
+    scene('sleeping-room', pose.floor, { kind: 'service', connector, room: 'sleeping' }, [-SERVICE_VESTIBULE_DISTANCE, 0, -SERVICE_ROOM_WORLD_Z_OFFSET]),
+    scene('latrine', pose.floor, { kind: 'service', connector, room: 'latrine' }, [-SERVICE_VESTIBULE_DISTANCE, 0, SERVICE_ROOM_WORLD_Z_OFFSET]),
   )
 
   const stairDirection: -1 | 1 = pose.z <= 0 ? 1 : -1

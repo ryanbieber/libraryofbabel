@@ -5,6 +5,10 @@ import {
   BOOK_INTERACTION_RADIUS,
   GALLERY_APOTHEM,
   LIGHTWELL_RADIUS,
+  PASSAGE_HALF_WIDTH,
+  PASSAGE_OPENING_WIDTH,
+  PLAYER_RADIUS,
+  SERVICE_PORTAL_OFFSET,
   STARTING_PLAYER_POSE,
   STAIR_TRAVEL_DISTANCE,
   VESTIBULE_HALF_DEPTH,
@@ -14,6 +18,8 @@ import {
   movePose,
   poseNearBook,
   rotatePose,
+  serviceRoomPortalZ,
+  serviceRoomWorldZ,
   stairCameraPose,
 } from './roomGeometry'
 
@@ -57,6 +63,35 @@ describe('hexagonal first-person geometry', () => {
     expect(result.pose.zone).toEqual({ kind: 'service', connector: -1n, room: 'sleeping' })
     const latrine = movePose({ ...vestibule, z: 0.6 }, 1, 0, 0.3)
     expect(latrine.pose.zone).toEqual({ kind: 'service', connector: -1n, room: 'latrine' })
+  })
+
+  it('aligns the service-room doorways on both sides of each threshold', () => {
+    expect(serviceRoomWorldZ('sleeping') + serviceRoomPortalZ('sleeping')).toBe(-SERVICE_PORTAL_OFFSET)
+    expect(serviceRoomWorldZ('latrine') + serviceRoomPortalZ('latrine')).toBe(SERVICE_PORTAL_OFFSET)
+  })
+
+  it('crosses both full service-room doorways without a sideways teleport', () => {
+    for (const [room, z] of [['sleeping', -1.3], ['latrine', 1.3]] as const) {
+      const vestibule = {
+        ...STARTING_PLAYER_POSE,
+        zone: { kind: 'vestibule' as const, connector: coordinate(-1) },
+        x: -2.55,
+        z,
+        yaw: -Math.PI / 2,
+      }
+      const entered = movePose(vestibule, 1, 0, 0.3)
+      expect(entered.transition).toBe('service')
+      expect(entered.pose.zone).toMatchObject({ kind: 'service', room })
+      expect(entered.pose.z + serviceRoomWorldZ(room)).toBeCloseTo(vestibule.z)
+
+      const exited = movePose({ ...entered.pose, yaw: Math.PI / 2 }, 1, 0, 0.3)
+      expect(exited.transition).toBe('vestibule')
+      expect(exited.pose.z).toBeCloseTo(vestibule.z)
+    }
+  })
+
+  it('renders gallery passages wide enough for the navigable player centerline', () => {
+    expect(PASSAGE_OPENING_WIDTH / 2).toBe(PASSAGE_HALF_WIDTH + PLAYER_RADIUS)
   })
 
   it('walks a full guided spiral flight and changes floor', () => {
