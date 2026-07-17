@@ -25,11 +25,14 @@ describe('App interactions', () => {
     vi.restoreAllMocks()
   })
 
-  it('introduces and enters the hexagonal multi-floor library', async () => {
+  it('introduces the impossible premise and enters the library', async () => {
     render(<App />)
     expect(screen.getByLabelText('Start screen')).toBeInTheDocument()
-    expect(screen.getByText(/endless procession of hexagonal galleries/i)).toBeInTheDocument()
-    expect(screen.getByText(/WASD to move. Mouse to look/i)).toBeInTheDocument()
+    expect(screen.getByText(/the Library makes knowledge total/i)).toBeInTheDocument()
+    expect(screen.getByText(/unbounded coordinates/i)).toBeInTheDocument()
+    expect(screen.getByLabelText('Scale of the Library')).toHaveTextContent('1,312,000')
+    expect(screen.getByLabelText('Scale of the Library')).toHaveTextContent('distinct possible volumes')
+    expect(screen.getByText(/WASD/)).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Enter Library' }))
 
