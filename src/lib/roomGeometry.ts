@@ -58,6 +58,8 @@ export const SHELF_WIDTH = GALLERY_RADIUS - 0.72
 export const STAIR_TRAVEL_DISTANCE = 7.8
 export const STAIR_START_ANGLE = Math.PI
 
+const ROOM_ENTRY_INSET = 0.08
+
 export const STARTING_PLAYER_POSE: PlayerPose = {
   floor: coordinate(0),
   zone: { kind: 'gallery', gallery: coordinate(0) },
@@ -148,13 +150,23 @@ function moveInGallery(
   const passageLimit = PASSAGE_HALF_WIDTH
   if (targetZ < -GALLERY_APOTHEM + PLAYER_RADIUS && Math.abs(targetX) <= passageLimit) {
     return {
-      pose: { ...pose, zone: { kind: 'vestibule', connector: northConnector(gallery) }, x: targetX, z: VESTIBULE_HALF_DEPTH - 0.12 },
+      pose: {
+        ...pose,
+        zone: { kind: 'vestibule', connector: northConnector(gallery) },
+        x: targetX,
+        z: VESTIBULE_HALF_DEPTH - PLAYER_RADIUS - ROOM_ENTRY_INSET,
+      },
       transition: 'vestibule',
     }
   }
   if (targetZ > GALLERY_APOTHEM - PLAYER_RADIUS && Math.abs(targetX) <= passageLimit) {
     return {
-      pose: { ...pose, zone: { kind: 'vestibule', connector: southConnector(gallery) }, x: targetX, z: -VESTIBULE_HALF_DEPTH + 0.12 },
+      pose: {
+        ...pose,
+        zone: { kind: 'vestibule', connector: southConnector(gallery) },
+        x: targetX,
+        z: -VESTIBULE_HALF_DEPTH + PLAYER_RADIUS + ROOM_ENTRY_INSET,
+      },
       transition: 'vestibule',
     }
   }
@@ -196,7 +208,7 @@ function moveInVestibule(
       pose: {
         ...pose,
         zone: { kind: 'service', connector, room },
-        x: SERVICE_ROOM_HALF_WIDTH - 0.08,
+        x: SERVICE_ROOM_HALF_WIDTH - PLAYER_RADIUS - ROOM_ENTRY_INSET,
         z: targetZ - serviceRoomWorldZ(room),
       },
       transition: 'service',

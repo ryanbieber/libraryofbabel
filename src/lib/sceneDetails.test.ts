@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   BOOK_SCALE_LABELS,
   GALLERY_BULB_POSITIONS,
+  SHELF_LABEL_ROTATION,
   VESTIBULE_MIRROR_POSITION,
   bookScaleLabelFraction,
 } from './sceneDetails'
@@ -25,5 +26,9 @@ describe('authored scene details', () => {
     expect(bookScaleLabelFraction(1)).toBe(0.5 / 32)
     expect(bookScaleLabelFraction(8)).toBe(7.5 / 32)
     expect(bookScaleLabelFraction(32)).toBe(31.5 / 32)
+  })
+
+  it('faces shelf labels into the room instead of exposing mirrored back faces', () => {
+    expect(SHELF_LABEL_ROTATION).toEqual([0, Math.PI, 0])
   })
 })

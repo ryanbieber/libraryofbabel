@@ -25,6 +25,7 @@ import { visibleScenesForPose } from './lib/sceneVisibility'
 import {
   BOOK_SCALE_LABELS,
   GALLERY_BULB_POSITIONS,
+  SHELF_LABEL_ROTATION,
   VESTIBULE_MIRROR_POSITION,
   bookScaleLabelFraction,
 } from './lib/sceneDetails'
@@ -691,19 +692,19 @@ function ShelfWayfinding({ gallery, wall }: { gallery: BookAddress['gallery']; w
 
   return (
     <group>
-      <mesh position={[0, 1.34, -0.39]} raycast={() => null}>
+      <mesh position={[0, 1.34, -0.39]} rotation={SHELF_LABEL_ROTATION} raycast={() => null}>
         <planeGeometry args={[3.15, 0.42]} />
-        <meshBasicMaterial map={wallTexture} transparent depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
+        <meshBasicMaterial map={wallTexture} transparent depthWrite={false} toneMapped={false} />
       </mesh>
       {Array.from({ length: SHELVES_PER_WALL }, (_, shelf) => (
         <group key={shelf}>
-          <mesh position={[-SHELF_WIDTH / 2 - 0.2, 1.03 - shelf * 0.49, -0.4]} raycast={() => null}>
+          <mesh position={[-SHELF_WIDTH / 2 - 0.2, 1.03 - shelf * 0.49, -0.4]} rotation={SHELF_LABEL_ROTATION} raycast={() => null}>
             <planeGeometry args={[0.25, 0.19]} />
-            <meshBasicMaterial map={rowTextures[shelf]} transparent depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
+            <meshBasicMaterial map={rowTextures[shelf]} transparent depthWrite={false} toneMapped={false} />
           </mesh>
-          <mesh position={[0, 0.74 - shelf * 0.49, -0.43]} raycast={() => null}>
+          <mesh position={[0, 0.74 - shelf * 0.49, -0.43]} rotation={SHELF_LABEL_ROTATION} raycast={() => null}>
             <planeGeometry args={[SHELF_WIDTH - 0.16, 0.105]} />
-            <meshBasicMaterial map={bookScaleTexture} transparent depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
+            <meshBasicMaterial map={bookScaleTexture} transparent depthWrite={false} toneMapped={false} />
           </mesh>
         </group>
       ))}

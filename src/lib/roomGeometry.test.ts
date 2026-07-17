@@ -35,6 +35,10 @@ describe('hexagonal first-person geometry', () => {
     const result = movePose(pose, 1, 0, 0.25)
     expect(result.transition).toBe('vestibule')
     expect(result.pose.zone).toEqual({ kind: 'vestibule', connector: -1n })
+
+    const continued = movePose(result.pose, 1, 0, 0.05)
+    expect(continued.pose.zone).toEqual({ kind: 'vestibule', connector: -1n })
+    expect(continued.pose.z).toBeLessThan(result.pose.z)
   })
 
   it('walks across both former gallery end gates', () => {
@@ -61,6 +65,9 @@ describe('hexagonal first-person geometry', () => {
     const vestibule = { ...STARTING_PLAYER_POSE, zone: { kind: 'vestibule' as const, connector: coordinate(-1) }, x: -2.55, z: -0.6, yaw: -Math.PI / 2 }
     const result = movePose(vestibule, 1, 0, 0.3)
     expect(result.pose.zone).toEqual({ kind: 'service', connector: -1n, room: 'sleeping' })
+    const continued = movePose(result.pose, 1, 0, 0.05)
+    expect(continued.pose.zone).toEqual({ kind: 'service', connector: -1n, room: 'sleeping' })
+    expect(continued.pose.x).toBeLessThan(result.pose.x)
     const latrine = movePose({ ...vestibule, z: 0.6 }, 1, 0, 0.3)
     expect(latrine.pose.zone).toEqual({ kind: 'service', connector: -1n, room: 'latrine' })
   })
