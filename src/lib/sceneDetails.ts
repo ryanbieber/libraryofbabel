@@ -1,3 +1,5 @@
+import { BOOKS_PER_SHELF } from './library'
+
 export type ScenePosition = readonly [x: number, y: number, z: number]
 
 export const GALLERY_BULB_POSITIONS = [
@@ -7,3 +9,8 @@ export const GALLERY_BULB_POSITIONS = [
 
 export const VESTIBULE_MIRROR_POSITION = [-2.56, 1.55, 0] as const satisfies ScenePosition
 
+export const BOOK_SCALE_LABELS = [1, 8, 16, 24, 32] as const
+
+export function bookScaleLabelFraction(book: number): number {
+  return (book - 0.5) / BOOKS_PER_SHELF
+}

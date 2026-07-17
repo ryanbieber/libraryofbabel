@@ -22,7 +22,12 @@ import {
 import type { LibraryNpc } from './lib/npcs'
 import { shouldBookCapturePointer } from './lib/pointer'
 import { visibleScenesForPose } from './lib/sceneVisibility'
-import { GALLERY_BULB_POSITIONS, VESTIBULE_MIRROR_POSITION } from './lib/sceneDetails'
+import {
+  BOOK_SCALE_LABELS,
+  GALLERY_BULB_POSITIONS,
+  VESTIBULE_MIRROR_POSITION,
+  bookScaleLabelFraction,
+} from './lib/sceneDetails'
 import {
   LIGHTWELL_RAILS_PER_SHELL,
   LIGHTWELL_SHELL_LEVELS,
@@ -37,13 +42,19 @@ import {
   GALLERY_APOTHEM,
   GALLERY_RADIUS,
   LIGHTWELL_RADIUS,
+  PASSAGE_OPENING_WIDTH,
   PLAYER_EYE_HEIGHT,
   RAILING_HEIGHT,
+  SERVICE_PORTAL_OFFSET,
+  SERVICE_PORTAL_WIDTH,
+  SERVICE_ROOM_HALF_DEPTH,
+  SERVICE_ROOM_HALF_WIDTH,
   SHELF_WIDTH,
   STAIR_START_ANGLE,
   VESTIBULE_HALF_DEPTH,
   VESTIBULE_HALF_WIDTH,
   distanceToBook,
+  serviceRoomPortalZ,
   stairCameraPose,
   wallNormal,
   type PlayerPose,
@@ -680,17 +691,20 @@ function ShelfWayfinding({ gallery, wall }: { gallery: BookAddress['gallery']; w
 
   return (
     <group>
-      <sprite position={[0, 1.34, -0.39]} scale={[3.15, 0.42, 1]}>
-        <spriteMaterial map={wallTexture} transparent depthWrite={false} toneMapped={false} />
-      </sprite>
+      <mesh position={[0, 1.34, -0.39]} raycast={() => null}>
+        <planeGeometry args={[3.15, 0.42]} />
+        <meshBasicMaterial map={wallTexture} transparent depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
+      </mesh>
       {Array.from({ length: SHELVES_PER_WALL }, (_, shelf) => (
         <group key={shelf}>
-          <sprite position={[-SHELF_WIDTH / 2 - 0.2, 1.03 - shelf * 0.49, -0.4]} scale={[0.25, 0.19, 1]}>
-            <spriteMaterial map={rowTextures[shelf]} transparent depthWrite={false} toneMapped={false} />
-          </sprite>
-          <sprite position={[0, 0.74 - shelf * 0.49, -0.43]} scale={[SHELF_WIDTH - 0.16, 0.105, 1]}>
-            <spriteMaterial map={bookScaleTexture} transparent depthWrite={false} toneMapped={false} />
-          </sprite>
+          <mesh position={[-SHELF_WIDTH / 2 - 0.2, 1.03 - shelf * 0.49, -0.4]} raycast={() => null}>
+            <planeGeometry args={[0.25, 0.19]} />
+            <meshBasicMaterial map={rowTextures[shelf]} transparent depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh position={[0, 0.74 - shelf * 0.49, -0.43]} raycast={() => null}>
+            <planeGeometry args={[SHELF_WIDTH - 0.16, 0.105]} />
+            <meshBasicMaterial map={bookScaleTexture} transparent depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
+          </mesh>
         </group>
       ))}
     </group>
@@ -738,8 +752,8 @@ function createBookScaleTexture(): THREE.CanvasTexture {
     context.font = '700 35px Georgia'
     context.textAlign = 'center'
     context.textBaseline = 'middle'
-    ;[1, 8, 16, 24, 32].forEach((book, index) => {
-      context.fillText(String(book), 34 + index * ((canvas.width - 68) / 4), canvas.height * 0.54)
+    BOOK_SCALE_LABELS.forEach((book) => {
+      context.fillText(String(book), bookScaleLabelFraction(book) * canvas.width, canvas.height * 0.54)
     })
   }
   const texture = new THREE.CanvasTexture(canvas)
@@ -943,8 +957,8 @@ function VestibuleScene({ connector: _connector, reflectiveMirror }: { connector
       <BoxRoom width={VESTIBULE_HALF_WIDTH * 2} depth={VESTIBULE_HALF_DEPTH * 2} color="#4a443b" openNorth openSouth openWest openEast />
       <CorridorEnd z={-VESTIBULE_HALF_DEPTH} />
       <CorridorEnd z={VESTIBULE_HALF_DEPTH} rotationY={Math.PI} />
-      <SidePortal side="west" z={-0.72} labelColor="#897151" />
-      <SidePortal side="west" z={0.72} labelColor="#6d5944" />
+      <SidePortal side="west" z={-SERVICE_PORTAL_OFFSET} labelColor="#897151" width={SERVICE_PORTAL_WIDTH} />
+      <SidePortal side="west" z={SERVICE_PORTAL_OFFSET} labelColor="#6d5944" width={SERVICE_PORTAL_WIDTH} />
       <SidePortal side="east" z={0} labelColor="#a67d36" wide />
       <MonasticVestibuleDetails />
       <ProvisionNook />
@@ -957,8 +971,14 @@ function VestibuleScene({ connector: _connector, reflectiveMirror }: { connector
 function ServiceRoomScene({ room }: { room: 'sleeping' | 'latrine' }) {
   return (
     <>
-      <BoxRoom width={3.6} depth={2.8} color={room === 'sleeping' ? '#453c32' : '#4a4b43'} openEast />
-      <SidePortal side="east" z={0} labelColor={room === 'sleeping' ? '#836b48' : '#6f766b'} wallX={1.8} wide />
+      <BoxRoom width={SERVICE_ROOM_HALF_WIDTH * 2} depth={SERVICE_ROOM_HALF_DEPTH * 2} color={room === 'sleeping' ? '#453c32' : '#4a4b43'} openEast />
+      <SidePortal
+        side="east"
+        z={serviceRoomPortalZ(room)}
+        labelColor={room === 'sleeping' ? '#836b48' : '#6f766b'}
+        wallX={SERVICE_ROOM_HALF_WIDTH}
+        width={SERVICE_PORTAL_WIDTH}
+      />
       <ServiceRoomFloor room={room} />
       {room === 'sleeping' ? <SleepingCloset /> : <Latrine />}
       <WarmLamp position={[-0.75, 0, room === 'sleeping' ? 0.75 : -0.78]} />
@@ -1149,7 +1169,7 @@ function LightwellRailing() {
 }
 
 function PassageFrame({ z, rotationY = 0, totalWidth = GALLERY_RADIUS }: { z: number; rotationY?: number; totalWidth?: number }) {
-  const openingWidth = 1.5
+  const openingWidth = PASSAGE_OPENING_WIDTH
   const sideWidth = (totalWidth - openingWidth) / 2
   const sideCenter = openingWidth / 2 + sideWidth / 2
   return (
@@ -1169,9 +1189,9 @@ function CorridorEnd({ z, rotationY = 0 }: { z: number; rotationY?: number }) {
   )
 }
 
-function SidePortal({ side, z, labelColor, wallX = VESTIBULE_HALF_WIDTH, wide = false }: { side: 'east' | 'west'; z: number; labelColor: string; wallX?: number; wide?: boolean }) {
+function SidePortal({ side, z, labelColor, wallX = VESTIBULE_HALF_WIDTH, wide = false, width }: { side: 'east' | 'west'; z: number; labelColor: string; wallX?: number; wide?: boolean; width?: number }) {
   const x = side === 'east' ? wallX : -wallX
-  const openingWidth = wide ? 1.65 : 1.05
+  const openingWidth = width ?? (wide ? SERVICE_PORTAL_WIDTH : 1.05)
   return (
     <group position={[x, 0, z]} rotation={[0, side === 'east' ? -Math.PI / 2 : Math.PI / 2, 0]}>
       {[-1, 1].map((direction) => (
@@ -1212,10 +1232,6 @@ function MonasticVestibuleDetails() {
         <boxGeometry args={[VESTIBULE_HALF_WIDTH * 2, 0.12, 0.1]} />
         <meshStandardMaterial color="#514638" roughness={0.94} />
       </mesh>
-      <group position={[-2.48, 1.46, 0]} rotation={[0, Math.PI / 2, 0]}>
-        <mesh><boxGeometry args={[0.6, 0.9, 0.09]} /><meshStandardMaterial color="#33271e" roughness={0.9} /></mesh>
-        <mesh position={[0, 0, -0.052]}><planeGeometry args={[0.48, 0.77]} /><meshStandardMaterial color="#777c77" metalness={0.42} roughness={0.38} /></mesh>
-      </group>
       <pointLight color="#e8c581" intensity={4.5} distance={4.5} decay={2} position={[0, 1.8, 0]} />
     </>
   )
@@ -1624,10 +1640,6 @@ function SleepingCloset() {
         <planeGeometry args={[1.15, 0.62]} />
         <meshStandardMaterial color="#6f6048" roughness={1} />
       </mesh>
-      <group position={[-1.7, 1.72, 0.76]} rotation={[0, Math.PI / 2, 0]}>
-        <mesh position={[0, 0, 0]}><boxGeometry args={[0.09, 0.76, 0.08]} /><meshStandardMaterial color="#65472b" roughness={1} /></mesh>
-        <mesh position={[0, 0.1, 0]}><boxGeometry args={[0.46, 0.08, 0.08]} /><meshStandardMaterial color="#65472b" roughness={1} /></mesh>
-      </group>
       <group position={[-1.55, 1.25, -0.92]}>
         <mesh><boxGeometry args={[0.48, 0.07, 0.54]} /><meshStandardMaterial color="#553c28" roughness={1} /></mesh>
         <mesh position={[0.05, 0.06, 0]} rotation={[0, 0.12, 0]}><boxGeometry args={[0.26, 0.035, 0.36]} /><meshStandardMaterial color="#8d5c38" roughness={0.9} /></mesh>
@@ -1672,21 +1684,21 @@ function Latrine() {
 function VestibuleMirror({ reflective }: { reflective: boolean }) {
   return (
     <group position={VESTIBULE_MIRROR_POSITION} rotation={[0, Math.PI / 2, 0]}>
-      {[-0.61, 0.61].map((x) => (
+      {[-0.35, 0.35].map((x) => (
         <mesh key={x} position={[x, 0, 0.025]}>
-          <boxGeometry args={[0.1, 1.88, 0.08]} />
+          <boxGeometry args={[0.08, 1.6, 0.08]} />
           <meshStandardMaterial color="#33271e" roughness={0.92} />
         </mesh>
       ))}
-      {[-0.89, 0.89].map((y) => (
+      {[-0.76, 0.76].map((y) => (
         <mesh key={y} position={[0, y, 0.025]}>
-          <boxGeometry args={[1.32, 0.1, 0.08]} />
+          <boxGeometry args={[0.78, 0.08, 0.08]} />
           <meshStandardMaterial color="#33271e" roughness={0.92} />
         </mesh>
       ))}
       {reflective ? <PlanarMirrorSurface /> : (
         <mesh position={[0, 0, 0.035]}>
-          <planeGeometry args={[1.12, 1.72]} />
+          <planeGeometry args={[0.62, 1.44]} />
           <meshStandardMaterial color="#363b39" metalness={0.7} roughness={0.28} />
         </mesh>
       )}
@@ -1695,7 +1707,7 @@ function VestibuleMirror({ reflective }: { reflective: boolean }) {
 }
 
 function PlanarMirrorSurface() {
-  const geometry = useMemo(() => new THREE.PlaneGeometry(1.12, 1.72), [])
+  const geometry = useMemo(() => new THREE.PlaneGeometry(0.62, 1.44), [])
   const reflector = useMemo(() => new Reflector(geometry, {
     clipBias: 0.003,
     color: 0x70726d,

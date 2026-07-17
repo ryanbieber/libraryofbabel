@@ -40,10 +40,16 @@ export const FLOOR_HEIGHT = 3.4
 export const PLAYER_EYE_HEIGHT = 1.6
 export const PLAYER_RADIUS = 0.22
 export const PASSAGE_HALF_WIDTH = 0.75
+export const PASSAGE_OPENING_WIDTH = (PASSAGE_HALF_WIDTH + PLAYER_RADIUS) * 2
 export const LIGHTWELL_RADIUS = 1.15
 export const RAILING_HEIGHT = 0.9
 export const VESTIBULE_HALF_DEPTH = 1.7
 export const VESTIBULE_HALF_WIDTH = 2.7
+export const SERVICE_ROOM_HALF_DEPTH = 1.4
+export const SERVICE_ROOM_HALF_WIDTH = 1.8
+export const SERVICE_ROOM_WORLD_Z_OFFSET = SERVICE_ROOM_HALF_DEPTH
+export const SERVICE_PORTAL_WIDTH = 1.2
+export const SERVICE_PORTAL_OFFSET = VESTIBULE_HALF_DEPTH - SERVICE_PORTAL_WIDTH / 2
 export const INTERACTION_RADIUS = 1.35
 export const BOOK_INTERACTION_RADIUS = 1.75
 export const STEP_DISTANCE = 0.74
@@ -139,7 +145,7 @@ function moveInGallery(
   targetX: number,
   targetZ: number,
 ): MoveResult {
-  const passageLimit = PASSAGE_HALF_WIDTH - PLAYER_RADIUS * 0.25
+  const passageLimit = PASSAGE_HALF_WIDTH
   if (targetZ < -GALLERY_APOTHEM + PLAYER_RADIUS && Math.abs(targetX) <= passageLimit) {
     return {
       pose: { ...pose, zone: { kind: 'vestibule', connector: northConnector(gallery) }, x: targetX, z: VESTIBULE_HALF_DEPTH - 0.12 },
@@ -184,10 +190,15 @@ function moveInVestibule(
   }
 
   if (targetX < -VESTIBULE_HALF_WIDTH + PLAYER_RADIUS) {
-    if (Math.abs(targetZ) < 0.18) return { pose, blocked: 'wall' }
-    const room = targetZ < 0 ? 'sleeping' : 'latrine'
+    const room = serviceRoomForVestibuleZ(targetZ)
+    if (room === null) return { pose, blocked: 'wall' }
     return {
-      pose: { ...pose, zone: { kind: 'service', connector, room }, x: 1.72, z: room === 'sleeping' ? 0.45 : -0.45 },
+      pose: {
+        ...pose,
+        zone: { kind: 'service', connector, room },
+        x: SERVICE_ROOM_HALF_WIDTH - 0.08,
+        z: targetZ - serviceRoomWorldZ(room),
+      },
       transition: 'service',
     }
   }
@@ -218,22 +229,47 @@ function moveInVestibule(
 }
 
 function moveInServiceRoom(pose: PlayerPose, targetX: number, targetZ: number): MoveResult {
-  if (targetX > 1.8 - PLAYER_RADIUS && Math.abs(targetZ) <= 0.82) {
-    const room = pose.zone.kind === 'service' ? pose.zone.room : 'sleeping'
+  const room = pose.zone.kind === 'service' ? pose.zone.room : 'sleeping'
+  if (
+    targetX > SERVICE_ROOM_HALF_WIDTH - PLAYER_RADIUS
+    && Math.abs(targetZ - serviceRoomPortalZ(room)) <= SERVICE_PORTAL_WIDTH / 2
+  ) {
     const connector = pose.zone.kind === 'service' ? pose.zone.connector : coordinate(0)
     return {
       pose: {
         ...pose,
         zone: { kind: 'vestibule', connector },
         x: -VESTIBULE_HALF_WIDTH + 0.3,
-        z: room === 'sleeping' ? -0.55 : 0.55,
+        z: targetZ + serviceRoomWorldZ(room),
       },
       transition: 'vestibule',
     }
   }
   return {
-    pose: { ...pose, x: clamp(targetX, -1.8 + PLAYER_RADIUS, 1.8 - PLAYER_RADIUS), z: clamp(targetZ, -1.35, 1.35), y: 0 },
+    pose: {
+      ...pose,
+      x: clamp(targetX, -SERVICE_ROOM_HALF_WIDTH + PLAYER_RADIUS, SERVICE_ROOM_HALF_WIDTH - PLAYER_RADIUS),
+      z: clamp(targetZ, -SERVICE_ROOM_HALF_DEPTH + PLAYER_RADIUS, SERVICE_ROOM_HALF_DEPTH - PLAYER_RADIUS),
+      y: 0,
+    },
   }
+}
+
+export function serviceRoomWorldZ(room: 'sleeping' | 'latrine'): number {
+  return room === 'sleeping' ? -SERVICE_ROOM_WORLD_Z_OFFSET : SERVICE_ROOM_WORLD_Z_OFFSET
+}
+
+export function serviceRoomPortalZ(room: 'sleeping' | 'latrine'): number {
+  const vestibulePortalZ = room === 'sleeping' ? -SERVICE_PORTAL_OFFSET : SERVICE_PORTAL_OFFSET
+  return vestibulePortalZ - serviceRoomWorldZ(room)
+}
+
+function serviceRoomForVestibuleZ(z: number): 'sleeping' | 'latrine' | null {
+  const sleepingDistance = Math.abs(z + SERVICE_PORTAL_OFFSET)
+  const latrineDistance = Math.abs(z - SERVICE_PORTAL_OFFSET)
+  if (sleepingDistance <= SERVICE_PORTAL_WIDTH / 2) return 'sleeping'
+  if (latrineDistance <= SERVICE_PORTAL_WIDTH / 2) return 'latrine'
+  return null
 }
 
 export function stairCameraPose(pose: PlayerPose): { x: number; y: number; z: number; yaw: number } {
