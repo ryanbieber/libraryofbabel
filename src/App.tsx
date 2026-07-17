@@ -7,7 +7,7 @@ import { SplashScreen } from './components/SplashScreen'
 import { SHELF_WALLS, addressKey, generatePage, nearbyBookAddress, type BookAddress, type ShelfWall } from './lib/library'
 import { spreadToLeftPage, spreadToRightPage } from './lib/bookSpread'
 import { signedLabel, zoneLabel } from './lib/level'
-import { isNpcReachable, nearestNpc, npcsForGallery, type LibraryNpc } from './lib/npcs'
+import { isNpcReachable, nearestNpc, npcsForGallery, wanderingNpcAtTime, type LibraryNpc } from './lib/npcs'
 import {
   BOOK_INTERACTION_RADIUS,
   WALK_SPEED,
@@ -42,6 +42,7 @@ const MIN_CAMERA_PITCH = -0.82
 const MAX_CAMERA_PITCH = 0.72
 const BOOK_PRESENTATION_DELAY_MS = 700
 const JOURNEY_ARRIVAL_DURATION_MS = 5400
+const NPC_MOTION_TICK_MS = 200
 
 function App() {
   const initialSave = useRef<SavedGameV2 | null>(readSavedGame())
@@ -63,6 +64,7 @@ function App() {
   const [hasStarted, setHasStarted] = useState(false)
   const [arrivalVisible, setArrivalVisible] = useState(false)
   const [movementCue, setMovementCue] = useState<MovementCue>('idle')
+  const [npcMotionSeconds, setNpcMotionSeconds] = useState(0)
   const [spread, setSpread] = useState(1)
   const [message, setMessage] = useState('The lamps wait above the central shaft.')
   const playerPoseRef = useRef<PlayerPose>(initialGame.pose)
@@ -80,10 +82,14 @@ function App() {
   const rightPageNumber = spreadToRightPage(spread)
   const leftPage = useMemo(() => generatePage({ ...selectedBook, page: leftPageNumber }), [selectedBook, leftPageNumber])
   const rightPage = useMemo(() => generatePage({ ...selectedBook, page: rightPageNumber }), [selectedBook, rightPageNumber])
-  const currentNpcs = useMemo(() => {
+  const baseCurrentNpcs = useMemo(() => {
     if (playerPose.zone.kind !== 'gallery') return []
     return npcsForGallery(playerPose.floor, playerPose.zone.gallery)
   }, [playerPose.floor, playerPose.zone])
+  const currentNpcs = useMemo(
+    () => baseCurrentNpcs.map((npc) => wanderingNpcAtTime(npc, npcMotionSeconds)),
+    [baseCurrentNpcs, npcMotionSeconds],
+  )
   const closestNpc = nearestNpc(playerPose, currentNpcs)
   const talkableNpc = isNpcReachable(playerPose, closestNpc) ? closestNpc : null
   const npcStates = useMemo<SceneNpc[]>(() => currentNpcs.map((npc) => ({
@@ -100,6 +106,14 @@ function App() {
   }, [readerOpen, presentedBook, splashOpen, arrivalVisible, dialogueNpc])
 
   useEffect(() => setDialogueNpc(null), [playerPose.floor, playerPose.zone])
+
+  useEffect(() => {
+    if (!hasStarted || !baseCurrentNpcs.some((npc) => npc.wandering)) return
+    const interval = window.setInterval(() => {
+      setNpcMotionSeconds((seconds) => seconds + NPC_MOTION_TICK_MS / 1000)
+    }, NPC_MOTION_TICK_MS)
+    return () => window.clearInterval(interval)
+  }, [baseCurrentNpcs, hasStarted])
 
   useEffect(() => {
     if (!hasStarted) return
@@ -287,6 +301,8 @@ function App() {
     } else if (npc.quest === 'word-finder') {
       setWordFinderFeedback(null)
       setMessage(wordFinding ? `The indexer remembers “${wordFinding.word}”.` : 'The indexer waits for a word.')
+    } else if (npc.quest === 'ambient') {
+      setMessage('The passing reader answers without abandoning the search.')
     } else {
       setMessage('The monk raises two ink-stained fingers.')
     }
@@ -312,6 +328,7 @@ function App() {
     setHasStarted(true)
     setSplashOpen(false)
     setArrivalVisible(true)
+    setNpcMotionSeconds(0)
     if (arrivalTimeout.current !== null) window.clearTimeout(arrivalTimeout.current)
     arrivalTimeout.current = window.setTimeout(() => {
       setArrivalVisible(false)

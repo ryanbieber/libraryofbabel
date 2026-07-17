@@ -40,13 +40,13 @@ export function NpcDialoguePanel({
   }
 
   return (
-    <section className="npc-dialogue" aria-label="Monk dialogue">
+    <section className="npc-dialogue" aria-label={npc.quest === 'ambient' ? 'Passing reader dialogue' : 'Monk dialogue'}>
       <div className="npc-dialogue-panel">
-        <button type="button" className="close-reader" aria-label="Close monk dialogue" onClick={onClose}>
+        <button type="button" className="close-reader" aria-label={npc.quest === 'ambient' ? 'Close passing reader dialogue' : 'Close monk dialogue'} onClick={onClose}>
           <X size={22} aria-hidden="true" />
         </button>
         <header className="npc-dialogue-header">
-          <p className="splash-kicker">{npcQuestKicker(npc.quest)}</p>
+          <p className="splash-kicker">{npcQuestKicker(npc)}</p>
           <h2>{npc.name}</h2>
         </header>
         <div className="npc-dialogue-lines">
@@ -131,10 +131,13 @@ export function NpcDialoguePanel({
   )
 }
 
-function npcQuestKicker(quest: LibraryNpc['quest']): string {
-  if (quest === 'significant-word') return 'Significant word'
-  if (quest === 'word-finder') return 'Ask about a word'
-  return quest === 'messiah' ? 'Man of the Book' : 'Crimson Hexagon rumor'
+function npcQuestKicker(npc: LibraryNpc): string {
+  if (npc.quest === 'significant-word') return 'Significant word'
+  if (npc.quest === 'word-finder') return 'Ask about a word'
+  if (npc.quest === 'messiah') return 'Man of the Book'
+  if (npc.quest === 'crimson-book') return 'Crimson Hexagon rumor'
+  if (npc.wandering?.archetype === 'knowledge-garage-reader') return 'Knowledge in motion'
+  return 'Passing reader'
 }
 
 function formatPercent(value: number): string {
