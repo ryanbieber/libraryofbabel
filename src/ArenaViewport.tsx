@@ -30,6 +30,17 @@ import {
   bookScaleLabelFraction,
 } from './lib/sceneDetails'
 import {
+  STAIR_ENTRANCE_RAIL_GAP_FRACTION,
+  STAIR_HANDRAIL_RADIUS,
+  STAIR_LANDING_DEPTH,
+  STAIR_LANDING_RADIUS,
+  STAIR_SHAFT_RADIUS,
+  STAIR_TRACK_RADIUS,
+  STAIR_TREAD_DEPTH,
+  STAIR_TREAD_WIDTH,
+  isStairEntranceGap,
+} from './lib/stairGeometry'
+import {
   LIGHTWELL_RAILS_PER_SHELL,
   LIGHTWELL_SHELL_LEVELS,
   STAIR_FLIGHT_LEVELS,
@@ -995,7 +1006,7 @@ function StairScene() {
   return (
     <>
       <mesh position={[0, FLOOR_HEIGHT / 2, 0]}>
-        <cylinderGeometry args={[2.55, 2.55, shaftHeight, 32, 1, true]} />
+        <cylinderGeometry args={[STAIR_SHAFT_RADIUS, STAIR_SHAFT_RADIUS, shaftHeight, 32, 1, true]} />
         <meshStandardMaterial color="#292522" roughness={1} side={THREE.BackSide} />
       </mesh>
       <mesh position={[0, FLOOR_HEIGHT / 2, 0]}>
@@ -1017,12 +1028,13 @@ function SpiralFlights() {
   const grillesRef = useRef<THREE.InstancedMesh>(null)
   const handrails = useMemo(() => STAIR_FLIGHT_LEVELS.map((level) => new THREE.CatmullRomCurve3(
     Array.from({ length: 49 }, (_, index) => {
-      const trackFraction = index / 48
+      const trackFraction = STAIR_ENTRANCE_RAIL_GAP_FRACTION
+        + index / 48 * (1 - STAIR_ENTRANCE_RAIL_GAP_FRACTION * 2)
       const angle = STAIR_START_ANGLE + trackFraction * Math.PI * 2
       return new THREE.Vector3(
-        Math.cos(angle) * 2.05,
+        Math.cos(angle) * STAIR_HANDRAIL_RADIUS,
         level * FLOOR_HEIGHT + trackFraction * FLOOR_HEIGHT + RAILING_HEIGHT,
-        Math.sin(angle) * 2.05,
+        Math.sin(angle) * STAIR_HANDRAIL_RADIUS,
       )
     }),
   )), [])
@@ -1042,15 +1054,23 @@ function SpiralFlights() {
         const trackFraction = index / (STAIR_STEPS_PER_FLIGHT - 1)
         const angle = STAIR_START_ANGLE + trackFraction * Math.PI * 2
         const y = level * FLOOR_HEIGHT + trackFraction * FLOOR_HEIGHT
-        dummy.position.set(Math.cos(angle) * 1.38, y, Math.sin(angle) * 1.38)
+        const isLanding = index === STAIR_STEPS_PER_FLIGHT - 1
+        const radius = isLanding ? STAIR_LANDING_RADIUS : STAIR_TRACK_RADIUS
+        dummy.position.set(Math.cos(angle) * radius, y, Math.sin(angle) * radius)
         dummy.rotation.set(0, -angle, 0)
+        dummy.scale.set(1, 1, isLanding ? STAIR_LANDING_DEPTH / STAIR_TREAD_DEPTH : 1)
         dummy.updateMatrix()
         steps.setMatrixAt(stepInstance, dummy.matrix)
         stepInstance += 1
 
         if (index % STAIR_POST_INTERVAL === 0) {
-          dummy.position.set(Math.cos(angle) * 2.05, y + RAILING_HEIGHT / 2, Math.sin(angle) * 2.05)
+          dummy.position.set(
+            Math.cos(angle) * STAIR_HANDRAIL_RADIUS,
+            y + RAILING_HEIGHT / 2,
+            Math.sin(angle) * STAIR_HANDRAIL_RADIUS,
+          )
           dummy.rotation.set(0, -angle, 0)
+          dummy.scale.setScalar(isStairEntranceGap(trackFraction) ? 0 : 1)
           dummy.updateMatrix()
           posts.setMatrixAt(postInstance, dummy.matrix)
           postInstance += 1
@@ -1060,6 +1080,7 @@ function SpiralFlights() {
       const lampAngle = STAIR_START_ANGLE + (flightIndex % 2 ? Math.PI * 0.7 : Math.PI * 1.35)
       dummy.position.set(Math.cos(lampAngle) * 2.34, (level + 0.52) * FLOOR_HEIGHT, Math.sin(lampAngle) * 2.34)
       dummy.rotation.set(0, 0, 0)
+      dummy.scale.set(1, 1, 1)
       dummy.updateMatrix()
       lamps.setMatrixAt(flightIndex, dummy.matrix)
     })
@@ -1069,6 +1090,7 @@ function SpiralFlights() {
       for (let bar = 0; bar < 5; bar += 1) {
         dummy.position.set(-2.43, level * FLOOR_HEIGHT + 1.08, -0.62 + bar * 0.31)
         dummy.rotation.set(0, 0, 0)
+        dummy.scale.set(1, 1, 1)
         dummy.updateMatrix()
         grilles.setMatrixAt(grilleInstance, dummy.matrix)
         grilleInstance += 1
@@ -1084,7 +1106,7 @@ function SpiralFlights() {
   return (
     <>
       <instancedMesh ref={stepsRef} args={[undefined, undefined, STAIR_FLIGHT_LEVELS.length * STAIR_STEPS_PER_FLIGHT]} raycast={() => null}>
-        <boxGeometry args={[1.45, 0.09, 0.42]} />
+        <boxGeometry args={[STAIR_TREAD_WIDTH, 0.09, STAIR_TREAD_DEPTH]} />
         <meshStandardMaterial color="#5f544a" roughness={1} />
       </instancedMesh>
       <instancedMesh ref={postsRef} args={[undefined, undefined, STAIR_FLIGHT_LEVELS.length * STAIR_STEPS_PER_FLIGHT / STAIR_POST_INTERVAL]} raycast={() => null}>

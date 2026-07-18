@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { GALLERY_APOTHEM, STARTING_PLAYER_POSE, VESTIBULE_HALF_DEPTH } from './roomGeometry'
+import { FLOOR_HEIGHT, GALLERY_APOTHEM, STARTING_PLAYER_POSE, VESTIBULE_HALF_DEPTH } from './roomGeometry'
 import { MAX_VISIBLE_SCENES, visibleScenesForPose } from './sceneVisibility'
 import { coordinate } from './coordinate'
 
@@ -24,6 +24,24 @@ describe('adjacent scene visibility', () => {
     expect(scenes).toHaveLength(MAX_VISIBLE_SCENES)
     expect(scenes.map(({ zone }) => zone.kind)).toEqual(['vestibule', 'gallery', 'gallery', 'service', 'service', 'stair'])
     expect(scenes.filter(({ isCurrent }) => isCurrent)).toHaveLength(1)
+  })
+
+  it('aligns each vestibule stair lane with the landing used after entry', () => {
+    const ascending = visibleScenesForPose({
+      ...STARTING_PLAYER_POSE,
+      zone: { kind: 'vestibule', connector: coordinate(0) },
+      x: 2.3,
+      z: -0.4,
+    }).find(({ zone }) => zone.kind === 'stair')
+    const descending = visibleScenesForPose({
+      ...STARTING_PLAYER_POSE,
+      zone: { kind: 'vestibule', connector: coordinate(0) },
+      x: 2.3,
+      z: 0.4,
+    }).find(({ zone }) => zone.kind === 'stair')
+
+    expect(ascending?.position[1]).toBe(0)
+    expect(descending?.position[1]).toBe(-FLOOR_HEIGHT)
   })
 
   it('keeps a service room limited to itself and its vestibule', () => {
