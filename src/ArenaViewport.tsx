@@ -23,6 +23,12 @@ import type { LibraryNpc } from './lib/npcs'
 import { shouldBookCapturePointer } from './lib/pointer'
 import { visibleScenesForPose } from './lib/sceneVisibility'
 import {
+  LIGHTWELL_RAILING_BAR_INSTANCES,
+  LIGHTWELL_RAILING_FINIAL_INSTANCES,
+  LIGHTWELL_RAILING_FINIAL_RADIUS,
+  lightwellRailingLayout,
+} from './lib/lightwellRailing'
+import {
   BOOK_SCALE_LABELS,
   GALLERY_BULB_POSITIONS,
   SHELF_LABEL_ROTATION,
@@ -1171,25 +1177,52 @@ function ScenePerformanceProbe() {
 }
 
 function LightwellRailing() {
-  const segments = 16
+  const barsRef = useRef<THREE.InstancedMesh>(null)
+  const finialsRef = useRef<THREE.InstancedMesh>(null)
+  const layout = useMemo(lightwellRailingLayout, [])
+
+  useLayoutEffect(() => {
+    const bars = barsRef.current
+    const finials = finialsRef.current
+    if (!bars || !finials) return
+
+    const dummy = new THREE.Object3D()
+    const diagonal = new THREE.Quaternion()
+    const vertical = new THREE.Vector3(0, 0, 1)
+
+    layout.bars.forEach((bar, index) => {
+      dummy.position.fromArray(bar.position)
+      dummy.scale.fromArray(bar.scale)
+      dummy.quaternion.setFromEuler(new THREE.Euler(0, bar.rotationY, 0))
+      if (bar.rotationZ !== 0) {
+        diagonal.setFromAxisAngle(vertical, bar.rotationZ)
+        dummy.quaternion.multiply(diagonal)
+      }
+      dummy.updateMatrix()
+      bars.setMatrixAt(index, dummy.matrix)
+    })
+    bars.instanceMatrix.needsUpdate = true
+
+    dummy.scale.setScalar(1)
+    layout.finials.forEach((finial, index) => {
+      dummy.position.fromArray(finial.position)
+      dummy.rotation.set(0, finial.rotationY, Math.PI / 4)
+      dummy.updateMatrix()
+      finials.setMatrixAt(index, dummy.matrix)
+    })
+    finials.instanceMatrix.needsUpdate = true
+  }, [layout])
+
   return (
     <group>
-      {Array.from({ length: segments }, (_, index) => {
-        const angle = index / segments * Math.PI * 2
-        const radius = LIGHTWELL_RADIUS + 0.14
-        return (
-          <group key={index} position={[Math.cos(angle) * radius, 0, Math.sin(angle) * radius]} rotation={[0, -angle, 0]}>
-            <mesh position={[0, RAILING_HEIGHT / 2, 0]}>
-              <boxGeometry args={[0.045, RAILING_HEIGHT, 0.045]} />
-              <meshStandardMaterial color="#92703a" metalness={0.38} roughness={0.66} />
-            </mesh>
-            <mesh position={[0, RAILING_HEIGHT, 0]}>
-              <boxGeometry args={[0.54, 0.07, 0.07]} />
-              <meshStandardMaterial color="#92703a" metalness={0.38} roughness={0.66} />
-            </mesh>
-          </group>
-        )
-      })}
+      <instancedMesh ref={barsRef} args={[undefined, undefined, LIGHTWELL_RAILING_BAR_INSTANCES]} raycast={() => null}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="#715530" metalness={0.48} roughness={0.68} />
+      </instancedMesh>
+      <instancedMesh ref={finialsRef} args={[undefined, undefined, LIGHTWELL_RAILING_FINIAL_INSTANCES]} raycast={() => null}>
+        <octahedronGeometry args={[LIGHTWELL_RAILING_FINIAL_RADIUS, 0]} />
+        <meshStandardMaterial color="#98713c" metalness={0.54} roughness={0.58} />
+      </instancedMesh>
     </group>
   )
 }
