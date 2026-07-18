@@ -16,6 +16,7 @@ import {
   VESTIBULE_HALF_WIDTH,
   type PlayerPose,
 } from './roomGeometry'
+import { STAIR_SHAFT_RADIUS } from './stairGeometry'
 
 export type VisibleScene = {
   id: string
@@ -27,7 +28,7 @@ export type VisibleScene = {
 
 const GALLERY_VESTIBULE_DISTANCE = GALLERY_APOTHEM + VESTIBULE_HALF_DEPTH
 const SERVICE_VESTIBULE_DISTANCE = VESTIBULE_HALF_WIDTH + SERVICE_ROOM_HALF_WIDTH
-const STAIR_VESTIBULE_DISTANCE = VESTIBULE_HALF_WIDTH + 2.55
+const STAIR_VESTIBULE_DISTANCE = VESTIBULE_HALF_WIDTH + STAIR_SHAFT_RADIUS
 
 export function visibleScenesForPose(pose: PlayerPose): VisibleScene[] {
   const current = scene('current', pose.floor, pose.zone, [0, 0, 0], true)
@@ -81,7 +82,7 @@ function visibleFromVestibule(pose: PlayerPose, current: VisibleScene): VisibleS
     'stair',
     pose.floor,
     { kind: 'stair', connector, from: pose.floor, to: stairFloor, distance: 0 },
-    [STAIR_VESTIBULE_DISTANCE, 0, 0],
+    [STAIR_VESTIBULE_DISTANCE, stairDirection === 1 ? 0 : -FLOOR_HEIGHT, 0],
   ))
 
   return scenes
